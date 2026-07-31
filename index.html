@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Portfolio Readiness</title>
+
+<!-- React, loaded as plain global scripts so the bundle below doesn't need to include it -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+<!-- Tailwind's browser build: compiles the utility classes on the fly, no build step needed -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  html, body { margin: 0; padding: 0; background: #fafaf9; }
+  * { box-sizing: border-box; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#737373;">
+    Loading…
+  </div>
+</div>
+<script src="bundle.js"></script>
+</body>
+</html>
