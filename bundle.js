@@ -794,7 +794,7 @@
       /* @__PURE__ */ jsx("header", { className: "border-b-2 border-neutral-900 bg-neutral-50", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 pt-8 pb-6", children: [
         /* @__PURE__ */ jsx("div", { className: "flex items-baseline justify-between font-mono text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx("span", { children: "Portfolio Review \u2014 No. 006" }),
-          /* @__PURE__ */ jsx("span", { children: latest?.date ? (/* @__PURE__ */ new Date(latest.date + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) : "\u2014" })
+          /* @__PURE__ */ jsx("span", { children: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) })
         ] }),
         /* @__PURE__ */ jsx("div", { className: "flex items-start justify-between gap-6 mt-3", children: [
           /* @__PURE__ */ jsx("h1", { className: "font-serif text-4xl md:text-6xl leading-tight tracking-tight text-neutral-900", children: "Portfolio Readiness" }),
