@@ -139,13 +139,30 @@
     { id: "external", label: "External funding", description: "The full monthly gap is met from income outside the portfolio.", monthlyIncome: 0 }
   ];
   var uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-  var hasClaudeStorage = typeof window !== "undefined" && window.storage && typeof window.storage.get === "function";
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI",
+    authDomain: "portfolio-8ac1d.firebaseapp.com",
+    databaseURL: "https://portfolio-8ac1d-default-rtdb.firebaseio.com",
+    projectId: "portfolio-8ac1d",
+    storageBucket: "portfolio-8ac1d.firebasestorage.app",
+    messagingSenderId: "592281785894",
+    appId: "1:592281785894:web:d83863eb5cb697769eb8e7"
+  };
+  var db = null;
+  try {
+    if (typeof window !== "undefined" && window.firebase && window.firebase.initializeApp) {
+      const app = window.firebase.apps && window.firebase.apps.length ? window.firebase.apps[0] : window.firebase.initializeApp(FIREBASE_CONFIG);
+      db = window.firebase.database(app);
+    }
+  } catch {
+    db = null;
+  }
   async function loadJson(key, fallback) {
     try {
-      if (hasClaudeStorage) {
-        const res = await window.storage.get(key, false);
-        if (res?.value) return JSON.parse(res.value);
-        return fallback;
+      if (db) {
+        const snap = await db.ref(key).once("value");
+        const val = snap.val();
+        return val !== null && val !== void 0 ? val : fallback;
       }
       const raw = window.localStorage.getItem(key);
       return raw ? JSON.parse(raw) : fallback;
@@ -155,8 +172,8 @@
   }
   async function saveJson(key, value) {
     try {
-      if (hasClaudeStorage) {
-        await window.storage.set(key, JSON.stringify(value), false);
+      if (db) {
+        await db.ref(key).set(value);
       } else {
         window.localStorage.setItem(key, JSON.stringify(value));
       }
@@ -167,24 +184,31 @@
   }
   async function deleteKey(key) {
     try {
-      if (hasClaudeStorage) {
-        await window.storage.delete(key, false);
+      if (db) {
+        await db.ref(key).remove();
       } else {
         window.localStorage.removeItem(key);
       }
     } catch {
     }
   }
-  async function listKeys(prefix) {
+  async function loadCollection(parentKey) {
     try {
-      if (hasClaudeStorage) {
-        const res = await window.storage.list(prefix, false);
-        return res?.keys || [];
+      if (db) {
+        const snap = await db.ref(parentKey).once("value");
+        const val = snap.val() || {};
+        return Object.keys(val).map((childKey) => ({ ...val[childKey] }));
       }
       const out = [];
+      const prefix = `${parentKey}/`;
       for (let i = 0; i < window.localStorage.length; i++) {
         const k = window.localStorage.key(i);
-        if (k && k.startsWith(prefix)) out.push(k);
+        if (k && k.startsWith(prefix)) {
+          try {
+            out.push(JSON.parse(window.localStorage.getItem(k)));
+          } catch {
+          }
+        }
       }
       return out;
     } catch {
@@ -505,15 +529,8 @@
         ]);
         let dailyEntries = [];
         try {
-          const keys = await listKeys("daily:");
-          if (keys.length === 0) {
-            dailyEntries = SEED_DAILY;
-          } else {
-            for (const k of keys) {
-              const val = await loadJson(k, null);
-              if (val) dailyEntries.push(val);
-            }
-          }
+          const entries = await loadCollection("daily");
+          dailyEntries = entries.length ? entries : SEED_DAILY;
         } catch {
           dailyEntries = SEED_DAILY;
         }
@@ -560,14 +577,14 @@
       navFields.forEach((f) => {
         clean[f.key] = clean[f.key] === "" || clean[f.key] === void 0 ? void 0 : Number(clean[f.key]);
       });
-      await saveJson(`daily:${clean.date}`, clean);
+      await saveJson(`daily/${clean.date}`, clean);
       setHistory((h) => [...h.filter((e) => e.date !== clean.date), clean].sort((a, b) => a.date.localeCompare(b.date)));
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1800);
       setSaving(false);
     }, [navFields]);
     const handleDeleteDay = useCallback(async (date) => {
-      await deleteKey(`daily:${date}`);
+      await deleteKey(`daily/${date}`);
       setHistory((h) => h.filter((e) => e.date !== date));
     }, []);
     const computedHistory = useMemo(() => history.map((e) => computeDay(e, holdings)), [history, holdings]);

@@ -12,6 +12,12 @@
 <!-- Tailwind's browser build: compiles the utility classes on the fly, no build step needed -->
 <script src="https://cdn.tailwindcss.com"></script>
 
+<!-- Firebase, "compat" build: exposes a plain window.firebase global, matching how
+     React/ReactDOM are loaded above — everyone who opens this page reads/writes the
+     same shared Realtime Database. -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+
 <style>
   html, body { margin: 0; padding: 0; background: #fafaf9; }
   * { box-sizing: border-box; }

@@ -1,36 +1,42 @@
-# Portfolio Readiness — static site
+# Portfolio Readiness — static site (shared data via Firebase)
 
-This is a self-contained, working version of the dashboard: two files
-(`index.html` and `bundle.js`), no build step, no server, no Claude account
-needed to view it. It loads React and Tailwind from public CDNs at runtime, so
-it needs a live internet connection to open — same as any normal website.
+Two files, `index.html` and `bundle.js`. No build step. Now backed by a
+**shared Firebase Realtime Database** (`portfolio-8ac1d`) — anything anyone
+adds, edits, or deletes (holdings, loans, currency conversions, daily pricing
+entries) is saved centrally and shows up for everyone who opens the link,
+not just the browser that made the change.
 
-## Put it on GitHub Pages (no command line needed)
+## Updating the live site
 
-1. Go to **github.com** → **New repository**. Name it anything (e.g.
-   `portfolio-readiness`). Keep it **Public** (Pages needs that on a free
-   account). Create it.
-2. On the new repo's page, click **Add file → Upload files**.
-3. Drag in `index.html` and `bundle.js` from this folder. Commit.
-4. Go to the repo's **Settings → Pages**.
-5. Under "Build and deployment", set **Source: Deploy from a branch**,
-   **Branch: main**, folder **/ (root)**. Save.
-6. Wait about a minute, then refresh that Settings → Pages screen — it'll show
-   a link like `https://yourusername.github.io/portfolio-readiness/`.
-   That's the live, shareable link. Anyone can open it, no sign-in required.
+1. Go to the GitHub repo you already created for this.
+2. Delete the old `index.html` and `bundle.js` (or just re-upload with the
+   same names to overwrite them).
+3. Upload these two files instead.
+4. Commit. GitHub Pages picks it up automatically within a minute or two —
+   same URL as before, no settings need touching again.
 
-## What persists and what doesn't
+## About the database
 
-- Every holding, loan, conversion, and daily entry you add is saved in your
-  own browser's storage (`localStorage`) — tied to that specific browser on
-  that specific device. It will **not** sync between your phone and laptop,
-  and a different visitor to the link sees the *seed* data, not your edits,
-  until they add their own.
-- If you want one shared dataset everyone sees, that needs a real backend —
-  worth asking for separately if you get there.
+- Currently in **test mode**, which allows open read/write **until
+  ~30 August 2026**. After that date it'll stop accepting reads/writes until
+  the rules are updated. To make it permanent, in the Firebase console go to
+  **Realtime Database → Rules** and set:
+  ```json
+  { "rules": { ".read": true, ".write": true } }
+  ```
+  then **Publish**. Worth doing before the expiry date — I can remind you
+  again if it's easier to bring it up later.
+- Anyone with the site link can currently read *and write* the data — there's
+  no login. Fine for personal/shared use among people you trust with the
+  link; not appropriate if this URL ever becomes truly public, since anyone
+  could edit or clear the numbers.
+- Data lives under a few top-level nodes: `holdings`, `loans`, `conversions`,
+  and `daily/<date>` for each day's pricing entry. Visible directly in the
+  Firebase console under Realtime Database → Data, if you ever want to
+  inspect or hand-edit it there instead of through the site.
 
-## Updating it later
+## If Firebase is ever unreachable
 
-If you want changes to the layout or logic itself, make them in the `.jsx`
-source and hand it back — regenerating `bundle.js` is a five-minute rebuild,
-not something you'd do by hand.
+The site falls back to that browser's own local storage automatically (same
+behaviour as before) — it won't break, it'll just stop syncing until
+Firebase is reachable again.
