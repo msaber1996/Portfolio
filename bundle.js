@@ -565,9 +565,9 @@
     const latest = history[history.length - 1];
     const defaultsForForm = useMemo(() => {
       const base = latest || { date: "2026-07-30", rate: 51.1, gold: 6800 };
-      const nextDate = /* @__PURE__ */ new Date(base.date + "T00:00:00");
-      nextDate.setDate(nextDate.getDate() + 1);
-      return { ...base, date: nextDate.toISOString().slice(0, 10) };
+      const today = /* @__PURE__ */ new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      return { ...base, date: todayStr };
     }, [latest]);
     const handleSaveDay = useCallback(async (form) => {
       setSaving(true);
