@@ -477,7 +477,7 @@
       /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add conversion" })
     ] });
   }
-  function DailyPricingForm({ onSave, saving, defaults, navFields }) {
+  function DailyPricingForm({ onSave, saving, defaults, navFields, liveRates }) {
     const [form, setForm] = useState(defaults);
     useEffect(() => setForm(defaults), [defaults]);
     const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -486,6 +486,7 @@
         /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide", children: "Today's update" }),
         /* @__PURE__ */ jsx("input", { type: "date", value: form.date, onChange: set("date"), className: "bg-neutral-900 text-white font-mono text-xs border border-neutral-600 px-2 py-1" })
       ] }),
+      liveRates?.updatedAt && /* @__PURE__ */ jsx("div", { className: "px-4 pt-3 text-xs text-neutral-400", children: `Rate and gold pre-filled from live market data, last refreshed ${new Date(liveRates.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} — you can still edit them below.` }),
       /* @__PURE__ */ jsx("div", { className: "p-4 grid grid-cols-2 sm:grid-cols-4 gap-3", children: [
         /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "USD / EGP rate" }),
@@ -520,14 +521,16 @@
     const [loadState, setLoadState] = useState("loading");
     const [saving, setSaving] = useState(false);
     const [savedFlash, setSavedFlash] = useState(false);
+    const [liveRates, setLiveRates] = useState(null);
     const saveTimers = useRef({});
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, c] = await Promise.all([
+        const [h, l, c, lr] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
-          loadJson("conversions", SEED_CONVERSIONS)
+          loadJson("conversions", SEED_CONVERSIONS),
+          loadJson("liveRates", null)
         ]);
         let dailyEntries = [];
         try {
@@ -542,6 +545,7 @@
           setLoans(l);
           setConversions(c);
           setHistory(dailyEntries);
+          setLiveRates(lr);
           setLoadState("ready");
         }
       })();
@@ -569,8 +573,11 @@
       const base = latest || { date: "2026-07-30", rate: 51.1, gold: 6800 };
       const today = /* @__PURE__ */ new Date();
       const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-      return { ...base, date: todayStr };
-    }, [latest]);
+      const alreadySavedToday = latest && latest.date === todayStr;
+      const rate = !alreadySavedToday && liveRates?.rate ? liveRates.rate : base.rate;
+      const gold = !alreadySavedToday && liveRates?.gold ? liveRates.gold : base.gold;
+      return { ...base, date: todayStr, rate, gold };
+    }, [latest, liveRates]);
     const handleSaveDay = useCallback(async (form) => {
       setSaving(true);
       const clean = { ...form };
@@ -958,7 +965,7 @@
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically." }),
-          /* @__PURE__ */ jsx(DailyPricingForm, { onSave: handleSaveDay, saving, defaults: defaultsForForm, navFields }),
+          /* @__PURE__ */ jsx(DailyPricingForm, { onSave: handleSaveDay, saving, defaults: defaultsForForm, navFields, liveRates }),
           savedFlash && /* @__PURE__ */ jsx("div", { className: "mt-3 inline-flex items-center gap-2 text-xs text-neutral-600 border border-neutral-300 px-3 py-1.5", children: [
             /* @__PURE__ */ jsx(Check, { size: 13 }),
             " Saved to history"

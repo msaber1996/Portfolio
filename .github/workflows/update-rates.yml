@@ -1,0 +1,31 @@
+name: Update live rate & gold price
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch USD/EGP rate and gold price, push to Firebase
+        run: |
+          set -euo pipefail
+
+          RATE=$(curl -sf "https://open.er-api.com/v6/latest/USD" | jq -r '.rates.EGP')
+          GOLD_USD_OZ=$(curl -sf "https://api.gold-api.com/price/XAU" | jq -r '.price')
+
+          if [ -z "$RATE" ] || [ "$RATE" = "null" ] || [ -z "$GOLD_USD_OZ" ] || [ "$GOLD_USD_OZ" = "null" ]; then
+            echo "Missing rate or gold price from upstream API, aborting without writing."
+            exit 1
+          fi
+
+          GOLD_EGP_GRAM=$(awk -v u="$GOLD_USD_OZ" -v r="$RATE" 'BEGIN { printf "%.2f", u * r / 31.1034768 }')
+          TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          echo "Rate: $RATE, Gold: $GOLD_EGP_GRAM EGP/g, as of $TS"
+
+          curl -sf -X PUT \
+            -d "{\"rate\": ${RATE}, \"gold\": ${GOLD_EGP_GRAM}, \"updatedAt\": \"${TS}\"}" \
+            "https://portfolio-8ac1d-default-rtdb.firebaseio.com/liveRates.json"
