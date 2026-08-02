@@ -93,7 +93,7 @@
   var SEED_HOLDINGS = [
     { id: "nbe1", type: "fund", label: "NBE Fund 1", currency: "EGP", investment: 1018386, purchaseNav: 156.41, navGroup: "nbe1", grams: 0 },
     { id: "nbe2", type: "fund", label: "NBE Fund 2", currency: "EGP", investment: 1021509, purchaseNav: 289, navGroup: "nbe2", grams: 0 },
-    { id: "nbe4", type: "fund", label: "NBE Fund 4 (Daily)", currency: "EGP", investment: 10490725, purchaseNav: 299.735, navGroup: "nbe4", grams: 0 },
+    { id: "nbe4", type: "fund", label: "NBE Fund 4 (Daily)", currency: "EGP", investment: 10490725, purchaseNav: 299.735, navGroup: "nbe4", grams: 0, accumulating: true },
     { id: "nbe5", type: "fund", label: "NBE Fund 5", currency: "EGP", investment: 1024254, purchaseNav: 51.73, navGroup: "nbe5", grams: 0 },
     { id: "cib1", type: "fund", label: "CIB Istethmar", currency: "EGP", investment: 49875e3, purchaseNav: 887.15, navGroup: "cib", grams: 0 },
     { id: "cib2", type: "fund", label: "CIB Istethmar (new tranche)", currency: "EGP", investment: 49875e3, purchaseNav: 1050.45, navGroup: "cib", grams: 0 },
@@ -220,7 +220,7 @@
   var usd = (n, d = 0) => `${n < 0 ? "\u2212" : ""}$${fmt(Math.abs(n), d)}`;
   var signedEgp = (n) => `${n >= 0 ? "+" : "\u2212"}${fmt(Math.abs(n))} EGP`;
   var pctStr = (n, d = 1) => `${n >= 0 ? "+" : ""}${n.toFixed(d)}%`;
-  function computeDay(entry, holdings) {
+  function computeDay(entry, holdings, navAdjust) {
     const rate = Number(entry.rate) || 0;
     const goldPrice = Number(entry.gold) || 0;
     let egpFundsCurrent = 0, egpFundsInvestment = 0;
@@ -232,10 +232,12 @@
       if (h.type === "fund") {
         const navRaw = entry[h.navGroup];
         const nav = navRaw !== void 0 && navRaw !== "" ? Number(navRaw) : h.purchaseNav;
+        const distAdjust = navAdjust && navAdjust[h.navGroup] || 0;
+        const totalReturnNav = nav + distAdjust;
         const current = h.purchaseNav ? h.investment / h.purchaseNav * nav : 0;
         const currentEgp = h.currency === "USD" ? current * rate : current;
         const investmentEgp = h.currency === "USD" ? h.investment * rate : h.investment;
-        const gainPct = h.purchaseNav ? (nav - h.purchaseNav) / h.purchaseNav * 100 : 0;
+        const gainPct = h.purchaseNav ? (totalReturnNav - h.purchaseNav) / h.purchaseNav * 100 : 0;
         if (h.currency === "USD") {
           usdFundsCurrentUsd += current;
           usdFundsInvestmentUsd += h.investment;
@@ -587,7 +589,30 @@
       await deleteKey(`daily/${date}`);
       setHistory((h) => h.filter((e) => e.date !== date));
     }, []);
-    const computedHistory = useMemo(() => history.map((e) => computeDay(e, holdings)), [history, holdings]);
+    const accumulatingGroups = useMemo(() => Array.from(new Set(holdings.filter((h) => h.type === "fund" && h.accumulating).map((h) => h.navGroup))), [holdings]);
+    const navAdjustByDate = useMemo(() => {
+      const out = {};
+      const running = {};
+      const lastNav = {};
+      const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+      sorted.forEach((entry) => {
+        const adj = {};
+        accumulatingGroups.forEach((g) => {
+          const raw = entry[g];
+          if (raw !== void 0 && raw !== "") {
+            const navNum = Number(raw);
+            if (lastNav[g] !== void 0 && navNum < lastNav[g]) {
+              running[g] = (running[g] || 0) + (lastNav[g] - navNum);
+            }
+            lastNav[g] = navNum;
+          }
+          adj[g] = running[g] || 0;
+        });
+        out[entry.date] = adj;
+      });
+      return out;
+    }, [history, accumulatingGroups]);
+    const computedHistory = useMemo(() => history.map((e) => computeDay(e, holdings, navAdjustByDate[e.date])), [history, holdings, navAdjustByDate]);
     const latestComputed = computedHistory[computedHistory.length - 1];
     const firstComputed = computedHistory[0];
     const ASSETS = latestComputed?.rows || [];
