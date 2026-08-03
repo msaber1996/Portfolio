@@ -88,6 +88,13 @@
       /* @__PURE__ */ jsx("polyline", { points: "9 15 12 18 15 15" })
     ] });
   }
+  function AlertTriangle(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: [
+      /* @__PURE__ */ jsx("path", { d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" }),
+      /* @__PURE__ */ jsx("line", { x1: "12", y1: "9", x2: "12", y2: "13" }),
+      /* @__PURE__ */ jsx("line", { x1: "12", y1: "17", x2: "12.01", y2: "17" })
+    ] });
+  }
 
   // App.jsx
   var SEED_HOLDINGS = [
@@ -502,7 +509,7 @@
         ] }, f.key))
       ] }),
       /* @__PURE__ */ jsx("div", { className: "px-4 pb-4 flex items-center gap-3", children: [
-        /* @__PURE__ */ jsx("button", { onClick: () => onSave(form), disabled: saving, className: "inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 disabled:opacity-50", children: [
+        /* @__PURE__ */ jsx("button", { onClick: () => onSave(form), disabled: saving, className: "inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 disabled:opacity-50 transition-transform hover:scale-[1.02] active:scale-[0.98]", children: [
           saving ? /* @__PURE__ */ jsx(Loader2, { size: 14, className: "animate-spin" }) : /* @__PURE__ */ jsx(Plus, { size: 14 }),
           saving ? "Saving" : "Save today's entry"
         ] }),
@@ -578,20 +585,43 @@
       const gold = !alreadySavedToday && liveRates?.gold ? liveRates.gold : base.gold;
       return { ...base, date: todayStr, rate, gold };
     }, [latest, liveRates]);
+    const daysSinceLastEntry = useMemo(() => {
+      if (!latest?.date) return null;
+      const today = /* @__PURE__ */ new Date();
+      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const lastDate = new Date(latest.date + "T00:00:00");
+      return Math.round((todayMidnight - lastDate) / 864e5);
+    }, [latest]);
     const handleSaveDay = useCallback(async (form) => {
-      setSaving(true);
       const clean = { ...form };
       clean.rate = Number(clean.rate) || 0;
       clean.gold = Number(clean.gold) || 0;
       navFields.forEach((f) => {
         clean[f.key] = clean[f.key] === "" || clean[f.key] === void 0 ? void 0 : Number(clean[f.key]);
       });
+      const suspicious = navFields.filter((f) => {
+        if (accumulatingGroups.includes(f.key)) return false;
+        const prev = latest?.[f.key];
+        const next = clean[f.key];
+        if (prev === void 0 || next === void 0 || !prev) return false;
+        return Math.abs((next - prev) / prev) * 100 > 15;
+      }).map((f) => ({ label: f.label, prev: latest[f.key], next: clean[f.key] }));
+      if (suspicious.length > 0) {
+        const lines = suspicious.map((s) => `${s.label}: ${s.prev} → ${s.next}`).join("\n");
+        const proceed = window.confirm(`These NAVs moved more than 15% since the last entry — double check they're not a typo:
+
+${lines}
+
+Save anyway?`);
+        if (!proceed) return;
+      }
+      setSaving(true);
       await saveJson(`daily/${clean.date}`, clean);
       setHistory((h) => [...h.filter((e) => e.date !== clean.date), clean].sort((a, b) => a.date.localeCompare(b.date)));
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1800);
       setSaving(false);
-    }, [navFields]);
+    }, [navFields, accumulatingGroups, latest]);
     const handleDeleteDay = useCallback(async (date) => {
       await deleteKey(`daily/${date}`);
       setHistory((h) => h.filter((e) => e.date !== date));
@@ -620,6 +650,14 @@
       return out;
     }, [history, accumulatingGroups]);
     const computedHistory = useMemo(() => history.map((e) => computeDay(e, holdings, navAdjustByDate[e.date])), [history, holdings, navAdjustByDate]);
+    const fundSeries = useMemo(() => navFields.map((f) => {
+      const holding = holdings.find((h) => h.type === "fund" && h.navGroup === f.key);
+      const points = computedHistory.map((d) => {
+        const row = d.rows.find((r) => r.id === holding?.id);
+        return { date: d.date, value: row ? row.gainPct : 0 };
+      });
+      return { key: f.key, label: f.label, points };
+    }), [navFields, holdings, computedHistory]);
     const latestComputed = computedHistory[computedHistory.length - 1];
     const firstComputed = computedHistory[0];
     const ASSETS = latestComputed?.rows || [];
@@ -837,7 +875,7 @@
             "button",
             {
               onClick: downloadReport,
-              className: "shrink-0 mt-2 inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-700 transition-colors",
+              className: "shrink-0 mt-2 inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-700 transition-all hover:scale-[1.02] active:scale-[0.98]",
               children: [
                 /* @__PURE__ */ jsx(FileDown, { size: 14 }),
                 " Download report"
@@ -848,7 +886,7 @@
         /* @__PURE__ */ jsx("p", { className: "mt-3 max-w-xl text-neutral-600 text-base leading-relaxed", children: 'Every holding, loan, and conversion below is editable. Add a new fund, certificate, loan, or gold position at any time \u2014 the daily form and every total pick it up automatically. "Download report" saves a standalone file you can open, print to PDF, or send to anyone \u2014 no publishing needed.' })
       ] }) }),
       /* @__PURE__ */ jsx("main", { className: "max-w-5xl mx-auto px-6 bg-neutral-50", children: [
-        /* @__PURE__ */ jsx("section", { className: "grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 py-10 border-b border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { className: "animate-fade-in-up grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 py-10 border-b border-neutral-200", children: [
           /* @__PURE__ */ jsx("div", { className: "flex flex-col items-center md:items-start md:col-span-1", children: [
             /* @__PURE__ */ jsx(ReadinessDial, { score: readiness }),
             /* @__PURE__ */ jsx("div", { className: "mt-2 text-center md:text-left", children: [
@@ -871,7 +909,7 @@
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10", children: [
+        /* @__PURE__ */ jsx("section", { className: "animate-fade-in-up py-10", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "01", title: "Investment, by currency", dek: "What is actually committed in each currency, at cost \u2014 drawn live from the holdings list below." }),
           /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-8", children: [
             /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-5", children: [
@@ -893,19 +931,19 @@
             " remains in USD today \u2014 see the conversion history in section 03."
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { className: "animate-fade-in-up py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "02", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
           /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { className: "animate-fade-in-up py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
           /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { className: "animate-fade-in-up py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "What the assets are worth", dek: `${ASSETS.length} holdings, ${egp(totalAssets)} in total, priced ${latest?.date || ""}. Expand a row for its detail.` }),
           /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id) }, a.id)) })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { className: "animate-fade-in-up py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "What is owed", dek: `${loans.length} facilities, ${egp(totalLiabilities)} outstanding. Add or remove a loan freely.` }),
           /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange }),
           /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between pt-4 mt-4 border-t-2 border-neutral-900", children: [
@@ -913,7 +951,7 @@
             /* @__PURE__ */ jsx("span", { className: "font-mono tabular-nums text-lg text-neutral-900", children: egp(netWorth) })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { className: "animate-fade-in-up py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "Monthly cash flow, by currency", dek: "Certificate and fund income measured against loan installments, each currency on its own terms." }),
           /* @__PURE__ */ jsx("div", { className: "flex gap-2 mb-6", children: /* @__PURE__ */ jsx(Toggle, { options: [{ id: "egp", label: "EGP" }, { id: "usd", label: "USD" }], value: ccy, onChange: setCcy }) }),
           ccy === "egp" ? /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-6", children: [
@@ -932,7 +970,7 @@
             ] }), emphasis: true, sub: "shortfall before any scenario below" })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { className: "animate-fade-in-up py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Closing the dollar gap", dek: "Four ways to fund the shortfall on the USD loan. Choose one to see the effect." }),
           /* @__PURE__ */ jsx(Toggle, { options: SCENARIOS, value: scenarioId, onChange: setScenarioId }),
           /* @__PURE__ */ jsx("div", { className: "mt-8 grid grid-cols-1 md:grid-cols-3 gap-10", children: [
@@ -966,17 +1004,34 @@
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { className: "animate-fade-in-up py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically." }),
+          daysSinceLastEntry >= 1 && /* @__PURE__ */ jsx("div", { className: "animate-fade-in-up mb-4 flex items-center gap-2 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800", children: [
+            /* @__PURE__ */ jsx(AlertTriangle, { size: 14, className: "shrink-0 text-amber-500" }),
+            daysSinceLastEntry === 1 ? "It's been 1 day since your last update — add today's entry below." : `It's been ${daysSinceLastEntry} days since your last update — add today's entry below.`
+          ] }),
           /* @__PURE__ */ jsx(DailyPricingForm, { onSave: handleSaveDay, saving, defaults: defaultsForForm, navFields, liveRates }),
-          savedFlash && /* @__PURE__ */ jsx("div", { className: "mt-3 inline-flex items-center gap-2 text-xs text-neutral-600 border border-neutral-300 px-3 py-1.5", children: [
+          savedFlash && /* @__PURE__ */ jsx("div", { className: "animate-pop-in mt-3 inline-flex items-center gap-2 text-xs text-neutral-600 border border-neutral-300 px-3 py-1.5", children: [
             /* @__PURE__ */ jsx(Check, { size: 13 }),
             " Saved to history"
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { className: "animate-fade-in-up py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Delete a row if an entry was a mistake.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
+          fundSeries.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: "Return by fund, since purchase" }),
+            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4", children: fundSeries.map((f, i) => {
+              const lastVal = f.points[f.points.length - 1]?.value ?? 0;
+              return /* @__PURE__ */ jsx("div", { className: "animate-fade-in-up border border-neutral-200 p-3", style: { animationDelay: `${i * 60}ms` }, children: [
+                /* @__PURE__ */ jsx("div", { className: "flex items-baseline justify-between mb-1", children: [
+                  /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-600 truncate", children: f.label }),
+                  /* @__PURE__ */ jsx("span", { className: `font-mono text-xs tabular-nums ${lastVal >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(lastVal) })
+                ] }),
+                /* @__PURE__ */ jsx(TrendChart, { points: f.points, labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) })
+              ] }, f.key);
+            }) })
+          ] }),
           analysis && /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-8 mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4", children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-2", children: [
