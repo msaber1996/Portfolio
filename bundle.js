@@ -575,6 +575,7 @@
       });
       return Array.from(seen.entries()).map(([key, label]) => ({ key, label }));
     }, [holdings]);
+    const accumulatingGroups = useMemo(() => Array.from(new Set(holdings.filter((h) => h.type === "fund" && h.accumulating).map((h) => h.navGroup))), [holdings]);
     const latest = history[history.length - 1];
     const defaultsForForm = useMemo(() => {
       const base = latest || { date: "2026-07-30", rate: 51.1, gold: 6800 };
@@ -626,7 +627,6 @@ Save anyway?`);
       await deleteKey(`daily/${date}`);
       setHistory((h) => h.filter((e) => e.date !== date));
     }, []);
-    const accumulatingGroups = useMemo(() => Array.from(new Set(holdings.filter((h) => h.type === "fund" && h.accumulating).map((h) => h.navGroup))), [holdings]);
     const navAdjustByDate = useMemo(() => {
       const out = {};
       const running = {};
