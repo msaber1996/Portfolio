@@ -30,28 +30,6 @@
 <style>
   html, body { margin: 0; padding: 0; background: #fafaf9; }
   * { box-sizing: border-box; }
-
-  @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes popIn {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
-  }
-  .animate-fade-in-up {
-    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  .animate-fade-in {
-    animation: fadeIn 0.4s ease-out both;
-  }
-  .animate-pop-in {
-    animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
 </style>
 </head>
 <body>
@@ -61,6 +39,6 @@
   </div>
 </div>
 <!-- bump ?v= on every bundle.js change, or Safari keeps serving the cached old copy -->
-<script src="bundle.js?v=9"></script>
+<script src="bundle.js?v=10"></script>
 </body>
 </html>
