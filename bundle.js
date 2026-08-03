@@ -245,17 +245,17 @@
           egpFundsCurrent += current;
           egpFundsInvestment += h.investment;
         }
-        rows.push({ id: h.id, label: h.label, value: currentEgp, note: `${h.currency} fund, ${pctStr(gainPct)} since purchase`, gainPct });
+        rows.push({ id: h.id, label: h.label, value: currentEgp, note: `${h.currency} fund, ${pctStr(gainPct)} since purchase`, gainPct, purchaseNav: h.purchaseNav, currentNav: nav });
       } else if (h.type === "gold") {
         const current = goldPrice * (h.grams || 0);
         goldCurrent += current;
         goldInvestment += h.investment;
         const gainPct = h.purchaseNav ? (goldPrice - h.purchaseNav) / h.purchaseNav * 100 : 0;
-        rows.push({ id: h.id, label: h.label, value: current, note: `${h.grams?.toLocaleString() || 0}g, ${pctStr(gainPct)} since purchase`, gainPct });
+        rows.push({ id: h.id, label: h.label, value: current, note: `${h.grams?.toLocaleString() || 0}g, ${pctStr(gainPct)} since purchase`, gainPct, purchaseNav: h.purchaseNav, currentNav: goldPrice });
       } else {
         const val = h.currency === "USD" ? h.investment * rate : h.investment;
         fixedEgp += val;
-        rows.push({ id: h.id, label: h.label, value: val, note: h.currency === "USD" ? `${usd(h.investment)} at today's rate` : "Fixed principal", gainPct: 0 });
+        rows.push({ id: h.id, label: h.label, value: val, note: h.currency === "USD" ? `${usd(h.investment)} at today's rate` : "Fixed principal", gainPct: 0, purchaseNav: null, currentNav: null });
       }
     });
     const usdFundsCurrentEgp = usdFundsCurrentUsd * rate;
@@ -694,7 +694,10 @@
     const downloadReport = useCallback(() => {
       const rowsHtml = ASSETS.map((a2) => {
         const pct = totalAssets ? (a2.value / totalAssets * 100).toFixed(1) : "0.0";
-        return `<tr><td>${a2.label}</td><td class="num mono">${egp(a2.value)}</td><td class="num mono">${pct}%</td></tr>`;
+        const boughtAt = a2.purchaseNav != null ? fmt(a2.purchaseNav, 4) : "—";
+        const now = a2.currentNav != null ? fmt(a2.currentNav, 4) : "—";
+        const gain = a2.purchaseNav != null ? pctStr(a2.gainPct) : "—";
+        return `<tr><td>${a2.label}</td><td class="num mono">${boughtAt}</td><td class="num mono">${now}</td><td class="num mono">${gain}</td><td class="num mono">${egp(a2.value)}</td><td class="num mono">${pct}%</td></tr>`;
       }).join("");
       const loanRowsHtml = loans.map((l) => {
         const amt = l.currency === "USD" ? usd(l.amount) : egp(l.amount);
@@ -757,7 +760,7 @@
   </table>
 
   <h2>Holdings</h2>
-  <table><tr><th>Holding</th><th class="num">Value, EGP</th><th class="num">% of total</th></tr>${rowsHtml}</table>
+  <table><tr><th>Holding</th><th class="num">Bought at</th><th class="num">Now</th><th class="num">Gain</th><th class="num">Value, EGP</th><th class="num">% of total</th></tr>${rowsHtml}</table>
 
   <h2>Currency conversion history</h2>
   <table><tr><th>Date</th><th>Type</th><th class="num">Amount, USD</th><th class="num">Running balance</th></tr>${convRowsHtml}</table>
