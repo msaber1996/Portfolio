@@ -156,10 +156,15 @@
     appId: "1:592281785894:web:d83863eb5cb697769eb8e7"
   };
   var db = null;
+  var authReady = Promise.resolve();
   try {
     if (typeof window !== "undefined" && window.firebase && window.firebase.initializeApp) {
       const app = window.firebase.apps && window.firebase.apps.length ? window.firebase.apps[0] : window.firebase.initializeApp(FIREBASE_CONFIG);
       db = window.firebase.database(app);
+      if (window.firebase.auth) {
+        authReady = window.firebase.auth(app).signInAnonymously().catch(() => {
+        });
+      }
     }
   } catch {
     db = null;
@@ -167,6 +172,7 @@
   async function loadJson(key, fallback) {
     try {
       if (db) {
+        await authReady;
         const snap = await db.ref(key).once("value");
         const val = snap.val();
         return val !== null && val !== void 0 ? val : fallback;
@@ -180,6 +186,7 @@
   async function saveJson(key, value) {
     try {
       if (db) {
+        await authReady;
         await db.ref(key).set(value);
       } else {
         window.localStorage.setItem(key, JSON.stringify(value));
@@ -192,6 +199,7 @@
   async function deleteKey(key) {
     try {
       if (db) {
+        await authReady;
         await db.ref(key).remove();
       } else {
         window.localStorage.removeItem(key);
@@ -202,6 +210,7 @@
   async function loadCollection(parentKey) {
     try {
       if (db) {
+        await authReady;
         const snap = await db.ref(parentKey).once("value");
         const val = snap.val() || {};
         return Object.keys(val).map((childKey) => ({ ...val[childKey] }));
