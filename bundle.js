@@ -725,6 +725,13 @@ Save anyway?`);
     const firstComputed = computedHistory[0];
     const ASSETS = latestComputed?.rows || [];
     const totalAssets = latestComputed?.totalAssets || 0;
+    const variableInvestments = useMemo(() => {
+      const totalInvested = latestComputed?.markedToMarketCost || 0;
+      const totalProfit = latestComputed?.gain || 0;
+      const returnPct = totalInvested ? totalProfit / totalInvested * 100 : 0;
+      const durationDays = firstComputed && latestComputed ? Math.max(0, Math.round((new Date(latestComputed.date + "T00:00:00") - new Date(firstComputed.date + "T00:00:00")) / 864e5)) : 0;
+      return { totalInvested, totalProfit, returnPct, durationDays };
+    }, [firstComputed, latestComputed]);
     const totalLiabilities = useMemo(
       () => loans.reduce((s, l) => s + (l.currency === "USD" ? l.amount * (latestComputed?.rate || 0) : l.amount), 0),
       [loans, latestComputed]
@@ -807,8 +814,6 @@ Save anyway?`);
       }).join("");
       const convRowsHtml = conversionsWithRunning.map((c) => `<tr><td>${c.date}</td><td style="text-transform:capitalize">${c.type}</td><td class="num mono">${usd(c.amountUsd)}</td><td class="num mono">${usd(c.running)}</td></tr>`).join("");
       const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td></tr>`).join("");
-      const durationDays = firstComputed && latestComputed ? Math.max(0, Math.round((new Date(latestComputed.date + "T00:00:00") - new Date(firstComputed.date + "T00:00:00")) / 864e5)) : 0;
-      const variablePct = latestComputed?.markedToMarketCost ? latestComputed.gain / latestComputed.markedToMarketCost * 100 : 0;
       const analysisHtml = analysis ? `
       <h2>Since ${firstComputed.date} (${analysis.days} days)</h2>
       <p class="note">Marked-to-market moved <b>${signedEgp(analysis.changeVal)}</b> (${pctStr(analysis.changePct)}). FX moved ${pctStr(analysis.rateChangePct)}; gold moved ${pctStr(analysis.goldChangePct)} per gram.
@@ -864,10 +869,10 @@ Save anyway?`);
 
   <h2>Variable investments (funds, gold, Beltone — excludes certificates)</h2>
   <table>
-    <tr><td>Total invested</td><td class="num mono">${egp(latestComputed?.markedToMarketCost || 0)}</td></tr>
-    <tr><td>Duration tracked</td><td class="num mono">${durationDays} day${durationDays === 1 ? "" : "s"}</td></tr>
-    <tr><td>Return</td><td class="num mono">${pctStr(variablePct)}</td></tr>
-    <tr><td>Total profit</td><td class="num mono">${signedEgp(latestComputed?.gain || 0)}</td></tr>
+    <tr><td>Total invested</td><td class="num mono">${egp(variableInvestments.totalInvested)}</td></tr>
+    <tr><td>Duration tracked</td><td class="num mono">${variableInvestments.durationDays} day${variableInvestments.durationDays === 1 ? "" : "s"}</td></tr>
+    <tr><td>Return</td><td class="num mono">${pctStr(variableInvestments.returnPct)}</td></tr>
+    <tr><td>Total profit</td><td class="num mono">${signedEgp(variableInvestments.totalProfit)}</td></tr>
   </table>
 
   <h2>Holdings</h2>
@@ -915,7 +920,7 @@ Save anyway?`);
       computedHistory,
       analysis,
       firstComputed,
-      latestComputed,
+      variableInvestments,
       latest,
       readinessLabel,
       readiness,
@@ -1015,6 +1020,28 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "What the assets are worth", dek: `${ASSETS.length} holdings, ${egp(totalAssets)} in total, priced ${latest?.date || ""}. Expand a row for its detail.` }),
+          /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-neutral-50 p-5", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Your variable investments, in plain terms" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Funds, gold, and Beltone — the holdings whose price moves day to day. Certificates (fixed principal) aren't included here." }),
+            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-2 sm:grid-cols-4 gap-6", children: [
+              /* @__PURE__ */ jsx("div", { children: [
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "You've put in" }),
+                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: variableInvestments.totalInvested, format: egp }) })
+              ] }),
+              /* @__PURE__ */ jsx("div", { children: [
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Tracked for" }),
+                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: variableInvestments.durationDays, format: (v) => `${Math.round(v)} day${Math.round(v) === 1 ? "" : "s"}` }) })
+              ] }),
+              /* @__PURE__ */ jsx("div", { children: [
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Return so far" }),
+                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${variableInvestments.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: variableInvestments.returnPct, format: pctStr }) })
+              ] }),
+              /* @__PURE__ */ jsx("div", { children: [
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Profit so far" }),
+                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${variableInvestments.totalProfit >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: variableInvestments.totalProfit, format: signedEgp }) })
+              ] })
+            ] })
+          ] }),
           /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id) }, a.id)) })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
