@@ -114,14 +114,15 @@
     { id: "goldbar250", type: "gold", label: "Gold Bars - 250g", currency: "EGP", investment: 2015675, purchaseNav: 8062.7, grams: 250, purchaseDate: "2026-01-28" },
     { id: "goldbar500", type: "gold", label: "Gold Bars - 500g", currency: "EGP", investment: 8559600, purchaseNav: 8559.6, grams: 1000, purchaseDate: "2026-01-29" },
     { id: "goldbar1kg", type: "gold", label: "Gold Bars - 1kg", currency: "EGP", investment: 23103150, purchaseNav: 7701.05, grams: 3000, purchaseDate: "2026-03-02" },
-    { id: "gold1", type: "gold", label: "Physical gold, 24K", currency: "EGP", investment: 41784640, purchaseNav: 8008.09, grams: 5217, navGroup: "" },
     { id: "certs", type: "fixed", label: "EGP certificates & CDs", currency: "EGP", investment: 475560602, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "usdcd", type: "fixed", label: "USD certificate (CIB)", currency: "USD", investment: 8e5, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "usdcash", type: "fixed", label: "USD cash (NBE)", currency: "USD", investment: 436192, purchaseNav: 0, grams: 0, navGroup: "" },
-    { id: "brokerage", type: "fixed", label: "Brokerage (Tycoon)", currency: "EGP", investment: 9e6, purchaseNav: 0, grams: 0, navGroup: "" }
+    { id: "brokerage", type: "fixed", label: "Brokerage (Tycoon)", currency: "EGP", investment: 9e6, purchaseNav: 0, grams: 0, navGroup: "" },
+    { id: "offices", type: "fixed", label: "Office units (5, quarterly income)", currency: "EGP", investment: 340590000, purchaseNav: 0, grams: 0, navGroup: "" }
   ];
   var SEED_LOANS = [
     { id: "loan-egp", label: "Secured EGP loans (9 facilities)", currency: "EGP", amount: 94014137, rate: "", installment: 402583308e-2 },
+    { id: "loan-villa", label: "Villa loan", currency: "EGP", amount: 5e7, rate: 19, installment: 1820000 },
     { id: "loan-usd", label: "USD loan (CIB)", currency: "USD", amount: 72e4, rate: 7, installment: 22231.51 }
   ];
   var SEED_CONVERSIONS = [
@@ -139,7 +140,7 @@
     { date: "2026-07-30", rate: 51.1, gold: 6800, nbe1: 165.56, nbe2: 304.62, nbe4: 304.6978, nbe5: 54.51, cib: 1046.19, azopp: 49.70344, azgold: 22.85158, beltone: 1.16789 }
   ];
   var CASH_FLOW = {
-    egp: { income: 7120225, outflow: 402583308e-2 },
+    egp: { income: 10151476, outflow: 5845833.08 },
     usd: { income: 3e3, outflow: 22231.51 }
   };
   var USD_GAP = 19231.51;
@@ -913,8 +914,8 @@ Save anyway?`);
 
   <h2>Monthly cash flow</h2>
   <table>
-    <tr><td>EGP \u2014 certificate &amp; fund income</td><td class="num mono">${egp(CASH_FLOW.egp.income)}</td></tr>
-    <tr><td>EGP \u2014 loan installments</td><td class="num mono">${egp(CASH_FLOW.egp.outflow)}</td></tr>
+    <tr><td>EGP \u2014 certificate, fund &amp; office income (office paid quarterly, shown as monthly-equivalent)</td><td class="num mono">${egp(CASH_FLOW.egp.income)}</td></tr>
+    <tr><td>EGP \u2014 loan installments (incl. villa loan)</td><td class="num mono">${egp(CASH_FLOW.egp.outflow)}</td></tr>
     <tr><td><b>EGP \u2014 net monthly surplus</b></td><td class="num mono"><b>${egp(egpNet)}</b></td></tr>
     <tr><td>USD \u2014 certificate income</td><td class="num mono">${usd(CASH_FLOW.usd.income)}</td></tr>
     <tr><td>USD \u2014 loan installment</td><td class="num mono">${usd(CASH_FLOW.usd.outflow)}</td></tr>
@@ -1104,8 +1105,8 @@ Save anyway?`);
           /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "Monthly cash flow, by currency", dek: "Certificate and fund income measured against loan installments, each currency on its own terms." }),
           /* @__PURE__ */ jsx("div", { className: "flex gap-2 mb-6", children: /* @__PURE__ */ jsx(Toggle, { options: [{ id: "egp", label: "EGP" }, { id: "usd", label: "USD" }], value: ccy, onChange: setCcy }) }),
           ccy === "egp" ? /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-6", children: [
-            /* @__PURE__ */ jsx(Stat, { label: "Certificate & fund income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.egp.income, format: egp }), sub: "per month" }),
-            /* @__PURE__ */ jsx(Stat, { label: "Loan installments", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.egp.outflow, format: egp }), sub: "per month" }),
+            /* @__PURE__ */ jsx(Stat, { label: "Certificate, fund & office income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.egp.income, format: egp }), sub: "per month, office paid quarterly (÷3)" }),
+            /* @__PURE__ */ jsx(Stat, { label: "Loan installments", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.egp.outflow, format: egp }), sub: "per month, incl. villa loan" }),
             /* @__PURE__ */ jsx(Stat, { label: "Net monthly position", value: /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-1", children: [
               /* @__PURE__ */ jsx(ArrowUpRight, { size: 18, strokeWidth: 1.5 }),
               /* @__PURE__ */ jsx(AnimatedNumber, { value: egpNet, format: egp })
