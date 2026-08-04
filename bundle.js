@@ -455,30 +455,34 @@
       label
     ] });
   }
-  function HoldingsTable({ holdings, onChange }) {
+  function HoldingsTable({ holdings, onChange, currentValueById }) {
     const update = (id, patch) => onChange(holdings.map((h) => h.id === id ? { ...h, ...patch } : h));
     const remove = (id) => onChange(holdings.filter((h) => h.id !== id));
-    const add = () => onChange([...holdings, { id: uid(), type: "fund", label: "New fund", currency: "EGP", investment: 0, purchaseNav: 100, navGroup: "new" + holdings.length, grams: 0 }]);
+    const add = () => onChange([...holdings, { id: uid(), type: "fund", label: "New fund", currency: "EGP", investment: 0, purchaseNav: 100, purchaseDate: "", navGroup: "new" + holdings.length, grams: 0 }]);
     return /* @__PURE__ */ jsx("div", { children: [
       /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Type" }),
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Label" }),
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Currency" }),
+          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Purchase date" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Investment" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Purchase NAV / price" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Grams" }),
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "NAV group" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Current value" }),
           /* @__PURE__ */ jsx("th", { className: "py-2" })
         ] }) }),
         /* @__PURE__ */ jsx("tbody", { children: holdings.map((h) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: /* @__PURE__ */ jsx(Select, { value: h.type, onChange: (v) => update(h.id, { type: v }), options: ["fund", "gold", "fixed"] }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-40", children: /* @__PURE__ */ jsx(Cell, { value: h.label, onChange: (v) => update(h.id, { label: v }) }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: h.currency, onChange: (v) => update(h.id, { currency: v }), options: ["EGP", "USD"] }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "date", value: h.purchaseDate || "", onChange: (v) => update(h.id, { purchaseDate: v }) }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.investment, onChange: (v) => update(h.id, { investment: Number(v) || 0 }) }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: h.type !== "fixed" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.purchaseNav, onChange: (v) => update(h.id, { purchaseNav: Number(v) || 0 }) }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: h.type === "gold" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.grams, onChange: (v) => update(h.id, { grams: Number(v) || 0 }) }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-24", children: h.type === "fund" ? /* @__PURE__ */ jsx(Cell, { value: h.navGroup, onChange: (v) => update(h.id, { navGroup: v }) }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32 text-right font-mono tabular-nums text-neutral-700", children: currentValueById?.[h.id] != null ? egp(currentValueById[h.id]) : "\u2014" }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(h.id) }) })
         ] }, h.id)) })
       ] }) }),
@@ -732,6 +736,7 @@ Save anyway?`);
       const durationDays = firstComputed && latestComputed ? Math.max(0, Math.round((new Date(latestComputed.date + "T00:00:00") - new Date(firstComputed.date + "T00:00:00")) / 864e5)) : 0;
       return { totalInvested, totalProfit, returnPct, durationDays };
     }, [firstComputed, latestComputed]);
+    const currentValueById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.value])), [ASSETS]);
     const totalLiabilities = useMemo(
       () => loans.reduce((s, l) => s + (l.currency === "USD" ? l.amount * (latestComputed?.rate || 0) : l.amount), 0),
       [loans, latestComputed]
@@ -1012,7 +1017,7 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "02", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
-          /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange })
+          /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
