@@ -159,16 +159,13 @@
     messagingSenderId: "592281785894",
     appId: "1:592281785894:web:d83863eb5cb697769eb8e7"
   };
+  var AUTH_EMAIL_DOMAIN = "portfolio.local";
   var db = null;
-  var authReady = Promise.resolve();
+  var firebaseApp = null;
   try {
     if (typeof window !== "undefined" && window.firebase && window.firebase.initializeApp) {
-      const app = window.firebase.apps && window.firebase.apps.length ? window.firebase.apps[0] : window.firebase.initializeApp(FIREBASE_CONFIG);
-      db = window.firebase.database(app);
-      if (window.firebase.auth) {
-        authReady = window.firebase.auth(app).signInAnonymously().catch(() => {
-        });
-      }
+      firebaseApp = window.firebase.apps && window.firebase.apps.length ? window.firebase.apps[0] : window.firebase.initializeApp(FIREBASE_CONFIG);
+      db = window.firebase.database(firebaseApp);
     }
   } catch {
     db = null;
@@ -176,7 +173,6 @@
   async function loadJson(key, fallback) {
     try {
       if (db) {
-        await authReady;
         const snap = await db.ref(key).once("value");
         const val = snap.val();
         return val !== null && val !== void 0 ? val : fallback;
@@ -190,7 +186,6 @@
   async function saveJson(key, value) {
     try {
       if (db) {
-        await authReady;
         await db.ref(key).set(value);
       } else {
         window.localStorage.setItem(key, JSON.stringify(value));
@@ -203,7 +198,6 @@
   async function deleteKey(key) {
     try {
       if (db) {
-        await authReady;
         await db.ref(key).remove();
       } else {
         window.localStorage.removeItem(key);
@@ -214,7 +208,6 @@
   async function loadCollection(parentKey) {
     try {
       if (db) {
-        await authReady;
         const snap = await db.ref(parentKey).once("value");
         const val = snap.val() || {};
         return Object.keys(val).map((childKey) => ({ ...val[childKey] }));
@@ -592,7 +585,7 @@
       ] })
     ] });
   }
-  function PortfolioReadinessApp() {
+  function PortfolioReadinessApp({ onSignOut }) {
     const [openAsset, setOpenAsset] = useState(null);
     const [scenarioId, setScenarioId] = useState("beltone");
     const [ccy, setCcy] = useState("egp");
@@ -1006,6 +999,14 @@ Save anyway?`);
                   " Backup data"
                 ]
               }
+            ),
+            onSignOut && /* @__PURE__ */ jsx(
+              "button",
+              {
+                onClick: onSignOut,
+                className: "inline-flex items-center gap-2 border border-neutral-300 text-neutral-500 text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-100 transition-colors",
+                children: "Log out"
+              }
             )
           ] })
         ] }),
@@ -1305,8 +1306,72 @@ Save anyway?`);
       return this.props.children;
     }
   };
+  function LoginScreen({ onSignIn, error, loading }) {
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center p-6 font-sans", children: /* @__PURE__ */ jsx(
+      "form",
+      {
+        onSubmit: (e) => {
+          e.preventDefault();
+          onSignIn(username, password);
+        },
+        className: "w-full max-w-sm border border-neutral-300 bg-white p-6",
+        children: [
+          /* @__PURE__ */ jsx("h1", { className: "font-serif text-2xl text-neutral-900 mb-1", children: "Portfolio Readiness" }),
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-6", children: "Sign in to view and update the portfolio." }),
+          /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1 mb-3", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "Username" }),
+            /* @__PURE__ */ jsx("input", { type: "text", autoComplete: "username", value: username, onChange: (e) => setUsername(e.target.value), className: "border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-neutral-800" })
+          ] }),
+          /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1 mb-4", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "Password" }),
+            /* @__PURE__ */ jsx("input", { type: "password", autoComplete: "current-password", value: password, onChange: (e) => setPassword(e.target.value), className: "border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-neutral-800" })
+          ] }),
+          error && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-600 mb-4", children: error }),
+          /* @__PURE__ */ jsx("button", { type: "submit", disabled: loading, className: "w-full bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2.5 disabled:opacity-50", children: loading ? "Signing in…" : "Sign in" })
+        ]
+      }
+    ) });
+  }
   function PortfolioReadiness() {
-    return /* @__PURE__ */ jsx(ReportErrorBoundary, { children: /* @__PURE__ */ jsx(PortfolioReadinessApp, {}) });
+    const [user, setUser] = useState(null);
+    const [authChecked, setAuthChecked] = useState(false);
+    const [signInError, setSignInError] = useState("");
+    const [signingIn, setSigningIn] = useState(false);
+    useEffect(() => {
+      if (!firebaseApp || !window.firebase.auth) {
+        setAuthChecked(true);
+        return;
+      }
+      const unsub = window.firebase.auth(firebaseApp).onAuthStateChanged((u) => {
+        setUser(u);
+        setAuthChecked(true);
+      });
+      return unsub;
+    }, []);
+    const handleSignIn = async (username, password) => {
+      setSignInError("");
+      setSigningIn(true);
+      try {
+        const email = username.includes("@") ? username : `${username}@${AUTH_EMAIL_DOMAIN}`;
+        await window.firebase.auth(firebaseApp).signInWithEmailAndPassword(email, password);
+      } catch {
+        setSignInError("Wrong username or password.");
+      }
+      setSigningIn(false);
+    };
+    const handleSignOut = () => window.firebase.auth(firebaseApp).signOut();
+    if (!authChecked) {
+      return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
+        /* @__PURE__ */ jsx(Loader2, { className: "animate-spin mr-2", size: 16 }),
+        " Loading…"
+      ] });
+    }
+    if (!user) {
+      return /* @__PURE__ */ jsx(LoginScreen, { onSignIn: handleSignIn, error: signInError, loading: signingIn });
+    }
+    return /* @__PURE__ */ jsx(ReportErrorBoundary, { children: /* @__PURE__ */ jsx(PortfolioReadinessApp, { onSignOut: handleSignOut }) });
   }
 
   // entry.jsx
