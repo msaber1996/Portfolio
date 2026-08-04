@@ -807,6 +807,8 @@ Save anyway?`);
       }).join("");
       const convRowsHtml = conversionsWithRunning.map((c) => `<tr><td>${c.date}</td><td style="text-transform:capitalize">${c.type}</td><td class="num mono">${usd(c.amountUsd)}</td><td class="num mono">${usd(c.running)}</td></tr>`).join("");
       const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td></tr>`).join("");
+      const durationDays = firstComputed && latestComputed ? Math.max(0, Math.round((new Date(latestComputed.date + "T00:00:00") - new Date(firstComputed.date + "T00:00:00")) / 864e5)) : 0;
+      const variablePct = latestComputed?.markedToMarketCost ? latestComputed.gain / latestComputed.markedToMarketCost * 100 : 0;
       const analysisHtml = analysis ? `
       <h2>Since ${firstComputed.date} (${analysis.days} days)</h2>
       <p class="note">Marked-to-market moved <b>${signedEgp(analysis.changeVal)}</b> (${pctStr(analysis.changePct)}). FX moved ${pctStr(analysis.rateChangePct)}; gold moved ${pctStr(analysis.goldChangePct)} per gram.
@@ -860,6 +862,14 @@ Save anyway?`);
     <tr><td>Remaining in USD today</td><td class="num mono">${usd(conversionRunningBalance)}</td></tr>
   </table>
 
+  <h2>Variable investments (funds, gold, Beltone — excludes certificates)</h2>
+  <table>
+    <tr><td>Total invested</td><td class="num mono">${egp(latestComputed?.markedToMarketCost || 0)}</td></tr>
+    <tr><td>Duration tracked</td><td class="num mono">${durationDays} day${durationDays === 1 ? "" : "s"}</td></tr>
+    <tr><td>Return</td><td class="num mono">${pctStr(variablePct)}</td></tr>
+    <tr><td>Total profit</td><td class="num mono">${signedEgp(latestComputed?.gain || 0)}</td></tr>
+  </table>
+
   <h2>Holdings</h2>
   <table><tr><th>Holding</th><th class="num">Bought at</th><th class="num">Now</th><th class="num">Gain</th><th class="num">Value, EGP</th><th class="num">% of total</th></tr>${rowsHtml}</table>
 
@@ -905,6 +915,7 @@ Save anyway?`);
       computedHistory,
       analysis,
       firstComputed,
+      latestComputed,
       latest,
       readinessLabel,
       readiness,
