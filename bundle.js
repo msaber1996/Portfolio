@@ -121,6 +121,14 @@
     { id: "brokerage", type: "fixed", label: "Brokerage (Tycoon)", currency: "EGP", investment: 9e6, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "offices", type: "fixed", label: "Office units (5, advance paid)", currency: "EGP", investment: 17029500, purchaseNav: 0, grams: 0, navGroup: "" }
   ];
+  var OFFICE_UNITS = [
+    { unit: "2A-D2-202", size: "305m\xB2", parking: 3, totalPrice: 50700000, advance: 2535000, remaining: 48165000 },
+    { unit: "2A-D2-302", size: "308m\xB2", parking: 2, totalPrice: 53890000, advance: 2694500, remaining: 48165000 },
+    { unit: "2A-D2-402", size: "288.5m\xB2", parking: 2, totalPrice: 49040000, advance: 2452000, remaining: 46630662 },
+    { unit: "2A-D2-G01", size: "529.5m\xB2", parking: 4, totalPrice: 93700000, advance: 4685000, remaining: 89015000 },
+    { unit: "2A-D2-G02", size: "529.5m\xB2", parking: 4, totalPrice: 93260000, advance: 4663000, remaining: 88597000 }
+  ];
+  var OFFICE_QUARTERLY_INSTALLMENT = 9093753;
   var SEED_LOANS = [
     { id: "loan-egp", label: "Secured EGP loans (9 facilities, incl. villa)", currency: "EGP", amount: 94014137, rate: "", installment: 402583308e-2 },
     { id: "loan-usd", label: "USD loan (CIB)", currency: "USD", amount: 72e4, rate: 7, installment: 22231.51 }
@@ -518,6 +526,39 @@
       /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add loan" })
     ] });
   }
+  function OfficeUnitsTable({ units }) {
+    const totals = units.reduce((s, u) => ({
+      totalPrice: s.totalPrice + u.totalPrice,
+      advance: s.advance + u.advance,
+      remaining: s.remaining + u.remaining
+    }), { totalPrice: 0, advance: 0, remaining: 0 });
+    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Office" }),
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Size" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Parking" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Total price" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Advance paid (5%)" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Remaining installments" })
+      ] }) }),
+      /* @__PURE__ */ jsx("tbody", { children: units.map((u) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: u.unit }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: u.size }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: u.parking }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(u.totalPrice) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(u.advance) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(u.remaining) })
+      ] }, u.unit)) }),
+      /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: `Total (${units.length})` }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.totalPrice) }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.advance) }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(totals.remaining) })
+      ] }) })
+    ] }) });
+  }
   function ConversionsTable({ conversions, onChange }) {
     const sorted = [...conversions].sort((a, b) => a.date.localeCompare(b.date));
     let running = 0;
@@ -841,6 +882,8 @@ Save anyway?`);
         return `<tr><td>${l.label}</td><td class="num mono">${amt}</td><td class="num mono">${inst}</td></tr>`;
       }).join("");
       const convRowsHtml = conversionsWithRunning.map((c) => `<tr><td>${c.date}</td><td style="text-transform:capitalize">${c.type}</td><td class="num mono">${usd(c.amountUsd)}</td><td class="num mono">${usd(c.running)}</td></tr>`).join("");
+      const officeUnitsRowsHtml = OFFICE_UNITS.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(u.advance)}</td><td class="num mono">${egp(u.remaining)}</td></tr>`).join("");
+      const officeUnitsTotals = OFFICE_UNITS.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + u.advance, remaining: s.remaining + u.remaining }), { totalPrice: 0, advance: 0, remaining: 0 });
       const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td></tr>`).join("");
       const analysisHtml = analysis ? `
       <h2>Since ${firstComputed.date} (${analysis.days} days)</h2>
@@ -911,6 +954,10 @@ Save anyway?`);
 
   <h2>What is owed</h2>
   <table><tr><th>Facility</th><th class="num">Amount</th><th class="num">Monthly installment</th></tr>${loanRowsHtml}</table>
+
+  <h2>Office units</h2>
+  <p class="note">Still being paid off in quarterly installments — only the 5% advance (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Recurring payment: ${egp(OFFICE_QUARTERLY_INSTALLMENT)} every 3 months.</p>
+  <table><tr><th>Office</th><th>Size</th><th class="num">Parking</th><th class="num">Total price</th><th class="num">Advance paid</th><th class="num">Remaining installments</th></tr>${officeUnitsRowsHtml}<tr><td><b>Total (${OFFICE_UNITS.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(officeUnitsTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.advance)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.remaining)}</b></td></tr></table>
 
   <h2>Monthly cash flow</h2>
   <table>
@@ -1102,7 +1149,13 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "Monthly cash flow, by currency", dek: "Certificate and fund income measured against loan installments, each currency on its own terms." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "Office units", dek: `${OFFICE_UNITS.length} units, ${egp(OFFICE_UNITS.reduce((s, u) => s + u.totalPrice, 0))} full contract price — only the advance paid counts toward Total Assets above.` }),
+          /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "These are still being paid off in quarterly installments, so they aren't fully owned yet — only the 5% advance is counted as an asset. The full price and what's still owed are shown here for reference." }),
+          /* @__PURE__ */ jsx(OfficeUnitsTable, { units: OFFICE_UNITS }),
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mt-4", children: `Recurring payment: ${egp(OFFICE_QUARTERLY_INSTALLMENT)} every 3 months (next few years, through ~2034).` })
+        ] }),
+        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+          /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Monthly cash flow, by currency", dek: "Certificate and fund income measured against loan installments, each currency on its own terms." }),
           /* @__PURE__ */ jsx("div", { className: "flex gap-2 mb-6", children: /* @__PURE__ */ jsx(Toggle, { options: [{ id: "egp", label: "EGP" }, { id: "usd", label: "USD" }], value: ccy, onChange: setCcy }) }),
           ccy === "egp" ? /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-6", children: [
             /* @__PURE__ */ jsx(Stat, { label: "Certificate & fund income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.egp.income, format: egp }), sub: "per month" }),
@@ -1121,7 +1174,7 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Closing the dollar gap", dek: "Four ways to fund the shortfall on the USD loan. Choose one to see the effect." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Closing the dollar gap", dek: "Four ways to fund the shortfall on the USD loan. Choose one to see the effect." }),
           /* @__PURE__ */ jsx(Toggle, { options: SCENARIOS, value: scenarioId, onChange: setScenarioId }),
           /* @__PURE__ */ jsx("div", { className: "mt-8 grid grid-cols-1 md:grid-cols-3 gap-10", children: [
             /* @__PURE__ */ jsx("div", { className: "md:col-span-2", children: [
@@ -1155,7 +1208,7 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically." }),
           daysSinceLastEntry >= 1 && /* @__PURE__ */ jsx("div", { className: "mb-4 flex items-center gap-2 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800", children: [
             /* @__PURE__ */ jsx(AlertTriangle, { size: 14, className: "shrink-0 text-amber-500" }),
             daysSinceLastEntry === 1 ? "It's been 1 day since your last update — add today's entry below." : `It's been ${daysSinceLastEntry} days since your last update — add today's entry below.`
@@ -1167,7 +1220,7 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Delete a row if an entry was a mistake.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Delete a row if an entry was a mistake.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
           fundSeries.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: "Return by fund, since purchase" }),
