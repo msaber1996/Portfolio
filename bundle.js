@@ -240,6 +240,7 @@
   var usd = (n, d = 0) => `${n < 0 ? "\u2212" : ""}$${fmt(Math.abs(n), d)}`;
   var signedEgp = (n) => `${n >= 0 ? "+" : "\u2212"}${fmt(Math.abs(n))} EGP`;
   var pctStr = (n, d = 1) => `${n >= 0 ? "+" : ""}${n.toFixed(d)}%`;
+  var fmtDate = (d) => d ? (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
   function computeDay(entry, holdings, navAdjust) {
     const rate = Number(entry.rate) || 0;
     const goldPrice = Number(entry.gold) || 0;
@@ -357,7 +358,10 @@
           /* @__PURE__ */ jsx("span", { className: "font-mono tabular-nums text-sm w-28 sm:w-32 md:w-36 text-right text-neutral-900 shrink-0", children: egp(item.value) })
         ] })
       ] }),
-      isOpen && /* @__PURE__ */ jsx("div", { className: "pb-4 pl-7 pr-2 -mt-1 text-xs text-neutral-500 max-w-xl", children: item.note })
+      isOpen && /* @__PURE__ */ jsx("div", { className: "pb-4 pl-7 pr-2 -mt-1 text-xs text-neutral-500 max-w-xl", children: [
+        item.note,
+        item.purchaseDate && ` — bought ${fmtDate(item.purchaseDate)}`
+      ] })
     ] });
   }
   function ReadinessDial({ score }) {
@@ -811,7 +815,7 @@ Save anyway?`);
     const downloadReport = useCallback(() => {
       const rowsHtml = ASSETS.map((a2) => {
         const pct = totalAssets ? (a2.value / totalAssets * 100).toFixed(1) : "0.0";
-        const purchaseDate = a2.purchaseDate || "—";
+        const purchaseDate = fmtDate(a2.purchaseDate);
         const purchaseAmount = a2.investmentEgp != null ? egp(a2.investmentEgp) : "—";
         const boughtAt = a2.purchaseNav != null ? fmt(a2.purchaseNav, 4) : "—";
         const now = a2.currentNav != null ? fmt(a2.currentNav, 4) : "—";
