@@ -306,7 +306,7 @@
     useEffect(() => {
       if (!started) return;
       let raf;
-      const duration = 800;
+      const duration = 400;
       const start = Date.now();
       const to = Number(value) || 0;
       const tick = () => {
@@ -352,7 +352,7 @@
     const [displayScore, setDisplayScore] = useState(0);
     useEffect(() => {
       let raf;
-      const duration = 900;
+      const duration = 450;
       const start = Date.now();
       const tick = () => {
         const t = Math.min(1, (Date.now() - start) / duration);
