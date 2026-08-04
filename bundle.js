@@ -309,7 +309,21 @@
   }
   function ReadinessDial({ score }) {
     const clamped = Math.max(0, Math.min(100, score));
-    const angle = clamped / 100 * 180;
+    const [displayScore, setDisplayScore] = useState(0);
+    useEffect(() => {
+      let raf;
+      const duration = 900;
+      const start = Date.now();
+      const tick = () => {
+        const t = Math.min(1, (Date.now() - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        setDisplayScore(clamped * eased);
+        if (t < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, [clamped]);
+    const angle = displayScore / 100 * 180;
     const rad = (deg) => deg * Math.PI / 180;
     const cx = 100, cy = 100, r = 78;
     const needleX = cx - r * Math.cos(rad(angle));
@@ -326,7 +340,7 @@
       /* @__PURE__ */ jsx("path", { d: `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${needleX} ${needleY}`, fill: "none", stroke: "#262626", strokeWidth: "3" }),
       /* @__PURE__ */ jsx("line", { x1: cx, y1: cy, x2: needleX, y2: needleY, stroke: "#262626", strokeWidth: "1", strokeDasharray: "1 3" }),
       /* @__PURE__ */ jsx("circle", { cx, cy, r: "3", fill: "#262626" }),
-      /* @__PURE__ */ jsx("text", { x: cx, y: cy - 14, textAnchor: "middle", fontFamily: "ui-monospace, monospace", fontSize: "26", fill: "#171717", children: Math.round(clamped) }),
+      /* @__PURE__ */ jsx("text", { x: cx, y: cy - 14, textAnchor: "middle", fontFamily: "ui-monospace, monospace", fontSize: "26", fill: "#171717", children: Math.round(displayScore) }),
       /* @__PURE__ */ jsx("text", { x: cx, y: cy + 2, textAnchor: "middle", fontSize: "9", letterSpacing: "1", fill: "#737373", children: "OUT OF 100" })
     ] });
   }
