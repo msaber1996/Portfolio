@@ -119,7 +119,7 @@
     { id: "usdcd", type: "fixed", label: "USD certificate (CIB)", currency: "USD", investment: 8e5, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "usdcash", type: "fixed", label: "USD cash (NBE)", currency: "USD", investment: 511618, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "brokerage", type: "fixed", label: "Brokerage (Tycoon)", currency: "EGP", investment: 9e6, purchaseNav: 0, grams: 0, navGroup: "" },
-    { id: "offices", type: "fixed", label: "Office units (5)", currency: "EGP", investment: 340590000, purchaseNav: 0, grams: 0, navGroup: "" }
+    { id: "offices", type: "fixed", label: "Office units (5, advance paid)", currency: "EGP", investment: 17029500, purchaseNav: 0, grams: 0, navGroup: "" }
   ];
   var SEED_LOANS = [
     { id: "loan-egp", label: "Secured EGP loans (9 facilities, incl. villa)", currency: "EGP", amount: 94014137, rate: "", installment: 402583308e-2 },
