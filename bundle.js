@@ -812,6 +812,25 @@ Save anyway?`);
         mostDeclined
       };
     }, [computedHistory, firstComputed, latestComputed]);
+    const handleExportBackup = useCallback(() => {
+      const backup = {
+        exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        holdings,
+        loans,
+        conversions,
+        daily: history
+      };
+      const json = JSON.stringify(backup, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `portfolio-backup-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2e3);
+    }, [holdings, loans, conversions, history]);
     const downloadReport = useCallback(() => {
       const rowsHtml = ASSETS.map((a2) => {
         const pct = totalAssets ? (a2.value / totalAssets * 100).toFixed(1) : "0.0";
@@ -965,17 +984,30 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("div", { className: "flex items-start justify-between gap-6 mt-3", children: [
           /* @__PURE__ */ jsx("h1", { className: "font-serif text-4xl md:text-6xl leading-tight tracking-tight text-neutral-900", children: "Portfolio Readiness" }),
-          /* @__PURE__ */ jsx(
-            "button",
-            {
-              onClick: downloadReport,
-              className: "shrink-0 mt-2 inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-700 transition-colors",
-              children: [
-                /* @__PURE__ */ jsx(FileDown, { size: 14 }),
-                " Download report"
-              ]
-            }
-          )
+          /* @__PURE__ */ jsx("div", { className: "shrink-0 mt-2 flex flex-col sm:flex-row gap-2", children: [
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                onClick: downloadReport,
+                className: "inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-700 transition-colors",
+                children: [
+                  /* @__PURE__ */ jsx(FileDown, { size: 14 }),
+                  " Download report"
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                onClick: handleExportBackup,
+                className: "inline-flex items-center gap-2 border border-neutral-900 text-neutral-900 text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-100 transition-colors",
+                children: [
+                  /* @__PURE__ */ jsx(FileDown, { size: 14 }),
+                  " Backup data"
+                ]
+              }
+            )
+          ] })
         ] }),
         /* @__PURE__ */ jsx("p", { className: "mt-3 max-w-xl text-neutral-600 text-base leading-relaxed", children: 'Every holding, loan, and conversion below is editable. Add a new fund, certificate, loan, or gold position at any time \u2014 the daily form and every total pick it up automatically. "Download report" saves a standalone file you can open, print to PDF, or send to anyone \u2014 no publishing needed.' })
       ] }) }),
