@@ -1,0 +1,35 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "roles": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || (!data.exists() && auth.uid === $uid && newData.child('role').val() === 'viewer'))"
+      }
+    },
+
+    "liveRates": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'service')"
+    },
+
+    "holdings": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
+    },
+    "loans": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
+    },
+    "conversions": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
+    },
+    "daily": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
+    }
+  }
+}

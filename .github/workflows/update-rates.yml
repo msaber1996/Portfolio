@@ -27,10 +27,13 @@ jobs:
           echo "Rate: $RATE, Gold: $GOLD_EGP_GRAM EGP/g, as of $TS"
 
           FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          # Dedicated low-privilege account (role: "service" in /roles), restricted by the
+          # database rules to writing only /liveRates. Not a secret worth protecting beyond
+          # that role scoping, same posture as the already-public Firebase client apiKey above.
           ID_TOKEN=$(curl -sf -X POST \
             -H "Content-Type: application/json" \
-            -d '{"returnSecureToken": true}' \
-            "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
             | jq -r '.idToken')
 
           if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then

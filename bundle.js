@@ -440,20 +440,21 @@
       points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
     ] });
   }
-  function Cell({ value, onChange, type = "text", align = "left", width = "w-full", placeholder }) {
+  function Cell({ value, onChange, type = "text", align = "left", width = "w-full", placeholder, readOnly = false }) {
     return /* @__PURE__ */ jsx(
       "input",
       {
         type,
         value,
         placeholder,
+        disabled: readOnly,
         onChange: (e) => onChange(e.target.value),
-        className: `${width} bg-transparent border-b border-neutral-200 focus:border-neutral-800 focus:outline-none py-1 text-sm text-neutral-900 ${align === "right" ? "text-right font-mono tabular-nums" : ""}`
+        className: `${width} bg-transparent border-b border-neutral-200 focus:border-neutral-800 focus:outline-none py-1 text-sm text-neutral-900 disabled:text-neutral-500 disabled:cursor-default ${align === "right" ? "text-right font-mono tabular-nums" : ""}`
       }
     );
   }
-  function Select({ value, onChange, options }) {
-    return /* @__PURE__ */ jsx("select", { value, onChange: (e) => onChange(e.target.value), className: "w-full bg-transparent border-b border-neutral-200 focus:border-neutral-800 focus:outline-none py-1 text-sm text-neutral-900", children: options.map((o) => /* @__PURE__ */ jsx("option", { value: o, children: o }, o)) });
+  function Select({ value, onChange, options, readOnly = false }) {
+    return /* @__PURE__ */ jsx("select", { value, onChange: (e) => onChange(e.target.value), disabled: readOnly, className: "w-full bg-transparent border-b border-neutral-200 focus:border-neutral-800 focus:outline-none py-1 text-sm text-neutral-900 disabled:text-neutral-500 disabled:cursor-default", children: options.map((o) => /* @__PURE__ */ jsx("option", { value: o, children: o }, o)) });
   }
   function RowDeleteButton({ onClick }) {
     return /* @__PURE__ */ jsx("button", { onClick, className: "text-neutral-300 hover:text-neutral-700 transition-colors p-1", "aria-label": "Delete row", children: /* @__PURE__ */ jsx(Trash2, { size: 14 }) });
@@ -465,7 +466,7 @@
       label
     ] });
   }
-  function HoldingsTable({ holdings, onChange, currentValueById }) {
+  function HoldingsTable({ holdings, onChange, currentValueById, canEdit = true }) {
     const update = (id, patch) => onChange(holdings.map((h) => h.id === id ? { ...h, ...patch } : h));
     const remove = (id) => onChange(holdings.filter((h) => h.id !== id));
     const add = () => onChange([...holdings, { id: uid(), type: "fund", label: "New fund", currency: "EGP", investment: 0, purchaseNav: 100, purchaseDate: "", navGroup: "new" + holdings.length, grams: 0 }]);
@@ -481,26 +482,26 @@
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Grams" }),
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "NAV group" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Current value" }),
-          /* @__PURE__ */ jsx("th", { className: "py-2" })
+          canEdit && /* @__PURE__ */ jsx("th", { className: "py-2" })
         ] }) }),
         /* @__PURE__ */ jsx("tbody", { children: holdings.map((h) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: /* @__PURE__ */ jsx(Select, { value: h.type, onChange: (v) => update(h.id, { type: v }), options: ["fund", "gold", "fixed"] }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-40", children: /* @__PURE__ */ jsx(Cell, { value: h.label, onChange: (v) => update(h.id, { label: v }) }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: h.currency, onChange: (v) => update(h.id, { currency: v }), options: ["EGP", "USD"] }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "date", value: h.purchaseDate || "", onChange: (v) => update(h.id, { purchaseDate: v }) }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.investment, onChange: (v) => update(h.id, { investment: Number(v) || 0 }) }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: h.type !== "fixed" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.purchaseNav, onChange: (v) => update(h.id, { purchaseNav: Number(v) || 0 }) }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: h.type === "gold" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.grams, onChange: (v) => update(h.id, { grams: Number(v) || 0 }) }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-24", children: h.type === "fund" ? /* @__PURE__ */ jsx(Cell, { value: h.navGroup, onChange: (v) => update(h.id, { navGroup: v }) }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: /* @__PURE__ */ jsx(Select, { value: h.type, onChange: (v) => update(h.id, { type: v }), options: ["fund", "gold", "fixed"], readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-40", children: /* @__PURE__ */ jsx(Cell, { value: h.label, onChange: (v) => update(h.id, { label: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: h.currency, onChange: (v) => update(h.id, { currency: v }), options: ["EGP", "USD"], readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "date", value: h.purchaseDate || "", onChange: (v) => update(h.id, { purchaseDate: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.investment, onChange: (v) => update(h.id, { investment: Number(v) || 0 }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: h.type !== "fixed" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.purchaseNav, onChange: (v) => update(h.id, { purchaseNav: Number(v) || 0 }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: h.type === "gold" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.grams, onChange: (v) => update(h.id, { grams: Number(v) || 0 }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-24", children: h.type === "fund" ? /* @__PURE__ */ jsx(Cell, { value: h.navGroup, onChange: (v) => update(h.id, { navGroup: v }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32 text-right font-mono tabular-nums text-neutral-700", children: currentValueById?.[h.id] != null ? egp(currentValueById[h.id]) : "\u2014" }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(h.id) }) })
+          canEdit && /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(h.id) }) })
         ] }, h.id)) })
       ] }) }),
-      /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add holding" }),
-      /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mt-2 max-w-xl", children: "NAV group links a fund to a field in the daily pricing form \u2014 give two rows the same group (like both CIB Istethmar tranches) to share one NAV input." })
+      canEdit && /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add holding" }),
+      canEdit && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mt-2 max-w-xl", children: "NAV group links a fund to a field in the daily pricing form \u2014 give two rows the same group (like both CIB Istethmar tranches) to share one NAV input." })
     ] });
   }
-  function LoansTable({ loans, onChange }) {
+  function LoansTable({ loans, onChange, canEdit = true }) {
     const update = (id, patch) => onChange(loans.map((l) => l.id === id ? { ...l, ...patch } : l));
     const remove = (id) => onChange(loans.filter((l) => l.id !== id));
     const add = () => onChange([...loans, { id: uid(), label: "New loan", currency: "EGP", amount: 0, rate: "", installment: 0 }]);
@@ -512,18 +513,18 @@
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Amount" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Rate %" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Monthly installment" }),
-          /* @__PURE__ */ jsx("th", { className: "py-2" })
+          canEdit && /* @__PURE__ */ jsx("th", { className: "py-2" })
         ] }) }),
         /* @__PURE__ */ jsx("tbody", { children: loans.map((l) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-48", children: /* @__PURE__ */ jsx(Cell, { value: l.label, onChange: (v) => update(l.id, { label: v }) }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: l.currency, onChange: (v) => update(l.id, { currency: v }), options: ["EGP", "USD"] }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.amount, onChange: (v) => update(l.id, { amount: Number(v) || 0 }) }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.rate, onChange: (v) => update(l.id, { rate: v }) }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.installment, onChange: (v) => update(l.id, { installment: Number(v) || 0 }) }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(l.id) }) })
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-48", children: /* @__PURE__ */ jsx(Cell, { value: l.label, onChange: (v) => update(l.id, { label: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: l.currency, onChange: (v) => update(l.id, { currency: v }), options: ["EGP", "USD"], readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.amount, onChange: (v) => update(l.id, { amount: Number(v) || 0 }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.rate, onChange: (v) => update(l.id, { rate: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.installment, onChange: (v) => update(l.id, { installment: Number(v) || 0 }), readOnly: !canEdit }) }),
+          canEdit && /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(l.id) }) })
         ] }, l.id)) })
       ] }) }),
-      /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add loan" })
+      canEdit && /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add loan" })
     ] });
   }
   function OfficeUnitsTable({ units }) {
@@ -559,7 +560,7 @@
       ] }) })
     ] }) });
   }
-  function ConversionsTable({ conversions, onChange }) {
+  function ConversionsTable({ conversions, onChange, canEdit = true }) {
     const sorted = [...conversions].sort((a, b) => a.date.localeCompare(b.date));
     let running = 0;
     const withRunning = sorted.map((c) => {
@@ -579,55 +580,89 @@
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Rate" }),
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Note" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Running USD balance" }),
-          /* @__PURE__ */ jsx("th", { className: "py-2" })
+          canEdit && /* @__PURE__ */ jsx("th", { className: "py-2" })
         ] }) }),
         /* @__PURE__ */ jsx("tbody", { children: withRunning.map((c) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "date", value: c.date, onChange: (v) => update(c.id, { date: v }) }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: /* @__PURE__ */ jsx(Select, { value: c.type, onChange: (v) => update(c.id, { type: v }), options: ["opening", "in", "convert"] }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: c.amountUsd, onChange: (v) => update(c.id, { amountUsd: Number(v) || 0 }) }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: c.type === "convert" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: c.rate, onChange: (v) => update(c.id, { rate: v }) }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-40", children: /* @__PURE__ */ jsx(Cell, { value: c.note, onChange: (v) => update(c.id, { note: v }) }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "date", value: c.date, onChange: (v) => update(c.id, { date: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: /* @__PURE__ */ jsx(Select, { value: c.type, onChange: (v) => update(c.id, { type: v }), options: ["opening", "in", "convert"], readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: c.amountUsd, onChange: (v) => update(c.id, { amountUsd: Number(v) || 0 }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: c.type === "convert" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: c.rate, onChange: (v) => update(c.id, { rate: v }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-40", children: /* @__PURE__ */ jsx(Cell, { value: c.note, onChange: (v) => update(c.id, { note: v }), readOnly: !canEdit }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32 text-right font-mono tabular-nums text-neutral-700", children: usd(c.running) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(c.id) }) })
+          canEdit && /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(c.id) }) })
         ] }, c.id)) })
       ] }) }),
-      /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add conversion" })
+      canEdit && /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add conversion" })
     ] });
   }
-  function DailyPricingForm({ onSave, saving, defaults, navFields, liveRates }) {
+  function DailyPricingForm({ onSave, saving, defaults, navFields, liveRates, canEdit = true }) {
     const [form, setForm] = useState(defaults);
     useEffect(() => setForm(defaults), [defaults]);
     const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
     return /* @__PURE__ */ jsx("div", { className: "border border-neutral-300", children: [
       /* @__PURE__ */ jsx("div", { className: "bg-neutral-900 text-white px-4 py-2 flex items-center justify-between", children: [
         /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide", children: "Today's update" }),
-        /* @__PURE__ */ jsx("input", { type: "date", value: form.date, onChange: set("date"), className: "bg-neutral-900 text-white font-mono text-xs border border-neutral-600 px-2 py-1" })
+        /* @__PURE__ */ jsx("input", { type: "date", value: form.date, onChange: set("date"), disabled: !canEdit, className: "bg-neutral-900 text-white font-mono text-xs border border-neutral-600 px-2 py-1 disabled:opacity-60" })
       ] }),
       liveRates?.updatedAt && /* @__PURE__ */ jsx("div", { className: "px-4 pt-3 text-xs text-neutral-400", children: `Rate and gold pre-filled from live market data, last refreshed ${new Date(liveRates.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} — you can still edit them below.` }),
       /* @__PURE__ */ jsx("div", { className: "p-4 grid grid-cols-2 sm:grid-cols-4 gap-3", children: [
         /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "USD / EGP rate" }),
-          /* @__PURE__ */ jsx("input", { type: "number", step: "0.01", value: form.rate, onChange: set("rate"), className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800" })
+          /* @__PURE__ */ jsx("input", { type: "number", step: "0.01", value: form.rate, onChange: set("rate"), disabled: !canEdit, className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60" })
         ] }),
         /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "Gold, EGP/gram" }),
-          /* @__PURE__ */ jsx("input", { type: "number", step: "1", value: form.gold, onChange: set("gold"), className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800" })
+          /* @__PURE__ */ jsx("input", { type: "number", step: "1", value: form.gold, onChange: set("gold"), disabled: !canEdit, className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60" })
         ] }),
         navFields.map((f) => /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: f.label }),
-          /* @__PURE__ */ jsx("input", { type: "number", step: "0.0001", value: form[f.key] ?? "", onChange: set(f.key), className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800" })
+          /* @__PURE__ */ jsx("input", { type: "number", step: "0.0001", value: form[f.key] ?? "", onChange: set(f.key), disabled: !canEdit, className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60" })
         ] }, f.key))
       ] }),
-      /* @__PURE__ */ jsx("div", { className: "px-4 pb-4 flex items-center gap-3", children: [
+      canEdit ? /* @__PURE__ */ jsx("div", { className: "px-4 pb-4 flex items-center gap-3", children: [
         /* @__PURE__ */ jsx("button", { onClick: () => onSave(form), disabled: saving, className: "inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 disabled:opacity-50", children: [
           saving ? /* @__PURE__ */ jsx(Loader2, { size: 14, className: "animate-spin" }) : /* @__PURE__ */ jsx(Plus, { size: 14 }),
           saving ? "Saving" : "Save today's entry"
         ] }),
         /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Overwrites the entry for this date if one already exists." })
-      ] })
+      ] }) : /* @__PURE__ */ jsx("div", { className: "px-4 pb-4", children: /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Viewer access — you can look, but only an editor can save a new entry." }) })
     ] });
   }
-  function PortfolioReadinessApp({ onSignOut }) {
+  function UsersAdminPanel() {
+    const [roles, setRoles] = useState(null);
+    const [updating, setUpdating] = useState(null);
+    useEffect(() => {
+      if (!db) return;
+      const ref = db.ref("roles");
+      const onValueChange = (snap) => setRoles(snap.val() || {});
+      ref.on("value", onValueChange);
+      return () => ref.off("value", onValueChange);
+    }, []);
+    const changeRole = async (targetUid, nextRole) => {
+      setUpdating(targetUid);
+      await db.ref(`roles/${targetUid}/role`).set(nextRole);
+      setUpdating(null);
+    };
+    if (roles === null) {
+      return /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-400", children: "Loading users…" });
+    }
+    const entries = Object.entries(roles).sort((a, b) => (a[1]?.email || "").localeCompare(b[1]?.email || ""));
+    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Email" }),
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Role" }),
+        /* @__PURE__ */ jsx("th", { className: "py-2" })
+      ] }) }),
+      /* @__PURE__ */ jsx("tbody", { children: entries.map(([entryUid, r]) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: r?.email || entryUid }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: r?.role === "owner" || r?.role === "service" ? /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500", children: r.role }) : /* @__PURE__ */ jsx(Select, { value: r?.role || "viewer", onChange: (v) => changeRole(entryUid, v), options: ["viewer", "editor"] }) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-xs text-neutral-400", children: updating === entryUid ? "Saving…" : "" })
+      ] }, entryUid)) })
+    ] }) });
+  }
+  function PortfolioReadinessApp({ onSignOut, role, uid }) {
+    const canEdit = role === "owner" || role === "editor";
+    const isOwner = role === "owner";
     const [openAsset, setOpenAsset] = useState(null);
     const [scenarioId, setScenarioId] = useState("beltone");
     const [ccy, setCcy] = useState("egp");
@@ -1021,7 +1056,10 @@ Save anyway?`);
       /* @__PURE__ */ jsx("header", { className: "border-b-2 border-neutral-900 bg-neutral-50", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 pt-8 pb-6", children: [
         /* @__PURE__ */ jsx("div", { className: "flex items-baseline justify-between font-mono text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx("span", { children: "Portfolio Review \u2014 No. 006" }),
-          /* @__PURE__ */ jsx("span", { children: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) })
+          /* @__PURE__ */ jsx("div", { className: "flex items-baseline gap-3", children: [
+            role && role !== "owner" && /* @__PURE__ */ jsx("span", { className: `px-2 py-0.5 border ${canEdit ? "border-neutral-400 text-neutral-600" : "border-amber-400 text-amber-700 bg-amber-50"}`, children: role }),
+            /* @__PURE__ */ jsx("span", { children: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) })
+          ] })
         ] }),
         /* @__PURE__ */ jsx("div", { className: "flex items-start justify-between gap-6 mt-3", children: [
           /* @__PURE__ */ jsx("h1", { className: "font-serif text-4xl md:text-6xl leading-tight tracking-tight text-neutral-900", children: "Portfolio Readiness" }),
@@ -1058,9 +1096,17 @@ Save anyway?`);
             )
           ] })
         ] }),
-        /* @__PURE__ */ jsx("p", { className: "mt-3 max-w-xl text-neutral-600 text-base leading-relaxed", children: 'Every holding, loan, and conversion below is editable. Add a new fund, certificate, loan, or gold position at any time \u2014 the daily form and every total pick it up automatically. "Download report" saves a standalone file you can open, print to PDF, or send to anyone \u2014 no publishing needed.' })
+        /* @__PURE__ */ jsx("p", { className: "mt-3 max-w-xl text-neutral-600 text-base leading-relaxed", children: canEdit ? 'Every holding, loan, and conversion below is editable. Add a new fund, certificate, loan, or gold position at any time \u2014 the daily form and every total pick it up automatically. "Download report" saves a standalone file you can open, print to PDF, or send to anyone \u2014 no publishing needed.' : 'You have view-only access \u2014 every number below is live, but editing is off. "Download report" saves a standalone file you can open, print to PDF, or send to anyone.' })
       ] }) }),
       /* @__PURE__ */ jsx("main", { className: "max-w-5xl mx-auto px-6 bg-neutral-50", children: [
+        isOwner && /* @__PURE__ */ jsx("section", { className: "py-10 border-b border-neutral-200", children: [
+          /* @__PURE__ */ jsx(SectionHeading, { index: "00", title: "Access & sharing", dek: "Only you see this section. Share the signup link with anyone you want to give view-only access to, then upgrade them to editor here if needed." }),
+          /* @__PURE__ */ jsx("div", { className: "mb-6 border border-neutral-300 bg-white p-4 flex flex-col sm:flex-row sm:items-center gap-3", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500 shrink-0", children: "Signup link" }),
+            /* @__PURE__ */ jsx("code", { className: "text-xs text-neutral-700 break-all", children: typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}?signup=1` : "" })
+          ] }),
+          /* @__PURE__ */ jsx(UsersAdminPanel, {})
+        ] }),
         /* @__PURE__ */ jsx("section", { className: "grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 py-10 border-b border-neutral-200", children: [
           /* @__PURE__ */ jsx("div", { className: "flex flex-col items-center md:items-start md:col-span-1", children: [
             /* @__PURE__ */ jsx(ReadinessDial, { score: readiness }),
@@ -1108,11 +1154,11 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "02", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
-          /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById })
+          /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, canEdit })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
-          /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange })
+          /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange, canEdit })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "What the assets are worth", dek: `${ASSETS.length} holdings, ${egp(totalAssets)} in total, priced ${latest?.date || ""}. Expand a row for its detail.` }),
@@ -1142,7 +1188,7 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "What is owed", dek: `${loans.length} facilities, ${egp(totalLiabilities)} outstanding. Add or remove a loan freely.` }),
-          /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange }),
+          /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange, canEdit }),
           /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between pt-4 mt-4 border-t-2 border-neutral-900", children: [
             /* @__PURE__ */ jsx("span", { className: "text-sm font-serif italic text-neutral-700", children: "Net worth" }),
             /* @__PURE__ */ jsx("span", { className: "font-mono tabular-nums text-lg text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: netWorth, format: egp }) })
@@ -1213,7 +1259,7 @@ Save anyway?`);
             /* @__PURE__ */ jsx(AlertTriangle, { size: 14, className: "shrink-0 text-amber-500" }),
             daysSinceLastEntry === 1 ? "It's been 1 day since your last update — add today's entry below." : `It's been ${daysSinceLastEntry} days since your last update — add today's entry below.`
           ] }),
-          /* @__PURE__ */ jsx(DailyPricingForm, { onSave: handleSaveDay, saving, defaults: defaultsForForm, navFields, liveRates }),
+          /* @__PURE__ */ jsx(DailyPricingForm, { onSave: handleSaveDay, saving, defaults: defaultsForForm, navFields, liveRates, canEdit }),
           savedFlash && /* @__PURE__ */ jsx("div", { className: "mt-3 inline-flex items-center gap-2 text-xs text-neutral-600 border border-neutral-300 px-3 py-1.5", children: [
             /* @__PURE__ */ jsx(Check, { size: 13 }),
             " Saved to history"
@@ -1314,7 +1360,7 @@ Save anyway?`);
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Gold" }),
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Marked-to-market" }),
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Gain / loss" }),
-              /* @__PURE__ */ jsx("th", { className: "py-2 px-3" })
+              canEdit && /* @__PURE__ */ jsx("th", { className: "py-2 px-3" })
             ] }) }),
             /* @__PURE__ */ jsx("tbody", { children: [...computedHistory].reverse().map((d) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
               /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-neutral-700", children: d.date }),
@@ -1322,7 +1368,7 @@ Save anyway?`);
               /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-right text-neutral-700", children: fmt(d.gold) }),
               /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-right text-neutral-900", children: egp(d.markedToMarket) }),
               /* @__PURE__ */ jsx("td", { className: `py-2 px-3 font-mono text-right ${d.gain >= 0 ? "text-neutral-900" : "text-neutral-500"}`, children: signedEgp(d.gain) }),
-              /* @__PURE__ */ jsx("td", { className: "py-2 px-3 text-right", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => handleDeleteDay(d.date) }) })
+              canEdit && /* @__PURE__ */ jsx("td", { className: "py-2 px-3 text-right", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => handleDeleteDay(d.date) }) })
             ] }, d.date)) })
           ] }) })
         ] }),
@@ -1388,11 +1434,57 @@ Save anyway?`);
       }
     ) });
   }
+  function SignupScreen({ onSignUp, error, success, loading }) {
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirm, setConfirm] = useState("");
+    if (success) {
+      return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center p-6 font-sans", children: /* @__PURE__ */ jsx("div", { className: "w-full max-w-sm border border-neutral-300 bg-white p-6", children: [
+        /* @__PURE__ */ jsx("h1", { className: "font-serif text-2xl text-neutral-900 mb-3", children: "Account created" }),
+        /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600", children: "You're signed in as a viewer — you can look around, but editing is off until the owner upgrades your account." })
+      ] }) });
+    }
+    return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center p-6 font-sans", children: /* @__PURE__ */ jsx(
+      "form",
+      {
+        onSubmit: (e) => {
+          e.preventDefault();
+          if (password !== confirm) return;
+          onSignUp(username, password);
+        },
+        className: "w-full max-w-sm border border-neutral-300 bg-white p-6",
+        children: [
+          /* @__PURE__ */ jsx("h1", { className: "font-serif text-2xl text-neutral-900 mb-1", children: "Create an account" }),
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-6", children: "You'll get view-only access until the owner upgrades you." }),
+          /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1 mb-3", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "Username" }),
+            /* @__PURE__ */ jsx("input", { type: "text", autoComplete: "username", value: username, onChange: (e) => setUsername(e.target.value), className: "border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-neutral-800" })
+          ] }),
+          /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1 mb-3", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "Password" }),
+            /* @__PURE__ */ jsx("input", { type: "password", autoComplete: "new-password", value: password, onChange: (e) => setPassword(e.target.value), className: "border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-neutral-800" })
+          ] }),
+          /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1 mb-4", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "Confirm password" }),
+            /* @__PURE__ */ jsx("input", { type: "password", autoComplete: "new-password", value: confirm, onChange: (e) => setConfirm(e.target.value), className: "border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-neutral-800" })
+          ] }),
+          password && confirm && password !== confirm && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-600 mb-4", children: "Passwords don't match." }),
+          error && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-600 mb-4", children: error }),
+          /* @__PURE__ */ jsx("button", { type: "submit", disabled: loading, className: "w-full bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2.5 disabled:opacity-50", children: loading ? "Creating…" : "Create account" })
+        ]
+      }
+    ) });
+  }
   function PortfolioReadiness() {
     const [user, setUser] = useState(null);
     const [authChecked, setAuthChecked] = useState(false);
     const [signInError, setSignInError] = useState("");
     const [signingIn, setSigningIn] = useState(false);
+    const [signUpError, setSignUpError] = useState("");
+    const [signingUp, setSigningUp] = useState(false);
+    const [signedUp, setSignedUp] = useState(false);
+    const [role, setRole] = useState(null);
+    const isSignupMode = typeof window !== "undefined" && /[?&]signup=1\b/.test(window.location.search);
     useEffect(() => {
       if (!firebaseApp || !window.firebase.auth) {
         setAuthChecked(true);
@@ -1404,6 +1496,21 @@ Save anyway?`);
       });
       return unsub;
     }, []);
+    useEffect(() => {
+      if (!user || !db) {
+        setRole(null);
+        return;
+      }
+      let cancelled = false;
+      db.ref(`roles/${user.uid}/role`).once("value").then((snap) => {
+        if (!cancelled) setRole(snap.val() || "viewer");
+      }).catch(() => {
+        if (!cancelled) setRole("viewer");
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [user]);
     useEffect(() => {
       if (!user) return;
       let timer;
@@ -1433,6 +1540,19 @@ Save anyway?`);
       }
       setSigningIn(false);
     };
+    const handleSignUp = async (username, password) => {
+      setSignUpError("");
+      setSigningUp(true);
+      try {
+        const email = username.includes("@") ? username : `${username}@${AUTH_EMAIL_DOMAIN}`;
+        const cred = await window.firebase.auth(firebaseApp).createUserWithEmailAndPassword(email, password);
+        await db.ref(`roles/${cred.user.uid}`).set({ role: "viewer", email });
+        setSignedUp(true);
+      } catch (e) {
+        setSignUpError(e && e.code === "auth/email-already-in-use" ? "That username is taken." : "Couldn't create the account.");
+      }
+      setSigningUp(false);
+    };
     const handleSignOut = () => window.firebase.auth(firebaseApp).signOut();
     if (!authChecked) {
       return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
@@ -1441,9 +1561,18 @@ Save anyway?`);
       ] });
     }
     if (!user) {
+      if (isSignupMode) {
+        return /* @__PURE__ */ jsx(SignupScreen, { onSignUp: handleSignUp, error: signUpError, success: signedUp, loading: signingUp });
+      }
       return /* @__PURE__ */ jsx(LoginScreen, { onSignIn: handleSignIn, error: signInError, loading: signingIn });
     }
-    return /* @__PURE__ */ jsx(ReportErrorBoundary, { children: /* @__PURE__ */ jsx(PortfolioReadinessApp, { onSignOut: handleSignOut }) });
+    if (role === null) {
+      return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
+        /* @__PURE__ */ jsx(Loader2, { className: "animate-spin mr-2", size: 16 }),
+        " Loading…"
+      ] });
+    }
+    return /* @__PURE__ */ jsx(ReportErrorBoundary, { children: /* @__PURE__ */ jsx(PortfolioReadinessApp, { onSignOut: handleSignOut, role, uid: user.uid }) });
   }
 
   // entry.jsx
