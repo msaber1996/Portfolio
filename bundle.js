@@ -114,7 +114,7 @@
     { id: "goldbar250", type: "gold", label: "Gold Bars - 250g", currency: "EGP", investment: 2015675, purchaseNav: 8062.7, grams: 250, purchaseDate: "2026-01-28" },
     { id: "goldbar500", type: "gold", label: "Gold Bars - 500g", currency: "EGP", investment: 8559600, purchaseNav: 8559.6, grams: 1000, purchaseDate: "2026-01-29" },
     { id: "goldbar1kg", type: "gold", label: "Gold Bars - 1kg", currency: "EGP", investment: 23103150, purchaseNav: 7701.05, grams: 3000, purchaseDate: "2026-03-02" },
-    { id: "certs", type: "fixed", label: "EGP certificates & CDs", currency: "EGP", investment: 475560602, purchaseNav: 0, grams: 0, navGroup: "" },
+    { id: "certs", type: "fixed", label: "EGP certificates & CDs (incl. CIB)", currency: "EGP", investment: 457780000, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "treasury", type: "fixed", label: "NBE Treasury Bills (364-day)", currency: "EGP", investment: 84014400, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "usdcd", type: "fixed", label: "USD certificate (CIB)", currency: "USD", investment: 8e5, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "usdcash", type: "fixed", label: "USD cash (NBE)", currency: "USD", investment: 511618, purchaseNav: 0, grams: 0, navGroup: "" },
@@ -130,7 +130,7 @@
   ];
   var OFFICE_QUARTERLY_INSTALLMENT = 9093753;
   var SEED_LOANS = [
-    { id: "loan-egp", label: "Secured EGP loans (9 facilities, incl. villa)", currency: "EGP", amount: 94014137, rate: "", installment: 402583308e-2 },
+    { id: "loan-egp", label: "Secured EGP loans (9 facilities, incl. villa)", currency: "EGP", amount: 91141821.28, rate: "", installment: 4031095.38 },
     { id: "loan-usd", label: "USD loan (CIB)", currency: "USD", amount: 72e4, rate: 7, installment: 22231.51 }
   ];
   var SEED_CONVERSIONS = [
@@ -148,7 +148,7 @@
     { date: "2026-07-30", rate: 51.1, gold: 6800, nbe1: 165.56, nbe2: 304.62, nbe4: 304.6978, nbe5: 54.51, cib: 1046.19, azopp: 49.70344, azgold: 22.85158, beltone: 1.16789 }
   ];
   var CASH_FLOW = {
-    egp: { income: 7120225, outflow: 402583308e-2 },
+    egp: { income: 7120225, outflow: 4031095.38 },
     usd: { income: 3e3, outflow: 22231.51 }
   };
   var USD_GAP = 19231.51;
