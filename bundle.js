@@ -105,8 +105,8 @@
     { id: "cib1", type: "fund", label: "CIB Istethmar", currency: "EGP", investment: 49875e3, purchaseNav: 887.15, navGroup: "cib", grams: 0, purchaseDate: "2026-01-28" },
     { id: "cib2", type: "fund", label: "CIB Istethmar (new tranche)", currency: "EGP", investment: 49875e3, purchaseNav: 1050.45, navGroup: "cib", grams: 0, purchaseDate: "2026-07-22" },
     { id: "azopp", type: "fund", label: "AZ Opportunities", currency: "EGP", investment: 24999952, purchaseNav: 47.3233, navGroup: "azopp", grams: 0, purchaseDate: "2026-02-15" },
-    { id: "azgold1", type: "fund", label: "AZ Gold Fund", currency: "EGP", investment: 16095700, purchaseNav: 22.52405, navGroup: "azgold", grams: 0, purchaseDate: "2026-07-13" },
-    { id: "azgold2", type: "fund", label: "AZ Gold Fund (2nd tranche)", currency: "EGP", investment: 9999983, purchaseNav: 25.82887, navGroup: "azgold", grams: 0, purchaseDate: "2026-02-15" },
+    { id: "azgold1", type: "fund", label: "AZ Gold Fund", currency: "EGP", investment: 16095700, purchaseNav: 22.52405, navGroup: "azgold", grams: 0, purchaseDate: "2026-02-15" },
+    { id: "azgold2", type: "fund", label: "AZ Gold Fund (2nd tranche)", currency: "EGP", investment: 9999983, purchaseNav: 25.82887, navGroup: "azgold", grams: 0, purchaseDate: "2026-07-13" },
     { id: "belt1", type: "fund", label: "Beltone $500k", currency: "USD", investment: 5e5, purchaseNav: 1.1225, navGroup: "beltone", grams: 0, purchaseDate: "2026-02-03" },
     { id: "belt2", type: "fund", label: "Beltone $510k", currency: "USD", investment: 509999.9, purchaseNav: 1.1363, navGroup: "beltone", grams: 0, purchaseDate: "2026-03-10" },
     { id: "belt3", type: "fund", label: "Beltone $592k", currency: "USD", investment: 592e3, purchaseNav: 1.1665, navGroup: "beltone", grams: 0, purchaseDate: "2026-07-27" },
@@ -268,17 +268,17 @@
           egpFundsCurrent += current;
           egpFundsInvestment += h.investment;
         }
-        rows.push({ id: h.id, label: h.label, value: currentEgp, note: `${h.currency} fund, ${pctStr(gainPct)} since purchase`, gainPct, purchaseNav: h.purchaseNav, currentNav: nav, purchaseDate: h.purchaseDate, investmentEgp });
+        rows.push({ id: h.id, label: h.label, value: currentEgp, currency: h.currency, currentNative: current, investmentNative: h.investment, note: `${h.currency} fund, ${pctStr(gainPct)} since purchase`, gainPct, purchaseNav: h.purchaseNav, currentNav: nav, purchaseDate: h.purchaseDate, investmentEgp });
       } else if (h.type === "gold") {
         const current = goldPrice * (h.grams || 0);
         goldCurrent += current;
         goldInvestment += h.investment;
         const gainPct = h.purchaseNav ? (goldPrice - h.purchaseNav) / h.purchaseNav * 100 : 0;
-        rows.push({ id: h.id, label: h.label, value: current, note: `${h.grams?.toLocaleString() || 0}g, ${pctStr(gainPct)} since purchase`, gainPct, purchaseNav: h.purchaseNav, currentNav: goldPrice, purchaseDate: h.purchaseDate, investmentEgp: h.investment });
+        rows.push({ id: h.id, label: h.label, value: current, currency: "EGP", currentNative: current, investmentNative: h.investment, note: `${h.grams?.toLocaleString() || 0}g, ${pctStr(gainPct)} since purchase`, gainPct, purchaseNav: h.purchaseNav, currentNav: goldPrice, purchaseDate: h.purchaseDate, investmentEgp: h.investment });
       } else {
         const val = h.currency === "USD" ? h.investment * rate : h.investment;
         fixedEgp += val;
-        rows.push({ id: h.id, label: h.label, value: val, note: h.currency === "USD" ? `${usd(h.investment)} at today's rate` : "Fixed principal", gainPct: 0, purchaseNav: null, currentNav: null, purchaseDate: h.purchaseDate, investmentEgp: val });
+        rows.push({ id: h.id, label: h.label, value: val, currency: h.currency, currentNative: h.investment, investmentNative: h.investment, note: "Fixed principal", gainPct: 0, purchaseNav: null, currentNav: null, purchaseDate: h.purchaseDate, investmentEgp: val });
       }
     });
     const usdFundsCurrentEgp = usdFundsCurrentUsd * rate;
@@ -357,7 +357,7 @@
             pctOfTotal.toFixed(1),
             "%"
           ] }),
-          /* @__PURE__ */ jsx("span", { className: "font-mono tabular-nums text-sm w-28 sm:w-32 md:w-36 text-right text-neutral-900 shrink-0", children: egp(item.value) })
+          /* @__PURE__ */ jsx("span", { className: "font-mono tabular-nums text-sm w-28 sm:w-32 md:w-36 text-right text-neutral-900 shrink-0", children: item.currency === "USD" ? usd(item.currentNative) : egp(item.value) })
         ] })
       ] }),
       isOpen && /* @__PURE__ */ jsx("div", { className: "pb-4 pl-7 pr-2 -mt-1 text-xs text-neutral-500 max-w-xl", children: [
@@ -466,7 +466,7 @@
       label
     ] });
   }
-  function HoldingsTable({ holdings, onChange, currentValueById, canEdit = true }) {
+  function HoldingsTable({ holdings, onChange, currentValueById, currentValueCurrencyById, canEdit = true }) {
     const update = (id, patch) => onChange(holdings.map((h) => h.id === id ? { ...h, ...patch } : h));
     const remove = (id) => onChange(holdings.filter((h) => h.id !== id));
     const add = () => onChange([...holdings, { id: uid(), type: "fund", label: "New fund", currency: "EGP", investment: 0, purchaseNav: 100, purchaseDate: "", navGroup: "new" + holdings.length, grams: 0 }]);
@@ -493,7 +493,7 @@
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: h.type !== "fixed" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.purchaseNav, onChange: (v) => update(h.id, { purchaseNav: Number(v) || 0 }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: h.type === "gold" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.grams, onChange: (v) => update(h.id, { grams: Number(v) || 0 }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-24", children: h.type === "fund" ? /* @__PURE__ */ jsx(Cell, { value: h.navGroup, onChange: (v) => update(h.id, { navGroup: v }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32 text-right font-mono tabular-nums text-neutral-700", children: currentValueById?.[h.id] != null ? egp(currentValueById[h.id]) : "\u2014" }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32 text-right font-mono tabular-nums text-neutral-700", children: currentValueById?.[h.id] != null ? currentValueCurrencyById?.[h.id] === "USD" ? usd(currentValueById[h.id]) : egp(currentValueById[h.id]) : "\u2014" }),
           canEdit && /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(h.id) }) })
         ] }, h.id)) })
       ] }) }),
@@ -814,7 +814,8 @@ Save anyway?`);
       const durationDays = firstComputed && latestComputed ? Math.max(0, Math.round((new Date(latestComputed.date + "T00:00:00") - new Date(firstComputed.date + "T00:00:00")) / 864e5)) : 0;
       return { totalInvested, totalProfit, returnPct, durationDays };
     }, [firstComputed, latestComputed]);
-    const currentValueById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.value])), [ASSETS]);
+    const currentValueById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency === "USD" ? a.currentNative : a.value])), [ASSETS]);
+    const currentValueCurrencyById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency])), [ASSETS]);
     const totalLiabilities = useMemo(
       () => loans.reduce((s, l) => s + (l.currency === "USD" ? l.amount * (latestComputed?.rate || 0) : l.amount), 0),
       [loans, latestComputed]
@@ -905,11 +906,12 @@ Save anyway?`);
       const rowsHtml = ASSETS.map((a2) => {
         const pct = totalAssets ? (a2.value / totalAssets * 100).toFixed(1) : "0.0";
         const purchaseDate = fmtDate(a2.purchaseDate);
-        const purchaseAmount = a2.investmentEgp != null ? egp(a2.investmentEgp) : "—";
+        const purchaseAmount = a2.currency === "USD" ? usd(a2.investmentNative) : a2.investmentEgp != null ? egp(a2.investmentEgp) : "—";
         const boughtAt = a2.purchaseNav != null ? fmt(a2.purchaseNav, 4) : "—";
         const now = a2.currentNav != null ? fmt(a2.currentNav, 4) : "—";
         const gain = a2.purchaseNav != null ? pctStr(a2.gainPct) : "—";
-        return `<tr><td>${a2.label}</td><td>${purchaseDate}</td><td class="num mono">${purchaseAmount}</td><td class="num mono">${boughtAt}</td><td class="num mono">${now}</td><td class="num mono">${gain}</td><td class="num mono">${egp(a2.value)}</td><td class="num mono">${pct}%</td></tr>`;
+        const valueCell = a2.currency === "USD" ? usd(a2.currentNative) : egp(a2.value);
+        return `<tr><td>${a2.label}</td><td>${purchaseDate}</td><td class="num mono">${purchaseAmount}</td><td class="num mono">${boughtAt}</td><td class="num mono">${now}</td><td class="num mono">${gain}</td><td class="num mono">${valueCell}</td><td class="num mono">${pct}%</td></tr>`;
       }).join("");
       const loanRowsHtml = loans.map((l) => {
         const amt = l.currency === "USD" ? usd(l.amount) : egp(l.amount);
@@ -982,7 +984,7 @@ Save anyway?`);
   </table>
 
   <h2>Holdings</h2>
-  <table><tr><th>Holding</th><th>Purchase date</th><th class="num">Purchase amount</th><th class="num">Bought at</th><th class="num">Now</th><th class="num">Gain</th><th class="num">Value, EGP</th><th class="num">% of total</th></tr>${rowsHtml}</table>
+  <table><tr><th>Holding</th><th>Purchase date</th><th class="num">Purchase amount</th><th class="num">Bought at</th><th class="num">Now</th><th class="num">Gain</th><th class="num">Value</th><th class="num">% of total</th></tr>${rowsHtml}</table>
 
   <h2>Currency conversion history</h2>
   <table><tr><th>Date</th><th>Type</th><th class="num">Amount, USD</th><th class="num">Running balance</th></tr>${convRowsHtml}</table>
@@ -1154,7 +1156,7 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "02", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
-          /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, canEdit })
+          /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
