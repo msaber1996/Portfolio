@@ -133,6 +133,17 @@
     { id: "loan-egp", label: "Secured EGP loans (9 facilities, incl. villa)", currency: "EGP", amount: 91141821.28, rate: "", installment: 4031095.38 },
     { id: "loan-usd", label: "USD loan (CIB)", currency: "USD", amount: 72e4, rate: 7, installment: 22231.51 }
   ];
+  var LOAN_FACILITIES = [
+    { label: "Secured loan •7090", amountFinanced: 2499900, outstanding: 1029942.21, installment: 97349.85, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
+    { label: "Secured loan •8850", amountFinanced: 990000, outstanding: 407873.82, installment: 38552.12, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
+    { label: "Secured loan •6620", amountFinanced: 50000000, outstanding: 48570571.04, installment: 1825262.29, rate: 19, openDate: "2026-07-19", maturityDate: "2029-07-03" },
+    { label: "Secured loan •7070", amountFinanced: 6300000, outstanding: 2595557.28, installment: 245331.34, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
+    { label: "Secured loan •8860", amountFinanced: 22100, outstanding: 9103.45, installment: 860.46, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
+    { label: "Secured loan •7080", amountFinanced: 1788000, outstanding: 736642.96, installment: 69627.29, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
+    { label: "Secured loan •4470", amountFinanced: 36000000, outstanding: 31162767.24, installment: 1317443.98, rate: 19, openDate: "2026-02-12", maturityDate: "2029-02-03" },
+    { label: "Secured loan •3800", amountFinanced: 9100000, outstanding: 5856814.07, installment: 357755.69, rate: 23.5, openDate: "2025-04-09", maturityDate: "2028-04-03" },
+    { label: "Secured loan •5500", amountFinanced: 2000000, outstanding: 772549.21, installment: 78912.36, rate: 23.5, openDate: "2024-06-26", maturityDate: "2027-06-28" }
+  ];
   var SEED_CONVERSIONS = [
     { id: "cv0", date: "2026-01-15", type: "opening", amountUsd: 15e5, rate: "", note: "Pre-existing USD balance" },
     { id: "cv1", date: "2026-01-28", type: "in", amountUsd: 8163260, rate: "", note: "Transfer from abroad" },
@@ -560,6 +571,42 @@
       ] }) })
     ] }) });
   }
+  function LoanFacilitiesTable({ facilities }) {
+    const totals = facilities.reduce((s, f) => ({
+      amountFinanced: s.amountFinanced + f.amountFinanced,
+      outstanding: s.outstanding + f.outstanding,
+      installment: s.installment + f.installment
+    }), { amountFinanced: 0, outstanding: 0, installment: 0 });
+    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Facility" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Rate %" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Amount financed" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Outstanding balance" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Monthly installment" }),
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Opened" }),
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Matures" })
+      ] }) }),
+      /* @__PURE__ */ jsx("tbody", { children: facilities.map((f) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: f.label }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: f.rate.toFixed(1) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(f.amountFinanced) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(f.outstanding) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(f.installment) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(f.openDate) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(f.maturityDate) })
+      ] }, f.label)) }),
+      /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: `Total (${facilities.length})` }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(totals.amountFinanced) }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.outstanding) }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.installment) }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" })
+      ] }) })
+    ] }) });
+  }
   function ConversionsTable({ conversions, onChange, canEdit = true }) {
     const sorted = [...conversions].sort((a, b) => a.date.localeCompare(b.date));
     let running = 0;
@@ -918,6 +965,8 @@ Save anyway?`);
         const inst = l.currency === "USD" ? usd(l.installment) : egp(l.installment);
         return `<tr><td>${l.label}</td><td class="num mono">${amt}</td><td class="num mono">${inst}</td></tr>`;
       }).join("");
+      const loanFacilityRowsHtml = LOAN_FACILITIES.map((f) => `<tr><td>${f.label}</td><td class="num mono">${f.rate.toFixed(1)}%</td><td class="num mono">${egp(f.amountFinanced)}</td><td class="num mono">${egp(f.outstanding)}</td><td class="num mono">${egp(f.installment)}</td><td>${fmtDate(f.openDate)}</td><td>${fmtDate(f.maturityDate)}</td></tr>`).join("");
+      const loanFacilityTotals = LOAN_FACILITIES.reduce((s, f) => ({ amountFinanced: s.amountFinanced + f.amountFinanced, outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { amountFinanced: 0, outstanding: 0, installment: 0 });
       const convRowsHtml = conversionsWithRunning.map((c) => `<tr><td>${c.date}</td><td style="text-transform:capitalize">${c.type}</td><td class="num mono">${usd(c.amountUsd)}</td><td class="num mono">${usd(c.running)}</td></tr>`).join("");
       const officeUnitsRowsHtml = OFFICE_UNITS.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(u.advance)}</td><td class="num mono">${egp(u.remaining)}</td></tr>`).join("");
       const officeUnitsTotals = OFFICE_UNITS.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + u.advance, remaining: s.remaining + u.remaining }), { totalPrice: 0, advance: 0, remaining: 0 });
@@ -991,6 +1040,8 @@ Save anyway?`);
 
   <h2>What is owed</h2>
   <table><tr><th>Facility</th><th class="num">Amount</th><th class="num">Monthly installment</th></tr>${loanRowsHtml}</table>
+  <p class="note">The ${LOAN_FACILITIES.length} secured EGP facilities, individually — these roll up into the single "Secured EGP loans" row above.</p>
+  <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding balance</th><th class="num">Monthly installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${LOAN_FACILITIES.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
 
   <h2>Office units</h2>
   <p class="note">Still being paid off in quarterly installments — only the 5% advance (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Recurring payment: ${egp(OFFICE_QUARTERLY_INSTALLMENT)} every 3 months.</p>
@@ -1191,6 +1242,11 @@ Save anyway?`);
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "What is owed", dek: `${loans.length} facilities, ${egp(totalLiabilities)} outstanding. Add or remove a loan freely.` }),
           /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange, canEdit }),
+          /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${LOAN_FACILITIES.length} secured EGP facilities, individually` }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “Secured EGP loans” row above." }),
+            /* @__PURE__ */ jsx(LoanFacilitiesTable, { facilities: LOAN_FACILITIES })
+          ] }),
           /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between pt-4 mt-4 border-t-2 border-neutral-900", children: [
             /* @__PURE__ */ jsx("span", { className: "text-sm font-serif italic text-neutral-700", children: "Net worth" }),
             /* @__PURE__ */ jsx("span", { className: "font-mono tabular-nums text-lg text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: netWorth, format: egp }) })
