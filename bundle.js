@@ -607,6 +607,24 @@
       ] }) })
     ] }) });
   }
+  function PerformanceRankingTable({ rows }) {
+    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Rank" }),
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Holding" }),
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Purchase date" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Gain since purchase" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Current value" })
+      ] }) }),
+      /* @__PURE__ */ jsx("tbody", { children: rows.map((r, i) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs text-neutral-400", children: i + 1 }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: r.label }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(r.purchaseDate) }),
+        /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 text-right font-mono tabular-nums ${r.gainPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(r.gainPct) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-700", children: r.currency === "USD" ? usd(r.currentNative) : egp(r.value) })
+      ] }, r.id)) })
+    ] }) });
+  }
   function ConversionsTable({ conversions, onChange, canEdit = true }) {
     const sorted = [...conversions].sort((a, b) => a.date.localeCompare(b.date));
     let running = 0;
@@ -854,6 +872,7 @@ Save anyway?`);
     const firstComputed = computedHistory[0];
     const ASSETS = latestComputed?.rows || [];
     const totalAssets = latestComputed?.totalAssets || 0;
+    const performanceRanking = useMemo(() => ASSETS.filter((a) => a.purchaseNav != null).sort((a, b) => b.gainPct - a.gainPct), [ASSETS]);
     const variableInvestments = useMemo(() => {
       const totalInvested = latestComputed?.markedToMarketCost || 0;
       const totalProfit = latestComputed?.gain || 0;
@@ -971,6 +990,7 @@ Save anyway?`);
       const officeUnitsRowsHtml = OFFICE_UNITS.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(u.advance)}</td><td class="num mono">${egp(u.remaining)}</td></tr>`).join("");
       const officeUnitsTotals = OFFICE_UNITS.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + u.advance, remaining: s.remaining + u.remaining }), { totalPrice: 0, advance: 0, remaining: 0 });
       const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td></tr>`).join("");
+      const performanceRankingRowsHtml = performanceRanking.map((r, i) => `<tr><td class="mono">${i + 1}</td><td>${r.label}</td><td>${fmtDate(r.purchaseDate)}</td><td class="num mono">${pctStr(r.gainPct)}</td><td class="num mono">${r.currency === "USD" ? usd(r.currentNative) : egp(r.value)}</td></tr>`).join("");
       const analysisHtml = analysis ? `
       <h2>Since ${firstComputed.date} (${analysis.days} days)</h2>
       <p class="note">Marked-to-market moved <b>${signedEgp(analysis.changeVal)}</b> (${pctStr(analysis.changePct)}). FX moved ${pctStr(analysis.rateChangePct)}; gold moved ${pctStr(analysis.goldChangePct)} per gram.
@@ -1060,6 +1080,10 @@ Save anyway?`);
   <h2>Dollar gap \u2014 selected plan (${scenario.label})</h2>
   <p class="note">${scenario.description} Income covers <b>${usd(scenario.monthlyIncome)}</b> of the ${usd(USD_GAP)} monthly gap (${coveragePct.toFixed(0)}%). Still short: <b>${remainingGap <= 0.01 ? usd(0) : usd(remainingGap)}</b> per month.</p>
 
+  <h2>Performance ranking, strongest to weakest</h2>
+  <p class="note">As of ${latest?.date || ""} — regenerate this report after any new day's entry to refresh the ranking.</p>
+  <table><tr><th>Rank</th><th>Holding</th><th>Purchase date</th><th class="num">Gain since purchase</th><th class="num">Current value</th></tr>${performanceRankingRowsHtml}</table>
+
   <h2>History</h2>
   ${analysisHtml}
   <table><tr><th>Date</th><th class="num">Rate</th><th class="num">Gold</th><th class="num">Marked-to-market</th><th class="num">Gain / loss</th></tr>${historyRowsHtml}</table>
@@ -1078,6 +1102,7 @@ Save anyway?`);
     }, [
       ASSETS,
       totalAssets,
+      performanceRanking,
       loans,
       conversionsWithRunning,
       computedHistory,
@@ -1338,6 +1363,11 @@ Save anyway?`);
                 /* @__PURE__ */ jsx(TrendChart, { points: f.points, labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) })
               ] }, f.key);
             }) })
+          ] }),
+          performanceRanking.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-1", children: "Performance ranking, strongest to weakest" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mb-3", children: `As of ${latest?.date || ""} — updates automatically the moment a new day's entry is saved.` }),
+            /* @__PURE__ */ jsx(PerformanceRankingTable, { rows: performanceRanking })
           ] }),
           analysis && /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-8 mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4", children: [
