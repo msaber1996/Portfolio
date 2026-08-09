@@ -608,21 +608,33 @@
     ] }) });
   }
   function PerformanceRankingTable({ rows }) {
+    const signedNative = (amount, currency) => {
+      const sign = amount >= 0 ? "+" : "−";
+      const abs = currency === "USD" ? usd(Math.abs(amount)) : egp(Math.abs(amount));
+      return `${sign}${abs}`;
+    };
     return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Rank" }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Holding" }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Purchase date" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Gain since purchase" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Current value" })
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Purchase value" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Current value" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Net gain / loss" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Gain since purchase" })
       ] }) }),
-      /* @__PURE__ */ jsx("tbody", { children: rows.map((r, i) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs text-neutral-400", children: i + 1 }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: r.label }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(r.purchaseDate) }),
-        /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 text-right font-mono tabular-nums ${r.gainPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(r.gainPct) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-700", children: r.currency === "USD" ? usd(r.currentNative) : egp(r.value) })
-      ] }, r.id)) })
+      /* @__PURE__ */ jsx("tbody", { children: rows.map((r, i) => {
+        const netGain = r.currentNative - r.investmentNative;
+        return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs text-neutral-400", children: i + 1 }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: r.label }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(r.purchaseDate) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: r.currency === "USD" ? usd(r.investmentNative) : egp(r.investmentNative) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-700", children: r.currency === "USD" ? usd(r.currentNative) : egp(r.value) }),
+          /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 text-right font-mono tabular-nums ${netGain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: signedNative(netGain, r.currency) }),
+          /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 text-right font-mono tabular-nums ${r.gainPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(r.gainPct) })
+        ] }, r.id);
+      }) })
     ] }) });
   }
   function ConversionsTable({ conversions, onChange, canEdit = true }) {
@@ -990,7 +1002,12 @@ Save anyway?`);
       const officeUnitsRowsHtml = OFFICE_UNITS.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(u.advance)}</td><td class="num mono">${egp(u.remaining)}</td></tr>`).join("");
       const officeUnitsTotals = OFFICE_UNITS.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + u.advance, remaining: s.remaining + u.remaining }), { totalPrice: 0, advance: 0, remaining: 0 });
       const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td></tr>`).join("");
-      const performanceRankingRowsHtml = performanceRanking.map((r, i) => `<tr><td class="mono">${i + 1}</td><td>${r.label}</td><td>${fmtDate(r.purchaseDate)}</td><td class="num mono">${pctStr(r.gainPct)}</td><td class="num mono">${r.currency === "USD" ? usd(r.currentNative) : egp(r.value)}</td></tr>`).join("");
+      const performanceRankingRowsHtml = performanceRanking.map((r, i) => {
+        const netGain = r.currentNative - r.investmentNative;
+        const fmtNative = (n) => r.currency === "USD" ? usd(n) : egp(n);
+        const signedNative = `${netGain >= 0 ? "+" : "−"}${fmtNative(Math.abs(netGain))}`;
+        return `<tr><td class="mono">${i + 1}</td><td>${r.label}</td><td>${fmtDate(r.purchaseDate)}</td><td class="num mono">${fmtNative(r.investmentNative)}</td><td class="num mono">${r.currency === "USD" ? usd(r.currentNative) : egp(r.value)}</td><td class="num mono">${signedNative}</td><td class="num mono">${pctStr(r.gainPct)}</td></tr>`;
+      }).join("");
       const analysisHtml = analysis ? `
       <h2>Since ${firstComputed.date} (${analysis.days} days)</h2>
       <p class="note">Marked-to-market moved <b>${signedEgp(analysis.changeVal)}</b> (${pctStr(analysis.changePct)}). FX moved ${pctStr(analysis.rateChangePct)}; gold moved ${pctStr(analysis.goldChangePct)} per gram.
@@ -1082,7 +1099,7 @@ Save anyway?`);
 
   <h2>Performance ranking, strongest to weakest</h2>
   <p class="note">As of ${latest?.date || ""} — regenerate this report after any new day's entry to refresh the ranking.</p>
-  <table><tr><th>Rank</th><th>Holding</th><th>Purchase date</th><th class="num">Gain since purchase</th><th class="num">Current value</th></tr>${performanceRankingRowsHtml}</table>
+  <table><tr><th>Rank</th><th>Holding</th><th>Purchase date</th><th class="num">Purchase value</th><th class="num">Current value</th><th class="num">Net gain / loss</th><th class="num">Gain since purchase</th></tr>${performanceRankingRowsHtml}</table>
 
   <h2>History</h2>
   ${analysisHtml}
