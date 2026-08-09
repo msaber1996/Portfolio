@@ -144,6 +144,23 @@
     { label: "Secured loan •3800", amountFinanced: 9100000, outstanding: 5856814.07, installment: 357755.69, rate: 23.5, openDate: "2025-04-09", maturityDate: "2028-04-03" },
     { label: "Secured loan •5500", amountFinanced: 2000000, outstanding: 772549.21, installment: 78912.36, rate: 23.5, openDate: "2024-06-26", maturityDate: "2027-06-28" }
   ];
+  var CERTIFICATES = [
+    { label: "Platinum monthly CD (Alexandria)", amount: 1100000, rate: 21.5, openDate: "2024-08-15", maturityDate: "2027-08-18" },
+    { label: "Platinum monthly CD (Alexandria)", amount: 30000, rate: 21.5, openDate: "2024-08-15", maturityDate: "2027-08-18" },
+    { label: "Variable-yield monthly platinum CD (Sea Shell)", amount: 106000000, rate: 19.5, openDate: "2026-07-12", maturityDate: "2029-07-13" },
+    { label: "Variable-yield monthly platinum CD (Sea Shell)", amount: 114000000, rate: 19.5, openDate: "2026-06-29", maturityDate: "2029-07-01" },
+    { label: "Tiered-yield platinum CD (Sea Shell)", amount: 1000000, rate: 23, openDate: "2025-08-24", maturityDate: "2028-08-25" },
+    { label: "Tiered-yield platinum CD (Sea Shell)", amount: 1000000, rate: 23, openDate: "2025-08-24", maturityDate: "2028-08-25" },
+    { label: "Variable-yield monthly platinum CD (Sea Shell)", amount: 50000000, rate: 19.5, openDate: "2026-08-03", maturityDate: "2029-08-04" },
+    { label: "Platinum monthly CD (Agami)", amount: 9100000, rate: 21.5, openDate: "2025-04-10", maturityDate: "2028-04-13" },
+    { label: "Platinum monthly CD (Alexandria)", amount: 10250000, rate: 21.5, openDate: "2025-04-08", maturityDate: "2028-04-09" },
+    { label: "Platinum monthly CD (Sea Shell)", amount: 100000000, rate: 16, openDate: "2026-01-27", maturityDate: "2029-01-28" },
+    { label: "Platinum monthly CD (Alexandria)", amount: 7000000, rate: 21.5, openDate: "2021-04-04", maturityDate: "2027-04-05" },
+    { label: "Platinum monthly CD (Alexandria)", amount: 2300000, rate: 21.5, openDate: "2021-04-15", maturityDate: "2027-04-18" },
+    { label: "Platinum monthly CD (Alexandria)", amount: 5000000, rate: 21.5, openDate: "2021-06-22", maturityDate: "2027-06-23" },
+    { label: "Tiered-yield platinum CD (Sea Shell)", amount: 1000000, rate: 23, openDate: "2025-08-24", maturityDate: "2028-08-25" },
+    { label: "CIB certificate", amount: 50000000, rate: 17.25, openDate: null, maturityDate: null }
+  ];
   var SEED_CONVERSIONS = [
     { id: "cv0", date: "2026-01-15", type: "opening", amountUsd: 15e5, rate: "", note: "Pre-existing USD balance" },
     { id: "cv1", date: "2026-01-28", type: "in", amountUsd: 8163260, rate: "", note: "Transfer from abroad" },
@@ -607,6 +624,32 @@
       ] }) })
     ] }) });
   }
+  function CertificatesTable({ certificates }) {
+    const total = certificates.reduce((s, c) => s + c.amount, 0);
+    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Certificate" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Rate %" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Amount" }),
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Opened" }),
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Matures" })
+      ] }) }),
+      /* @__PURE__ */ jsx("tbody", { children: certificates.map((c, i) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: c.label }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: c.rate.toFixed(2) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(c.amount) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(c.openDate) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(c.maturityDate) })
+      ] }, i)) }),
+      /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: `Total (${certificates.length})` }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(total) }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" })
+      ] }) })
+    ] }) });
+  }
   function PerformanceRankingTable({ rows }) {
     const signedNative = (amount, currency) => {
       const sign = amount >= 0 ? "+" : "−";
@@ -996,6 +1039,8 @@ Save anyway?`);
         const inst = l.currency === "USD" ? usd(l.installment) : egp(l.installment);
         return `<tr><td>${l.label}</td><td class="num mono">${amt}</td><td class="num mono">${inst}</td></tr>`;
       }).join("");
+      const certificateRowsHtml = CERTIFICATES.map((c) => `<tr><td>${c.label}</td><td class="num mono">${c.rate.toFixed(2)}%</td><td class="num mono">${egp(c.amount)}</td><td>${fmtDate(c.openDate)}</td><td>${fmtDate(c.maturityDate)}</td></tr>`).join("");
+      const certificateTotal = CERTIFICATES.reduce((s, c) => s + c.amount, 0);
       const loanFacilityRowsHtml = LOAN_FACILITIES.map((f) => `<tr><td>${f.label}</td><td class="num mono">${f.rate.toFixed(1)}%</td><td class="num mono">${egp(f.amountFinanced)}</td><td class="num mono">${egp(f.outstanding)}</td><td class="num mono">${egp(f.installment)}</td><td>${fmtDate(f.openDate)}</td><td>${fmtDate(f.maturityDate)}</td></tr>`).join("");
       const loanFacilityTotals = LOAN_FACILITIES.reduce((s, f) => ({ amountFinanced: s.amountFinanced + f.amountFinanced, outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { amountFinanced: 0, outstanding: 0, installment: 0 });
       const convRowsHtml = conversionsWithRunning.map((c) => `<tr><td>${c.date}</td><td style="text-transform:capitalize">${c.type}</td><td class="num mono">${usd(c.amountUsd)}</td><td class="num mono">${usd(c.running)}</td></tr>`).join("");
@@ -1071,6 +1116,8 @@ Save anyway?`);
 
   <h2>Holdings</h2>
   <table><tr><th>Holding</th><th>Purchase date</th><th class="num">Purchase amount</th><th class="num">Bought at</th><th class="num">Now</th><th class="num">Gain</th><th class="num">Value</th><th class="num">% of total</th></tr>${rowsHtml}</table>
+  <p class="note">The ${CERTIFICATES.length} EGP certificates & CDs, individually — these roll up into the single "EGP certificates & CDs" holding above.</p>
+  <table><tr><th>Certificate</th><th class="num">Rate</th><th class="num">Amount</th><th>Opened</th><th>Matures</th></tr>${certificateRowsHtml}<tr><td><b>Total (${CERTIFICATES.length})</b></td><td></td><td class="num mono"><b>${egp(certificateTotal)}</b></td><td></td><td></td></tr></table>
 
   <h2>Currency conversion history</h2>
   <table><tr><th>Date</th><th>Type</th><th class="num">Amount, USD</th><th class="num">Running balance</th></tr>${convRowsHtml}</table>
@@ -1249,7 +1296,12 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "02", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
-          /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit })
+          /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit }),
+          /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${CERTIFICATES.length} EGP certificates & CDs, individually` }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “EGP certificates & CDs” holding above." }),
+            /* @__PURE__ */ jsx(CertificatesTable, { certificates: CERTIFICATES })
+          ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
