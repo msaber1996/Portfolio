@@ -1,0 +1,111 @@
+name: Daily leverage/FX alert email
+
+on:
+  schedule:
+    - cron: '10 5 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check leverage/FX thresholds and email if crossed
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_APP_PASSWORD: ${{ secrets.MAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: |
+          set -euo pipefail
+
+          FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          # Same low-privilege "service" account used by update-rates.yml — it only
+          # needs read access here, which the database rules already grant to any
+          # authenticated user.
+          ID_TOKEN=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
+            | jq -r '.idToken')
+
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to get a Firebase auth token, aborting."
+            exit 1
+          fi
+
+          DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
+          DAILY=$(curl -sf "${DB}/daily.json?auth=${ID_TOKEN}")
+          LOANS=$(curl -sf "${DB}/loans.json?auth=${ID_TOKEN}")
+          HOLDINGS=$(curl -sf "${DB}/holdings.json?auth=${ID_TOKEN}")
+
+          # Mirrors the same day-over-day leverage/FX threshold logic as the
+          # on-site banner (bundle.js: dailyAlert), so the two stay in sync.
+          RESULT=$(node -e '
+            const daily = JSON.parse(process.argv[1]) || {};
+            const loans = JSON.parse(process.argv[2]) || {};
+            const holdings = JSON.parse(process.argv[3]) || {};
+            const days = Object.values(daily).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
+            if (days.length < 2) { console.log(JSON.stringify({ trigger: false })); process.exit(0); }
+            const prevDay = days[days.length - 2];
+            const currDay = days[days.length - 1];
+            function computeAssets(entry) {
+              const rate = Number(entry.rate) || 0;
+              const goldPrice = Number(entry.gold) || 0;
+              let total = 0;
+              Object.values(holdings).filter(Boolean).forEach((h) => {
+                if (h.type === "fund") {
+                  const raw = entry[h.navGroup];
+                  const nav = raw !== undefined && raw !== "" ? Number(raw) : h.purchaseNav;
+                  const current = h.purchaseNav ? (h.investment / h.purchaseNav) * nav : 0;
+                  total += h.currency === "USD" ? current * rate : current;
+                } else if (h.type === "gold") {
+                  total += goldPrice * (h.grams || 0);
+                } else {
+                  total += h.currency === "USD" ? h.investment * rate : h.investment;
+                }
+              });
+              return total;
+            }
+            const totalLiabilities = Object.values(loans).filter(Boolean).reduce(
+              (s, l) => s + (l.currency === "USD" ? l.amount * (Number(currDay.rate) || 0) : l.amount), 0
+            );
+            const prevAssets = computeAssets(prevDay);
+            const currAssets = computeAssets(currDay);
+            const prevLeverage = prevAssets ? (totalLiabilities / prevAssets) * 100 : 0;
+            const currLeverage = currAssets ? (totalLiabilities / currAssets) * 100 : 0;
+            const leverageDelta = currLeverage - prevLeverage;
+            const rateDelta = prevDay.rate ? ((currDay.rate - prevDay.rate) / prevDay.rate) * 100 : 0;
+            const triggers = [];
+            if (Math.abs(leverageDelta) >= 3) {
+              triggers.push(`Leverage ${leverageDelta >= 0 ? "+" : "−"}${Math.abs(leverageDelta).toFixed(1)} points since ${prevDay.date} (now ${currLeverage.toFixed(1)}%)`);
+            }
+            if (Math.abs(rateDelta) >= 3) {
+              triggers.push(`USD/EGP rate ${rateDelta >= 0 ? "+" : "−"}${Math.abs(rateDelta).toFixed(1)}% since ${prevDay.date} (now ${currDay.rate})`);
+            }
+            console.log(JSON.stringify({ trigger: triggers.length > 0, triggers, date: currDay.date }));
+          ' "$DAILY" "$LOANS" "$HOLDINGS")
+
+          echo "$RESULT"
+          TRIGGER=$(echo "$RESULT" | jq -r '.trigger')
+          if [ "$TRIGGER" != "true" ]; then
+            echo "No threshold crossed today, not sending an email."
+            exit 0
+          fi
+
+          if [ -z "${MAIL_USERNAME:-}" ] || [ -z "${MAIL_APP_PASSWORD:-}" ] || [ -z "${MAIL_TO:-}" ]; then
+            echo "Threshold crossed, but MAIL_USERNAME/MAIL_APP_PASSWORD/MAIL_TO secrets aren't set yet — skipping email."
+            exit 0
+          fi
+
+          SUBJECT="Portfolio alert: notable move on $(echo "$RESULT" | jq -r '.date')"
+          BODY=$(echo "$RESULT" | jq -r '.triggers | join("\n")')
+
+          printf 'From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s\r\n' "$MAIL_USERNAME" "$MAIL_TO" "$SUBJECT" "$BODY" > /tmp/mail.txt
+
+          curl -sf --url 'smtps://smtp.gmail.com:465' \
+            --ssl-reqd \
+            --mail-from "$MAIL_USERNAME" \
+            --mail-rcpt "$MAIL_TO" \
+            --user "${MAIL_USERNAME}:${MAIL_APP_PASSWORD}" \
+            --upload-file /tmp/mail.txt
+
+          echo "Alert email sent."
