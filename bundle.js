@@ -794,6 +794,7 @@
     const [saving, setSaving] = useState(false);
     const [savedFlash, setSavedFlash] = useState(false);
     const [liveRates, setLiveRates] = useState(null);
+    const [dismissedAlertDate, setDismissedAlertDate] = useState(null);
     const saveTimers = useRef({});
     useEffect(() => {
       let cancelled = false;
@@ -943,6 +944,25 @@ Save anyway?`);
     );
     const netWorth = totalAssets - totalLiabilities;
     const debtRatioPct = totalAssets ? totalLiabilities / totalAssets * 100 : 0;
+    const dailyAlert = useMemo(() => {
+      if (computedHistory.length < 2 || !totalLiabilities) return null;
+      const prevDay = computedHistory[computedHistory.length - 2];
+      const currDay = computedHistory[computedHistory.length - 1];
+      const prevLeverage = prevDay.totalAssets ? totalLiabilities / prevDay.totalAssets * 100 : 0;
+      const currLeverage = currDay.totalAssets ? totalLiabilities / currDay.totalAssets * 100 : 0;
+      const leverageDelta = currLeverage - prevLeverage;
+      const rateDelta = prevDay.rate ? (currDay.rate - prevDay.rate) / prevDay.rate * 100 : 0;
+      const triggers = [];
+      const LEVERAGE_THRESHOLD_POINTS = 3;
+      const RATE_THRESHOLD_PCT = 3;
+      if (Math.abs(leverageDelta) >= LEVERAGE_THRESHOLD_POINTS) {
+        triggers.push(`Leverage ${leverageDelta >= 0 ? "+" : "−"}${Math.abs(leverageDelta).toFixed(1)} points since ${prevDay.date} (now ${currLeverage.toFixed(1)}%)`);
+      }
+      if (Math.abs(rateDelta) >= RATE_THRESHOLD_PCT) {
+        triggers.push(`USD/EGP rate ${rateDelta >= 0 ? "+" : "−"}${Math.abs(rateDelta).toFixed(1)}% since ${prevDay.date} (now ${fmt(currDay.rate, 2)})`);
+      }
+      return triggers.length ? { date: currDay.date, triggers } : null;
+    }, [computedHistory, totalLiabilities]);
     const totalEgpInvestment = useMemo(() => {
       return holdings.filter((h) => h.currency === "EGP").reduce((s, h) => s + h.investment, 0);
     }, [holdings]);
@@ -1195,6 +1215,13 @@ Save anyway?`);
       ] });
     }
     return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 text-neutral-900 font-sans", children: [
+      dailyAlert && dailyAlert.date !== dismissedAlertDate && /* @__PURE__ */ jsx("div", { className: "bg-amber-50 border-b-2 border-amber-400", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-sm text-amber-900 leading-relaxed", children: [
+          /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Notable move today — " }),
+          dailyAlert.triggers.join(" · ")
+        ] }),
+        /* @__PURE__ */ jsx("button", { onClick: () => setDismissedAlertDate(dailyAlert.date), className: "text-xs text-amber-700 underline shrink-0 whitespace-nowrap", children: "Dismiss" })
+      ] }) }),
       /* @__PURE__ */ jsx("header", { className: "border-b-2 border-neutral-900 bg-neutral-50", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 pt-8 pb-6", children: [
         /* @__PURE__ */ jsx("div", { className: "flex items-baseline justify-between font-mono text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx("span", { children: "Portfolio Review \u2014 No. 006" }),
