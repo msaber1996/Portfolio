@@ -130,7 +130,7 @@
   ];
   var OFFICE_QUARTERLY_INSTALLMENT = 9093753;
   var SEED_LOANS = [
-    { id: "loan-egp", label: "Secured EGP loans (9 facilities, incl. villa)", currency: "EGP", amount: 91141821.28, rate: "", installment: 4031095.38 },
+    { id: "loan-egp", label: "Secured EGP loans (9 facilities)", currency: "EGP", amount: 91141821.28, rate: "", installment: 4031095.38 },
     { id: "loan-usd", label: "USD loan (CIB)", currency: "USD", amount: 72e4, rate: 7, installment: 22231.51 }
   ];
   var LOAN_FACILITIES = [
