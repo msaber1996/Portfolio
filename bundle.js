@@ -763,6 +763,11 @@
       await db.ref(`roles/${targetUid}/role`).set(nextRole);
       setUpdating(null);
     };
+    const removeUser = async (targetUid) => {
+      setUpdating(targetUid);
+      await db.ref(`roles/${targetUid}`).remove();
+      setUpdating(null);
+    };
     if (roles === null) {
       return /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-400", children: "Loading users…" });
     }
@@ -782,7 +787,8 @@
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right", children: isOwnerOrService ? null : updating === entryUid ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Saving…" }) : isPendingOrRejected ? /* @__PURE__ */ jsx("div", { className: "flex gap-2 justify-end", children: [
             /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "viewer"), className: "text-xs border border-neutral-300 px-2 py-1 hover:border-neutral-600", children: "Accept as viewer" }),
             /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "editor"), className: "text-xs border border-neutral-300 px-2 py-1 hover:border-neutral-600", children: "Accept as editor" }),
-            r.role !== "rejected" && /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "rejected"), className: "text-xs text-red-600 border border-red-300 px-2 py-1 hover:border-red-600", children: "Reject" })
+            r.role !== "rejected" && /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "rejected"), className: "text-xs text-red-600 border border-red-300 px-2 py-1 hover:border-red-600", children: "Reject" }),
+            /* @__PURE__ */ jsx("button", { onClick: () => removeUser(entryUid), className: "text-xs text-neutral-400 hover:text-red-600", children: "Delete" })
           ] }) : /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "rejected"), className: "text-xs text-neutral-400 hover:text-red-600", children: "Revoke" }) })
         ] }, entryUid);
       }) })
