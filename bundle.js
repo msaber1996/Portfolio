@@ -626,11 +626,13 @@
   }
   function CertificatesTable({ certificates }) {
     const total = certificates.reduce((s, c) => s + c.amount, 0);
+    const totalMonthlyInterest = certificates.reduce((s, c) => s + c.amount * c.rate / 100 / 12, 0);
     return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Certificate" }),
         /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Rate %" }),
         /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Amount" }),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Monthly interest" }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Opened" }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Matures" })
       ] }) }),
@@ -638,6 +640,7 @@
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: c.label }),
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: c.rate.toFixed(2) }),
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(c.amount) }),
+        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(c.amount * c.rate / 100 / 12) }),
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(c.openDate) }),
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(c.maturityDate) })
       ] }, i)) }),
@@ -645,6 +648,7 @@
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: `Total (${certificates.length})` }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(total) }),
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totalMonthlyInterest) }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" })
       ] }) })
@@ -1082,8 +1086,9 @@ Save anyway?`);
         const inst = l.currency === "USD" ? usd(l.installment) : egp(l.installment);
         return `<tr><td>${l.label}</td><td class="num mono">${amt}</td><td class="num mono">${inst}</td></tr>`;
       }).join("");
-      const certificateRowsHtml = CERTIFICATES.map((c) => `<tr><td>${c.label}</td><td class="num mono">${c.rate.toFixed(2)}%</td><td class="num mono">${egp(c.amount)}</td><td>${fmtDate(c.openDate)}</td><td>${fmtDate(c.maturityDate)}</td></tr>`).join("");
+      const certificateRowsHtml = CERTIFICATES.map((c) => `<tr><td>${c.label}</td><td class="num mono">${c.rate.toFixed(2)}%</td><td class="num mono">${egp(c.amount)}</td><td class="num mono">${egp(c.amount * c.rate / 100 / 12)}</td><td>${fmtDate(c.openDate)}</td><td>${fmtDate(c.maturityDate)}</td></tr>`).join("");
       const certificateTotal = CERTIFICATES.reduce((s, c) => s + c.amount, 0);
+      const certificateMonthlyInterestTotal = CERTIFICATES.reduce((s, c) => s + c.amount * c.rate / 100 / 12, 0);
       const loanFacilityRowsHtml = LOAN_FACILITIES.map((f) => `<tr><td>${f.label}</td><td class="num mono">${f.rate.toFixed(1)}%</td><td class="num mono">${egp(f.amountFinanced)}</td><td class="num mono">${egp(f.outstanding)}</td><td class="num mono">${egp(f.installment)}</td><td>${fmtDate(f.openDate)}</td><td>${fmtDate(f.maturityDate)}</td></tr>`).join("");
       const loanFacilityTotals = LOAN_FACILITIES.reduce((s, f) => ({ amountFinanced: s.amountFinanced + f.amountFinanced, outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { amountFinanced: 0, outstanding: 0, installment: 0 });
       const convRowsHtml = conversionsWithRunning.map((c) => `<tr><td>${c.date}</td><td style="text-transform:capitalize">${c.type}</td><td class="num mono">${usd(c.amountUsd)}</td><td class="num mono">${usd(c.running)}</td></tr>`).join("");
@@ -1160,7 +1165,8 @@ Save anyway?`);
   <h2>Holdings</h2>
   <table><tr><th>Holding</th><th>Purchase date</th><th class="num">Purchase amount</th><th class="num">Bought at</th><th class="num">Now</th><th class="num">Gain</th><th class="num">Value</th><th class="num">% of total</th></tr>${rowsHtml}</table>
   <p class="note">The ${CERTIFICATES.length} EGP certificates & CDs, individually — these roll up into the single "EGP certificates & CDs" holding above.</p>
-  <table><tr><th>Certificate</th><th class="num">Rate</th><th class="num">Amount</th><th>Opened</th><th>Matures</th></tr>${certificateRowsHtml}<tr><td><b>Total (${CERTIFICATES.length})</b></td><td></td><td class="num mono"><b>${egp(certificateTotal)}</b></td><td></td><td></td></tr></table>
+  <table><tr><th>Certificate</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Monthly interest</th><th>Opened</th><th>Matures</th></tr>${certificateRowsHtml}<tr><td><b>Total (${CERTIFICATES.length})</b></td><td></td><td class="num mono"><b>${egp(certificateTotal)}</b></td><td class="num mono"><b>${egp(certificateMonthlyInterestTotal)}</b></td><td></td><td></td></tr></table>
+  <p class="note">Total monthly interest across all certificates reconciles with the "EGP — certificate & fund income" line in the cash flow section below.</p>
 
   <h2>Currency conversion history</h2>
   <table><tr><th>Date</th><th>Type</th><th class="num">Amount, USD</th><th class="num">Running balance</th></tr>${convRowsHtml}</table>
@@ -1357,7 +1363,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${CERTIFICATES.length} EGP certificates & CDs, individually` }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “EGP certificates & CDs” holding above." }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “EGP certificates & CDs” holding above. Monthly interest reconciles with the “EGP — certificate & fund income” line in section 07." }),
             /* @__PURE__ */ jsx(CertificatesTable, { certificates: CERTIFICATES })
           ] })
         ] }),
