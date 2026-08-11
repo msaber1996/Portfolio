@@ -773,11 +773,19 @@
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Role" }),
         /* @__PURE__ */ jsx("th", { className: "py-2" })
       ] }) }),
-      /* @__PURE__ */ jsx("tbody", { children: entries.map(([entryUid, r]) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: r?.email || entryUid }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: r?.role === "owner" || r?.role === "service" ? /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500", children: r.role }) : /* @__PURE__ */ jsx(Select, { value: r?.role || "viewer", onChange: (v) => changeRole(entryUid, v), options: ["viewer", "editor"] }) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-xs text-neutral-400", children: updating === entryUid ? "Saving…" : "" })
-      ] }, entryUid)) })
+      /* @__PURE__ */ jsx("tbody", { children: entries.map(([entryUid, r]) => {
+        const isOwnerOrService = r?.role === "owner" || r?.role === "service";
+        const isPendingOrRejected = r?.role === "pending" || r?.role === "rejected";
+        return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: r?.email || entryUid }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: isOwnerOrService ? /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500", children: r.role }) : isPendingOrRejected ? /* @__PURE__ */ jsx("span", { className: `text-xs uppercase tracking-wide ${r.role === "pending" ? "text-amber-600" : "text-red-600"}`, children: r.role }) : /* @__PURE__ */ jsx(Select, { value: r?.role || "viewer", onChange: (v) => changeRole(entryUid, v), options: ["viewer", "editor"] }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right", children: isOwnerOrService ? null : updating === entryUid ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Saving…" }) : isPendingOrRejected ? /* @__PURE__ */ jsx("div", { className: "flex gap-2 justify-end", children: [
+            /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "viewer"), className: "text-xs border border-neutral-300 px-2 py-1 hover:border-neutral-600", children: "Accept as viewer" }),
+            /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "editor"), className: "text-xs border border-neutral-300 px-2 py-1 hover:border-neutral-600", children: "Accept as editor" }),
+            r.role !== "rejected" && /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "rejected"), className: "text-xs text-red-600 border border-red-300 px-2 py-1 hover:border-red-600", children: "Reject" })
+          ] }) : /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "rejected"), className: "text-xs text-neutral-400 hover:text-red-600", children: "Revoke" }) })
+        ] }, entryUid);
+      }) })
     ] }) });
   }
   function PortfolioReadinessApp({ onSignOut, role, uid }) {
@@ -1641,8 +1649,8 @@ Save anyway?`);
     const [confirm, setConfirm] = useState("");
     if (success) {
       return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center p-6 font-sans", children: /* @__PURE__ */ jsx("div", { className: "w-full max-w-sm border border-neutral-300 bg-white p-6", children: [
-        /* @__PURE__ */ jsx("h1", { className: "font-serif text-2xl text-neutral-900 mb-3", children: "Account created" }),
-        /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600", children: "You're signed in as a viewer — you can look around, but editing is off until the owner upgrades your account." })
+        /* @__PURE__ */ jsx("h1", { className: "font-serif text-2xl text-neutral-900 mb-3", children: "Request submitted" }),
+        /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600", children: "Your account has been created, but you won't see anything until the owner approves your request." })
       ] }) });
     }
     return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center p-6 font-sans", children: /* @__PURE__ */ jsx(
@@ -1656,7 +1664,7 @@ Save anyway?`);
         className: "w-full max-w-sm border border-neutral-300 bg-white p-6",
         children: [
           /* @__PURE__ */ jsx("h1", { className: "font-serif text-2xl text-neutral-900 mb-1", children: "Create an account" }),
-          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-6", children: "You'll get view-only access until the owner upgrades you." }),
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-6", children: "Your request needs the owner's approval before you can see anything." }),
           /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1 mb-3", children: [
             /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "Username" }),
             /* @__PURE__ */ jsx("input", { type: "text", autoComplete: "username", value: username, onChange: (e) => setUsername(e.target.value), className: "border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-neutral-800" })
@@ -1675,6 +1683,14 @@ Save anyway?`);
         ]
       }
     ) });
+  }
+  function PendingApprovalScreen({ role, onSignOut }) {
+    const rejected = role === "rejected";
+    return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center p-6 font-sans", children: /* @__PURE__ */ jsx("div", { className: "w-full max-w-sm border border-neutral-300 bg-white p-6", children: [
+      /* @__PURE__ */ jsx("h1", { className: "font-serif text-2xl text-neutral-900 mb-3", children: rejected ? "Access not granted" : "Waiting for approval" }),
+      /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-5", children: rejected ? "The owner hasn't approved this account. Contact them if you think this is a mistake." : "Your request is with the owner. You'll get access as soon as they approve it — no need to sign up again." }),
+      /* @__PURE__ */ jsx("button", { onClick: onSignOut, className: "text-xs uppercase tracking-wide border border-neutral-300 px-4 py-2 hover:bg-neutral-100 transition-colors", children: "Log out" })
+    ] }) });
   }
   function PortfolioReadiness() {
     const [user, setUser] = useState(null);
@@ -1704,9 +1720,9 @@ Save anyway?`);
       }
       let cancelled = false;
       db.ref(`roles/${user.uid}/role`).once("value").then((snap) => {
-        if (!cancelled) setRole(snap.val() || "viewer");
+        if (!cancelled) setRole(snap.val() || "pending");
       }).catch(() => {
-        if (!cancelled) setRole("viewer");
+        if (!cancelled) setRole("pending");
       });
       return () => {
         cancelled = true;
@@ -1747,7 +1763,7 @@ Save anyway?`);
       try {
         const email = username.includes("@") ? username : `${username}@${AUTH_EMAIL_DOMAIN}`;
         const cred = await window.firebase.auth(firebaseApp).createUserWithEmailAndPassword(email, password);
-        await db.ref(`roles/${cred.user.uid}`).set({ role: "viewer", email });
+        await db.ref(`roles/${cred.user.uid}`).set({ role: "pending", email });
         setSignedUp(true);
       } catch (e) {
         setSignUpError(e && e.code === "auth/email-already-in-use" ? "That username is taken." : "Couldn't create the account.");
@@ -1772,6 +1788,9 @@ Save anyway?`);
         /* @__PURE__ */ jsx(Loader2, { className: "animate-spin mr-2", size: 16 }),
         " Loading…"
       ] });
+    }
+    if (role !== "owner" && role !== "editor" && role !== "viewer" && role !== "service") {
+      return /* @__PURE__ */ jsx(PendingApprovalScreen, { role, onSignOut: handleSignOut });
     }
     return /* @__PURE__ */ jsx(ReportErrorBoundary, { children: /* @__PURE__ */ jsx(PortfolioReadinessApp, { onSignOut: handleSignOut, role, uid: user.uid }) });
   }
