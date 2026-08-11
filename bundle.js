@@ -926,21 +926,30 @@ Save anyway?`);
     }), [navFields, holdings, computedHistory]);
     const latestComputed = computedHistory[computedHistory.length - 1];
     const firstComputed = computedHistory[0];
-    const ASSETS = latestComputed?.rows || [];
-    const totalAssets = latestComputed?.totalAssets || 0;
+    const today = /* @__PURE__ */ new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const isLivePreview = !!(liveRates && latestComputed && latestComputed.date !== todayStr && (liveRates.rate || liveRates.gold));
+    const displayComputed = useMemo(() => {
+      if (!isLivePreview) return latestComputed;
+      const liveEntry = { ...latestComputed, rate: liveRates.rate ?? latestComputed.rate, gold: liveRates.gold ?? latestComputed.gold };
+      return computeDay(liveEntry, holdings, navAdjustByDate[latestComputed.date]);
+    }, [isLivePreview, latestComputed, liveRates, holdings, navAdjustByDate]);
+    const asOfLabel = isLivePreview ? `${todayStr} (live)` : latestComputed?.date || "";
+    const ASSETS = displayComputed?.rows || [];
+    const totalAssets = displayComputed?.totalAssets || 0;
     const performanceRanking = useMemo(() => ASSETS.filter((a) => a.purchaseNav != null).sort((a, b) => b.gainPct - a.gainPct), [ASSETS]);
     const variableInvestments = useMemo(() => {
-      const totalInvested = latestComputed?.markedToMarketCost || 0;
-      const totalProfit = latestComputed?.gain || 0;
+      const totalInvested = displayComputed?.markedToMarketCost || 0;
+      const totalProfit = displayComputed?.gain || 0;
       const returnPct = totalInvested ? totalProfit / totalInvested * 100 : 0;
       const durationDays = firstComputed && latestComputed ? Math.max(0, Math.round((new Date(latestComputed.date + "T00:00:00") - new Date(firstComputed.date + "T00:00:00")) / 864e5)) : 0;
       return { totalInvested, totalProfit, returnPct, durationDays };
-    }, [firstComputed, latestComputed]);
+    }, [firstComputed, latestComputed, displayComputed]);
     const currentValueById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency === "USD" ? a.currentNative : a.value])), [ASSETS]);
     const currentValueCurrencyById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency])), [ASSETS]);
     const totalLiabilities = useMemo(
-      () => loans.reduce((s, l) => s + (l.currency === "USD" ? l.amount * (latestComputed?.rate || 0) : l.amount), 0),
-      [loans, latestComputed]
+      () => loans.reduce((s, l) => s + (l.currency === "USD" ? l.amount * (displayComputed?.rate || 0) : l.amount), 0),
+      [loans, displayComputed]
     );
     const netWorth = totalAssets - totalLiabilities;
     const debtRatioPct = totalAssets ? totalLiabilities / totalAssets * 100 : 0;
@@ -1107,9 +1116,9 @@ Save anyway?`);
     <button onclick="window.print()" style="background:transparent;border:1px solid #737373;color:#fff;padding:6px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;">Print / Save as PDF</button>
   </div>
 
-  <div class="eyebrow"><span>Portfolio Review \u2014 Final Report</span><span>${latest?.date || ""}</span></div>
+  <div class="eyebrow"><span>Portfolio Review \u2014 Final Report</span><span>${asOfLabel}</span></div>
   <h1>Portfolio Readiness</h1>
-  <p class="dek">${readinessLabel} \u2014 composite score ${readiness} of 100. Prepared from data tracked through ${latest?.date || ""}.</p>
+  <p class="dek">${readinessLabel} \u2014 composite score ${readiness} of 100. Prepared from data as of ${asOfLabel}.</p>
 
   <div class="grid4">
     <div><div class="stat-label">Total assets</div><div class="stat-value mono">${egp(totalAssets)}</div></div>
@@ -1165,7 +1174,7 @@ Save anyway?`);
   <p class="note">${scenario.description} Income covers <b>${usd(scenario.monthlyIncome)}</b> of the ${usd(USD_GAP)} monthly gap (${coveragePct.toFixed(0)}%). Still short: <b>${remainingGap <= 0.01 ? usd(0) : usd(remainingGap)}</b> per month.</p>
 
   <h2>Performance ranking, strongest to weakest</h2>
-  <p class="note">As of ${latest?.date || ""} — regenerate this report after any new day's entry to refresh the ranking.</p>
+  <p class="note">As of ${asOfLabel} — regenerate this report after any new day's entry to refresh the ranking.</p>
   <table><tr><th>Rank</th><th>Holding</th><th>Purchase date</th><th class="num">Purchase value</th><th class="num">Current value</th><th class="num">Net gain / loss</th><th class="num">Gain since purchase</th></tr>${performanceRankingRowsHtml}</table>
 
   <h2>History</h2>
@@ -1194,6 +1203,7 @@ Save anyway?`);
       firstComputed,
       variableInvestments,
       latest,
+      asOfLabel,
       readinessLabel,
       readiness,
       totalLiabilities,
@@ -1285,6 +1295,13 @@ Save anyway?`);
             ] })
           ] }),
           /* @__PURE__ */ jsx("div", { className: "md:col-span-2 flex flex-col gap-6", children: [
+            /* @__PURE__ */ jsx("div", { className: "flex items-center gap-1.5 text-xs", children: isLivePreview ? [
+              /* @__PURE__ */ jsx("span", { className: "relative flex h-2 w-2", children: [
+                /* @__PURE__ */ jsx("span", { className: "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" }),
+                /* @__PURE__ */ jsx("span", { className: "relative inline-flex rounded-full h-2 w-2 bg-emerald-500" })
+              ] }),
+              /* @__PURE__ */ jsx("span", { className: "text-emerald-700", children: `Live pricing — USD/EGP ${fmt(liveRates.rate, 2)}, gold ${fmt(liveRates.gold)} EGP/g. Not yet saved as today's entry.` })
+            ] : /* @__PURE__ */ jsx("span", { className: "text-neutral-400", children: `Priced as of ${latest?.date || ""}.` }) }),
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-2 gap-x-6 gap-y-6", children: [
               /* @__PURE__ */ jsx(Stat, { label: "Total assets", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: totalAssets, format: egp }), emphasis: true }),
               /* @__PURE__ */ jsx(Stat, { label: "Total liabilities", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: totalLiabilities, format: egp }), emphasis: true }),
@@ -1335,7 +1352,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange, canEdit })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "What the assets are worth", dek: `${ASSETS.length} holdings, ${egp(totalAssets)} in total, priced ${latest?.date || ""}. Expand a row for its detail.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "What the assets are worth", dek: `${ASSETS.length} holdings, ${egp(totalAssets)} in total, priced ${asOfLabel}. Expand a row for its detail.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-neutral-50 p-5", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Your variable investments, in plain terms" }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Funds, gold, and Beltone — the holdings whose price moves day to day. Certificates (fixed principal) aren't included here." }),
@@ -1462,7 +1479,7 @@ Save anyway?`);
           ] }),
           performanceRanking.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-1", children: "Performance ranking, strongest to weakest" }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mb-3", children: `As of ${latest?.date || ""} — updates automatically the moment a new day's entry is saved.` }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mb-3", children: `As of ${asOfLabel} — updates automatically the moment a new day's entry is saved.` }),
             /* @__PURE__ */ jsx(PerformanceRankingTable, { rows: performanceRanking })
           ] }),
           analysis && /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-8 mb-8", children: [
