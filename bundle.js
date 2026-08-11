@@ -1638,7 +1638,8 @@ Save anyway?`);
             /* @__PURE__ */ jsx("input", { type: "password", autoComplete: "current-password", value: password, onChange: (e) => setPassword(e.target.value), className: "border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:border-neutral-800" })
           ] }),
           error && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-600 mb-4", children: error }),
-          /* @__PURE__ */ jsx("button", { type: "submit", disabled: loading, className: "w-full bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2.5 disabled:opacity-50", children: loading ? "Signing in…" : "Sign in" })
+          /* @__PURE__ */ jsx("button", { type: "submit", disabled: loading, className: "w-full bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2.5 disabled:opacity-50", children: loading ? "Signing in…" : "Sign in" }),
+          /* @__PURE__ */ jsx("a", { href: "?signup=1", className: "block text-center text-xs text-neutral-400 hover:text-neutral-700 mt-4", children: "Don't have an account? Sign up" })
         ]
       }
     ) });
@@ -1679,7 +1680,8 @@ Save anyway?`);
           ] }),
           password && confirm && password !== confirm && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-600 mb-4", children: "Passwords don't match." }),
           error && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-600 mb-4", children: error }),
-          /* @__PURE__ */ jsx("button", { type: "submit", disabled: loading, className: "w-full bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2.5 disabled:opacity-50", children: loading ? "Creating…" : "Create account" })
+          /* @__PURE__ */ jsx("button", { type: "submit", disabled: loading, className: "w-full bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2.5 disabled:opacity-50", children: loading ? "Creating…" : "Create account" }),
+          /* @__PURE__ */ jsx("a", { href: "?", className: "block text-center text-xs text-neutral-400 hover:text-neutral-700 mt-4", children: "Already have an account? Sign in" })
         ]
       }
     ) });
