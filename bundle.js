@@ -271,6 +271,26 @@
   var signedEgp = (n) => `${n >= 0 ? "+" : "\u2212"}${fmt(Math.abs(n))} EGP`;
   var pctStr = (n, d = 1) => `${n >= 0 ? "+" : ""}${n.toFixed(d)}%`;
   var fmtDate = (d) => d ? (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  var formatLastSeen = (ts) => {
+    if (!ts) return "—";
+    const diffMs = Date.now() - ts;
+    const mins = Math.floor(diffMs / 6e4);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  };
+  var MATURITY_WARNING_DAYS = 30;
+  var daysUntil = (dateStr) => {
+    if (!dateStr) return null;
+    const today = /* @__PURE__ */ new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(dateStr + "T00:00:00");
+    return Math.round((target - today) / 864e5);
+  };
   function computeDay(entry, holdings, navAdjust) {
     const rate = Number(entry.rate) || 0;
     const goldPrice = Number(entry.gold) || 0;
@@ -627,32 +647,49 @@
   function CertificatesTable({ certificates }) {
     const total = certificates.reduce((s, c) => s + c.amount, 0);
     const totalMonthlyInterest = certificates.reduce((s, c) => s + c.amount * c.rate / 100 / 12, 0);
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
-      /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
-        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Certificate" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Rate %" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Amount" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Monthly interest" }),
-        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Opened" }),
-        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Matures" })
-      ] }) }),
-      /* @__PURE__ */ jsx("tbody", { children: certificates.map((c, i) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: c.label }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: c.rate.toFixed(2) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(c.amount) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(c.amount * c.rate / 100 / 12) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(c.openDate) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(c.maturityDate) })
-      ] }, i)) }),
-      /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: `Total (${certificates.length})` }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(total) }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totalMonthlyInterest) }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" })
+    const maturedCount = certificates.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d < 0; }).length;
+    const maturingSoonCount = certificates.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d >= 0 && d <= MATURITY_WARNING_DAYS; }).length;
+    return /* @__PURE__ */ jsx("div", { children: [
+      (maturedCount > 0 || maturingSoonCount > 0) && /* @__PURE__ */ jsx("div", { className: "mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-300 px-3 py-2", children: [
+        maturedCount > 0 && `${maturedCount} certificate${maturedCount === 1 ? "" : "s"} already past maturity. `,
+        maturingSoonCount > 0 && `${maturingSoonCount} maturing within ${MATURITY_WARNING_DAYS} days.`
+      ] }),
+      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+        /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
+          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Certificate" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Rate %" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Amount" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Monthly interest" }),
+          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Opened" }),
+          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Matures" })
+        ] }) }),
+        /* @__PURE__ */ jsx("tbody", { children: certificates.map((c, i) => {
+          const days = daysUntil(c.maturityDate);
+          const matured = days !== null && days < 0;
+          const maturingSoon = days !== null && days >= 0 && days <= MATURITY_WARNING_DAYS;
+          return /* @__PURE__ */ jsx("tr", { className: `border-b border-neutral-100 ${matured ? "bg-red-50" : maturingSoon ? "bg-amber-50" : ""}`, children: [
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: c.label }),
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: c.rate.toFixed(2) }),
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(c.amount) }),
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(c.amount * c.rate / 100 / 12) }),
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(c.openDate) }),
+            /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 ${matured ? "text-red-700" : maturingSoon ? "text-amber-700" : "text-neutral-500"}`, children: [
+              fmtDate(c.maturityDate),
+              matured && ` — matured ${Math.abs(days)}d ago`,
+              maturingSoon && ` — in ${days}d`
+            ] })
+          ] }, i);
+        }) }),
+        /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
+          /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: `Total (${certificates.length})` }),
+          /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
+          /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(total) }),
+          /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totalMonthlyInterest) }),
+          /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
+          /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" })
+        ] }) })
       ] }) })
-    ] }) });
+    ] });
   }
   function PerformanceRankingTable({ rows }) {
     const signedNative = (amount, currency) => {
@@ -780,6 +817,7 @@
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Email" }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Role" }),
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Last seen" }),
         /* @__PURE__ */ jsx("th", { className: "py-2" })
       ] }) }),
       /* @__PURE__ */ jsx("tbody", { children: entries.map(([entryUid, r]) => {
@@ -788,6 +826,7 @@
         return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: r?.email || entryUid }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: isOwnerOrService ? /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500", children: r.role }) : isPendingOrRejected ? /* @__PURE__ */ jsx("span", { className: `text-xs uppercase tracking-wide ${r.role === "pending" ? "text-amber-600" : "text-red-600"}`, children: r.role }) : /* @__PURE__ */ jsx(Select, { value: r?.role || "viewer", onChange: (v) => changeRole(entryUid, v), options: ["viewer", "editor"] }) }),
+          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-xs text-neutral-500", children: formatLastSeen(r?.lastSeenAt) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right", children: isOwnerOrService ? null : updating === entryUid ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Saving…" }) : isPendingOrRejected ? /* @__PURE__ */ jsx("div", { className: "flex gap-2 justify-end", children: [
             /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "viewer"), className: "text-xs border border-neutral-300 px-2 py-1 hover:border-neutral-600", children: "Accept as viewer" }),
             /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "editor"), className: "text-xs border border-neutral-300 px-2 py-1 hover:border-neutral-600", children: "Accept as editor" }),
@@ -1741,6 +1780,11 @@ Save anyway?`);
       return () => {
         cancelled = true;
       };
+    }, [user]);
+    useEffect(() => {
+      if (!user || !db) return;
+      db.ref(`roles/${user.uid}/lastSeenAt`).set(Date.now()).catch(() => {
+      });
     }, [user]);
     useEffect(() => {
       if (!user) return;

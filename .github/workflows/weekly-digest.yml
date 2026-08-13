@@ -1,0 +1,135 @@
+name: Weekly portfolio digest email
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compose and send weekly digest
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_APP_PASSWORD: ${{ secrets.MAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: |
+          set -euo pipefail
+
+          FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          # Same low-privilege "service" account used by update-rates.yml and
+          # daily-alert-check.yml — read-only here, already granted by the rules.
+          ID_TOKEN=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
+            | jq -r '.idToken')
+
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to get a Firebase auth token, aborting."
+            exit 1
+          fi
+
+          if [ -z "${MAIL_USERNAME:-}" ] || [ -z "${MAIL_APP_PASSWORD:-}" ] || [ -z "${MAIL_TO:-}" ]; then
+            echo "MAIL_USERNAME/MAIL_APP_PASSWORD/MAIL_TO secrets aren't set yet — skipping digest."
+            exit 0
+          fi
+
+          DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
+          DAILY=$(curl -sf "${DB}/daily.json?auth=${ID_TOKEN}")
+          LOANS=$(curl -sf "${DB}/loans.json?auth=${ID_TOKEN}")
+          HOLDINGS=$(curl -sf "${DB}/holdings.json?auth=${ID_TOKEN}")
+
+          # Valuation math mirrors computeDay/dailyAlert in bundle.js. The
+          # certificate list below is a snapshot from bundle.js's CERTIFICATES
+          # constant — update both together if the certificates change.
+          BODY=$(node -e '
+            const daily = JSON.parse(process.argv[1]) || {};
+            const loans = JSON.parse(process.argv[2]) || {};
+            const holdings = JSON.parse(process.argv[3]) || {};
+            const CERTIFICATES = [
+              { label: "Platinum monthly CD (Alexandria)", amount: 1100000, rate: 21.5, maturityDate: "2027-08-18" },
+              { label: "Platinum monthly CD (Alexandria)", amount: 30000, rate: 21.5, maturityDate: "2027-08-18" },
+              { label: "Variable-yield monthly platinum CD (Sea Shell)", amount: 106000000, rate: 19.5, maturityDate: "2029-07-13" },
+              { label: "Variable-yield monthly platinum CD (Sea Shell)", amount: 114000000, rate: 19.5, maturityDate: "2029-07-01" },
+              { label: "Tiered-yield platinum CD (Sea Shell)", amount: 1000000, rate: 23, maturityDate: "2028-08-25" },
+              { label: "Tiered-yield platinum CD (Sea Shell)", amount: 1000000, rate: 23, maturityDate: "2028-08-25" },
+              { label: "Variable-yield monthly platinum CD (Sea Shell)", amount: 50000000, rate: 19.5, maturityDate: "2029-08-04" },
+              { label: "Platinum monthly CD (Agami)", amount: 9100000, rate: 21.5, maturityDate: "2028-04-13" },
+              { label: "Platinum monthly CD (Alexandria)", amount: 10250000, rate: 21.5, maturityDate: "2028-04-09" },
+              { label: "Platinum monthly CD (Sea Shell)", amount: 100000000, rate: 16, maturityDate: "2029-01-28" },
+              { label: "Platinum monthly CD (Alexandria)", amount: 7000000, rate: 21.5, maturityDate: "2027-04-05" },
+              { label: "Platinum monthly CD (Alexandria)", amount: 2300000, rate: 21.5, maturityDate: "2027-04-18" },
+              { label: "Platinum monthly CD (Alexandria)", amount: 5000000, rate: 21.5, maturityDate: "2027-06-23" },
+              { label: "Tiered-yield platinum CD (Sea Shell)", amount: 1000000, rate: 23, maturityDate: "2028-08-25" },
+              { label: "CIB certificate", amount: 50000000, rate: 17.25, maturityDate: null }
+            ];
+            const days = Object.values(daily).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
+            const latest = days[days.length - 1];
+            if (!latest) { console.log("No daily entries recorded yet — nothing to report."); process.exit(0); }
+            function computeAssets(entry) {
+              const rate = Number(entry.rate) || 0;
+              const goldPrice = Number(entry.gold) || 0;
+              let total = 0;
+              Object.values(holdings).filter(Boolean).forEach((h) => {
+                if (h.type === "fund") {
+                  const raw = entry[h.navGroup];
+                  const nav = raw !== undefined && raw !== "" ? Number(raw) : h.purchaseNav;
+                  const current = h.purchaseNav ? (h.investment / h.purchaseNav) * nav : 0;
+                  total += h.currency === "USD" ? current * rate : current;
+                } else if (h.type === "gold") {
+                  total += goldPrice * (h.grams || 0);
+                } else {
+                  total += h.currency === "USD" ? h.investment * rate : h.investment;
+                }
+              });
+              return total;
+            }
+            const totalAssets = computeAssets(latest);
+            const totalLiabilities = Object.values(loans).filter(Boolean).reduce(
+              (s, l) => s + (l.currency === "USD" ? l.amount * (Number(latest.rate) || 0) : l.amount), 0
+            );
+            const netWorth = totalAssets - totalLiabilities;
+            const leverage = totalAssets ? (totalLiabilities / totalAssets) * 100 : 0;
+            const fmt = (n) => Math.round(n).toLocaleString("en-US");
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const daysUntil = (d) => d ? Math.round((new Date(d + "T00:00:00") - today) / 864e5) : null;
+            const matured = CERTIFICATES.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d < 0; });
+            const soon = CERTIFICATES.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d >= 0 && d <= 30; });
+            const lines = [];
+            lines.push(`Portfolio weekly digest — as of ${latest.date}`);
+            lines.push("");
+            lines.push(`Total assets:      ${fmt(totalAssets)} EGP`);
+            lines.push(`Total liabilities: ${fmt(totalLiabilities)} EGP`);
+            lines.push(`Net worth:         ${fmt(netWorth)} EGP`);
+            lines.push(`Leverage:          ${leverage.toFixed(1)}%`);
+            lines.push(`USD/EGP rate:      ${latest.rate}`);
+            lines.push(`Gold, EGP/g:       ${latest.gold}`);
+            if (matured.length) {
+              lines.push("");
+              lines.push(`Certificates past maturity (${matured.length}):`);
+              matured.forEach((c) => lines.push(`  - ${c.label}, ${fmt(c.amount)} EGP, matured ${c.maturityDate}`));
+            }
+            if (soon.length) {
+              lines.push("");
+              lines.push(`Certificates maturing within 30 days (${soon.length}):`);
+              soon.forEach((c) => lines.push(`  - ${c.label}, ${fmt(c.amount)} EGP, matures ${c.maturityDate}`));
+            }
+            console.log(lines.join("\n"));
+          ' "$DAILY" "$LOANS" "$HOLDINGS")
+
+          echo "$BODY"
+
+          SUBJECT="Portfolio weekly digest — $(date -u +%Y-%m-%d)"
+          printf 'From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s\r\n' "$MAIL_USERNAME" "$MAIL_TO" "$SUBJECT" "$BODY" > /tmp/mail.txt
+
+          curl -sf --url 'smtps://smtp.gmail.com:465' \
+            --ssl-reqd \
+            --mail-from "$MAIL_USERNAME" \
+            --mail-rcpt "$MAIL_TO" \
+            --user "${MAIL_USERNAME}:${MAIL_APP_PASSWORD}" \
+            --upload-file /tmp/mail.txt
+
+          echo "Weekly digest sent."

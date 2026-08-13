@@ -7,7 +7,10 @@
       ".read": "auth != null && root.child('roles').child(auth.uid).child('role').val() === 'owner'",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || (!data.exists() && auth.uid === $uid && newData.child('role').val() === 'pending'))"
+        ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || (!data.exists() && auth.uid === $uid && newData.child('role').val() === 'pending'))",
+        "lastSeenAt": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
       }
     },
 
@@ -17,11 +20,11 @@
     },
 
     "holdings": {
-      ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer')",
+      ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer' || root.child('roles').child(auth.uid).child('role').val() === 'service')",
       ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
     },
     "loans": {
-      ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer')",
+      ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer' || root.child('roles').child(auth.uid).child('role').val() === 'service')",
       ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
     },
     "conversions": {
@@ -29,7 +32,7 @@
       ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
     },
     "daily": {
-      ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer')",
+      ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer' || root.child('roles').child(auth.uid).child('role').val() === 'service')",
       ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
     }
   }
