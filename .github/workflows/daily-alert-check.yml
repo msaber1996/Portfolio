@@ -36,53 +36,82 @@ jobs:
           DAILY=$(curl -sf "${DB}/daily.json?auth=${ID_TOKEN}")
           LOANS=$(curl -sf "${DB}/loans.json?auth=${ID_TOKEN}")
           HOLDINGS=$(curl -sf "${DB}/holdings.json?auth=${ID_TOKEN}")
+          LAST_OFFICE_ALERT=$(curl -sf "${DB}/serviceState/lastOfficeAlertDate.json?auth=${ID_TOKEN}")
 
-          # Mirrors the same day-over-day leverage/FX threshold logic as the
-          # on-site banner (bundle.js: dailyAlert), so the two stay in sync.
+          # Mirrors the on-site banners (bundle.js: dailyAlert / officeDueAlert)
+          # so the site and this email stay in sync. Office due date is a guess
+          # (OFFICE_INSTALLMENT_ANCHOR_DATE = 2026-01-28, cycled quarterly) —
+          # correct it in bundle.js and here together if the real date differs.
           RESULT=$(node -e '
             const daily = JSON.parse(process.argv[1]) || {};
             const loans = JSON.parse(process.argv[2]) || {};
             const holdings = JSON.parse(process.argv[3]) || {};
+            const lastOfficeAlert = JSON.parse(process.argv[4] || "null");
             const days = Object.values(daily).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
-            if (days.length < 2) { console.log(JSON.stringify({ trigger: false })); process.exit(0); }
-            const prevDay = days[days.length - 2];
-            const currDay = days[days.length - 1];
-            function computeAssets(entry) {
-              const rate = Number(entry.rate) || 0;
-              const goldPrice = Number(entry.gold) || 0;
-              let total = 0;
-              Object.values(holdings).filter(Boolean).forEach((h) => {
-                if (h.type === "fund") {
-                  const raw = entry[h.navGroup];
-                  const nav = raw !== undefined && raw !== "" ? Number(raw) : h.purchaseNav;
-                  const current = h.purchaseNav ? (h.investment / h.purchaseNav) * nav : 0;
-                  total += h.currency === "USD" ? current * rate : current;
-                } else if (h.type === "gold") {
-                  total += goldPrice * (h.grams || 0);
-                } else {
-                  total += h.currency === "USD" ? h.investment * rate : h.investment;
-                }
-              });
-              return total;
-            }
-            const totalLiabilities = Object.values(loans).filter(Boolean).reduce(
-              (s, l) => s + (l.currency === "USD" ? l.amount * (Number(currDay.rate) || 0) : l.amount), 0
-            );
-            const prevAssets = computeAssets(prevDay);
-            const currAssets = computeAssets(currDay);
-            const prevLeverage = prevAssets ? (totalLiabilities / prevAssets) * 100 : 0;
-            const currLeverage = currAssets ? (totalLiabilities / currAssets) * 100 : 0;
-            const leverageDelta = currLeverage - prevLeverage;
-            const rateDelta = prevDay.rate ? ((currDay.rate - prevDay.rate) / prevDay.rate) * 100 : 0;
+
             const triggers = [];
-            if (Math.abs(leverageDelta) >= 3) {
-              triggers.push(`Leverage ${leverageDelta >= 0 ? "+" : "−"}${Math.abs(leverageDelta).toFixed(1)} points since ${prevDay.date} (now ${currLeverage.toFixed(1)}%)`);
+
+            if (days.length >= 2) {
+              const prevDay = days[days.length - 2];
+              const currDay = days[days.length - 1];
+              function computeAssets(entry) {
+                const rate = Number(entry.rate) || 0;
+                const goldPrice = Number(entry.gold) || 0;
+                let total = 0;
+                Object.values(holdings).filter(Boolean).forEach((h) => {
+                  if (h.type === "fund") {
+                    const raw = entry[h.navGroup];
+                    const nav = raw !== undefined && raw !== "" ? Number(raw) : h.purchaseNav;
+                    const current = h.purchaseNav ? (h.investment / h.purchaseNav) * nav : 0;
+                    total += h.currency === "USD" ? current * rate : current;
+                  } else if (h.type === "gold") {
+                    total += goldPrice * (h.grams || 0);
+                  } else {
+                    total += h.currency === "USD" ? h.investment * rate : h.investment;
+                  }
+                });
+                return total;
+              }
+              const totalLiabilities = Object.values(loans).filter(Boolean).reduce(
+                (s, l) => s + (l.currency === "USD" ? l.amount * (Number(currDay.rate) || 0) : l.amount), 0
+              );
+              const prevAssets = computeAssets(prevDay);
+              const currAssets = computeAssets(currDay);
+              const prevLeverage = prevAssets ? (totalLiabilities / prevAssets) * 100 : 0;
+              const currLeverage = currAssets ? (totalLiabilities / currAssets) * 100 : 0;
+              const leverageDelta = currLeverage - prevLeverage;
+              const rateDelta = prevDay.rate ? ((currDay.rate - prevDay.rate) / prevDay.rate) * 100 : 0;
+              if (Math.abs(leverageDelta) >= 3) {
+                triggers.push(`Leverage ${leverageDelta >= 0 ? "+" : "−"}${Math.abs(leverageDelta).toFixed(1)} points since ${prevDay.date} (now ${currLeverage.toFixed(1)}%)`);
+              }
+              if (Math.abs(rateDelta) >= 3) {
+                triggers.push(`USD/EGP rate ${rateDelta >= 0 ? "+" : "−"}${Math.abs(rateDelta).toFixed(1)}% since ${prevDay.date} (now ${currDay.rate})`);
+              }
             }
-            if (Math.abs(rateDelta) >= 3) {
-              triggers.push(`USD/EGP rate ${rateDelta >= 0 ? "+" : "−"}${Math.abs(rateDelta).toFixed(1)}% since ${prevDay.date} (now ${currDay.rate})`);
+
+            const OFFICE_INSTALLMENT_ANCHOR_DATE = "2026-01-28";
+            const OFFICE_QUARTERLY_INSTALLMENT = 9093753;
+            const OFFICE_DUE_WARNING_DAYS = 14;
+            const anchor = new Date(OFFICE_INSTALLMENT_ANCHOR_DATE + "T00:00:00");
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const nextDue = new Date(anchor);
+            while (nextDue < today) { nextDue.setMonth(nextDue.getMonth() + 3); }
+            const nextDueStr = nextDue.toISOString().slice(0, 10);
+            const daysUntilDue = Math.round((nextDue - today) / 864e5);
+            let officeDueDate = null;
+            if (daysUntilDue <= OFFICE_DUE_WARNING_DAYS && lastOfficeAlert !== nextDueStr) {
+              officeDueDate = nextDueStr;
+              const amt = Math.round(OFFICE_QUARTERLY_INSTALLMENT).toLocaleString("en-US");
+              triggers.push(daysUntilDue < 0
+                ? `Office installment: ${amt} EGP was due ${nextDueStr}, ${Math.abs(daysUntilDue)}d ago`
+                : daysUntilDue === 0
+                ? `Office installment: ${amt} EGP is due today (${nextDueStr})`
+                : `Office installment: ${amt} EGP due ${nextDueStr}, in ${daysUntilDue}d`);
             }
-            console.log(JSON.stringify({ trigger: triggers.length > 0, triggers, date: currDay.date }));
-          ' "$DAILY" "$LOANS" "$HOLDINGS")
+
+            console.log(JSON.stringify({ trigger: triggers.length > 0, triggers, date: days.length ? days[days.length - 1].date : nextDueStr, officeDueDate }));
+          ' "$DAILY" "$LOANS" "$HOLDINGS" "$LAST_OFFICE_ALERT")
 
           echo "$RESULT"
           TRIGGER=$(echo "$RESULT" | jq -r '.trigger')
@@ -109,3 +138,10 @@ jobs:
             --upload-file /tmp/mail.txt
 
           echo "Alert email sent."
+
+          OFFICE_DUE_DATE=$(echo "$RESULT" | jq -r '.officeDueDate')
+          if [ "$OFFICE_DUE_DATE" != "null" ]; then
+            curl -sf -X PUT -d "\"${OFFICE_DUE_DATE}\"" \
+              "${DB}/serviceState/lastOfficeAlertDate.json?auth=${ID_TOKEN}" > /dev/null
+            echo "Recorded office alert as sent for ${OFFICE_DUE_DATE}."
+          fi

@@ -117,6 +117,14 @@ jobs:
               lines.push(`Certificates maturing within 30 days (${soon.length}):`);
               soon.forEach((c) => lines.push(`  - ${c.label}, ${fmt(c.amount)} EGP, matures ${c.maturityDate}`));
             }
+            const OFFICE_INSTALLMENT_ANCHOR_DATE = "2026-01-28";
+            const OFFICE_QUARTERLY_INSTALLMENT = 9093753;
+            const anchor = new Date(OFFICE_INSTALLMENT_ANCHOR_DATE + "T00:00:00");
+            const nextDue = new Date(anchor);
+            while (nextDue < today) { nextDue.setMonth(nextDue.getMonth() + 3); }
+            const officeDaysUntil = Math.round((nextDue - today) / 864e5);
+            lines.push("");
+            lines.push(`Next office installment: ${fmt(OFFICE_QUARTERLY_INSTALLMENT)} EGP due ${nextDue.toISOString().slice(0, 10)} (in ${officeDaysUntil}d)`);
             console.log(lines.join("\n"));
           ' "$DAILY" "$LOANS" "$HOLDINGS")
 
