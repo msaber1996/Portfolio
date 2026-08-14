@@ -177,15 +177,8 @@
   ];
   var CASH_FLOW = {
     egp: { income: 7120225, outflow: 4031095.38 },
-    usd: { income: 3e3, outflow: 22231.51 }
+    usd: { income: 3e3, outflow: 0 }
   };
-  var USD_GAP = 19231.51;
-  var SCENARIOS = [
-    { id: "split", label: "Certificate + Beltone", description: "$511,618 into a 4.75% NBE certificate; Beltone left untouched.", monthlyIncome: 11370.15 },
-    { id: "beltone", label: "Consolidate in Beltone", description: "Idle USD added to the existing Beltone position, roughly 7% blended.", monthlyIncome: 12329.44 },
-    { id: "drawdown", label: "Three-way split", description: "Split across Beltone, a monthly deposit, and a 90-day deposit.", monthlyIncome: 2410.83 },
-    { id: "external", label: "External funding", description: "The full monthly gap is met from income outside the portfolio.", monthlyIncome: 0 }
-  ];
   var uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
   var FIREBASE_CONFIG = {
     apiKey: "AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI",
@@ -841,7 +834,6 @@
     const canEdit = role === "owner" || role === "editor";
     const isOwner = role === "owner";
     const [openAsset, setOpenAsset] = useState(null);
-    const [scenarioId, setScenarioId] = useState("beltone");
     const [ccy, setCcy] = useState("egp");
     const [holdings, setHoldings] = useState(SEED_HOLDINGS);
     const [loans, setLoans] = useState(SEED_LOANS);
@@ -1054,12 +1046,10 @@ Save anyway?`);
     const largestWeightPct = totalAssets && ASSETS.length ? Math.max(...ASSETS.map((a) => a.value), 0) / totalAssets * 100 : 0;
     const diversificationScore = 100 - largestWeightPct;
     const leverageScore = Math.max(0, 100 - debtRatioPct * 2);
-    const scenario = SCENARIOS.find((s) => s.id === scenarioId);
-    const remainingGap = USD_GAP - scenario.monthlyIncome;
-    const coveragePct = scenario.monthlyIncome / USD_GAP * 100;
-    const currencyScore = Math.min(100, coveragePct);
+    const usdNet = CASH_FLOW.usd.income - CASH_FLOW.usd.outflow;
+    const currencyScore = CASH_FLOW.usd.outflow > 0 ? Math.min(100, CASH_FLOW.usd.income / CASH_FLOW.usd.outflow * 100) : 100;
     const readiness = ASSETS.length ? Math.round((leverageScore + liquidityScore + diversificationScore + currencyScore) / 4) : 0;
-    const readinessLabel = readiness >= 75 ? "Well positioned" : readiness >= 55 ? "Adequate, with a currency gap" : "Needs attention";
+    const readinessLabel = readiness >= 75 ? "Well positioned" : readiness >= 55 ? "Adequate, room to improve" : "Needs attention";
     const egpNet = CASH_FLOW.egp.income - CASH_FLOW.egp.outflow;
     const analysis = useMemo(() => {
       if (!firstComputed || !latestComputed || computedHistory.length < 2) return null;
@@ -1225,12 +1215,8 @@ Save anyway?`);
     <tr><td>EGP \u2014 loan installments</td><td class="num mono">${egp(CASH_FLOW.egp.outflow)}</td></tr>
     <tr><td><b>EGP \u2014 net monthly surplus</b></td><td class="num mono"><b>${egp(egpNet)}</b></td></tr>
     <tr><td>USD \u2014 certificate income</td><td class="num mono">${usd(CASH_FLOW.usd.income)}</td></tr>
-    <tr><td>USD \u2014 loan installment</td><td class="num mono">${usd(CASH_FLOW.usd.outflow)}</td></tr>
-    <tr><td><b>USD \u2014 net monthly shortfall</b></td><td class="num mono"><b>${usd(-USD_GAP)}</b></td></tr>
+    <tr><td><b>USD \u2014 net monthly surplus</b></td><td class="num mono"><b>${usd(usdNet)}</b></td></tr>
   </table>
-
-  <h2>Dollar gap \u2014 selected plan (${scenario.label})</h2>
-  <p class="note">${scenario.description} Income covers <b>${usd(scenario.monthlyIncome)}</b> of the ${usd(USD_GAP)} monthly gap (${coveragePct.toFixed(0)}%). Still short: <b>${remainingGap <= 0.01 ? usd(0) : usd(remainingGap)}</b> per month.</p>
 
   <h2>Performance ranking, strongest to weakest</h2>
   <p class="note">As of ${asOfLabel} — regenerate this report after any new day's entry to refresh the ranking.</p>
@@ -1273,9 +1259,7 @@ Save anyway?`);
       totalIncomingUsd,
       conversionRunningBalance,
       egpNet,
-      scenario,
-      coveragePct,
-      remainingGap
+      usdNet
     ]);
     if (loadState === "loading") {
       return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
@@ -1465,51 +1449,16 @@ Save anyway?`);
               /* @__PURE__ */ jsx(ArrowUpRight, { size: 18, strokeWidth: 1.5 }),
               /* @__PURE__ */ jsx(AnimatedNumber, { value: egpNet, format: egp })
             ] }), emphasis: true, sub: "surplus" })
-          ] }) : /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-6", children: [
+          ] }) : /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-6", children: [
             /* @__PURE__ */ jsx(Stat, { label: "Certificate income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.usd.income, format: usd }), sub: "per month" }),
-            /* @__PURE__ */ jsx(Stat, { label: "Loan installment", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.usd.outflow, format: usd }), sub: "per month" }),
             /* @__PURE__ */ jsx(Stat, { label: "Net monthly position", value: /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-1", children: [
-              /* @__PURE__ */ jsx(ArrowDownRight, { size: 18, strokeWidth: 1.5 }),
-              /* @__PURE__ */ jsx(AnimatedNumber, { value: -USD_GAP, format: usd })
-            ] }), emphasis: true, sub: "shortfall before any scenario below" })
+              /* @__PURE__ */ jsx(ArrowUpRight, { size: 18, strokeWidth: 1.5 }),
+              /* @__PURE__ */ jsx(AnimatedNumber, { value: usdNet, format: usd })
+            ] }), emphasis: true, sub: "surplus — no active USD loan" })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Closing the dollar gap", dek: "Four ways to fund the shortfall on the USD loan. Choose one to see the effect." }),
-          /* @__PURE__ */ jsx(Toggle, { options: SCENARIOS, value: scenarioId, onChange: setScenarioId }),
-          /* @__PURE__ */ jsx("div", { className: "mt-8 grid grid-cols-1 md:grid-cols-3 gap-10", children: [
-            /* @__PURE__ */ jsx("div", { className: "md:col-span-2", children: [
-              /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 max-w-lg leading-relaxed", children: scenario.description }),
-              /* @__PURE__ */ jsx("div", { className: "mt-6 space-y-3", children: [
-                /* @__PURE__ */ jsx("div", { className: "flex items-center gap-3", children: [
-                  /* @__PURE__ */ jsx("span", { className: "text-xs w-40 text-neutral-500 uppercase tracking-wide", children: "Monthly gap" }),
-                  /* @__PURE__ */ jsx("div", { className: "flex-1 h-5 bg-neutral-100 relative", children: /* @__PURE__ */ jsx("div", { className: "h-full bg-neutral-300 absolute inset-0" }) }),
-                  /* @__PURE__ */ jsx("span", { className: "font-mono text-sm w-24 text-right text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: USD_GAP, format: usd }) })
-                ] }),
-                /* @__PURE__ */ jsx("div", { className: "flex items-center gap-3", children: [
-                  /* @__PURE__ */ jsx("span", { className: "text-xs w-40 text-neutral-500 uppercase tracking-wide", children: "Income covers" }),
-                  /* @__PURE__ */ jsx("div", { className: "flex-1 h-5 bg-neutral-100 relative overflow-hidden", children: /* @__PURE__ */ jsx("div", { className: "h-full bg-neutral-800", style: { width: `${Math.min(coveragePct, 100)}%` } }) }),
-                  /* @__PURE__ */ jsx("span", { className: "font-mono text-sm w-24 text-right text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: scenario.monthlyIncome, format: usd }) })
-                ] }),
-                /* @__PURE__ */ jsx("div", { className: "flex items-center gap-3", children: [
-                  /* @__PURE__ */ jsx("span", { className: "text-xs w-40 text-neutral-500 uppercase tracking-wide", children: "Still short" }),
-                  /* @__PURE__ */ jsx("div", { className: "flex-1 h-5 bg-neutral-100 relative overflow-hidden", children: /* @__PURE__ */ jsx("div", { className: "h-full bg-neutral-400", style: { width: `${Math.max(0, 100 - coveragePct)}%` } }) }),
-                  /* @__PURE__ */ jsx("span", { className: "font-mono text-sm w-24 text-right text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: remainingGap <= 0.01 ? 0 : remainingGap, format: usd }) })
-                ] })
-              ] })
-            ] }),
-            /* @__PURE__ */ jsx("div", { className: "border-l border-neutral-200 pl-8 flex flex-col justify-center", children: [
-              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Coverage" }),
-              /* @__PURE__ */ jsx("div", { className: "font-mono text-5xl mt-1 tabular-nums text-neutral-900", children: [
-                /* @__PURE__ */ jsx(AnimatedNumber, { value: coveragePct, format: (v) => v.toFixed(0) }),
-                "%"
-              ] }),
-              /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-2 max-w-xs", children: coveragePct >= 99 ? "The gap is fully met by income under this scenario." : "of the monthly shortfall, met by income rather than external funds." })
-            ] })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically." }),
           daysSinceLastEntry >= 1 && /* @__PURE__ */ jsx("div", { className: "mb-4 flex items-center gap-2 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800", children: [
             /* @__PURE__ */ jsx(AlertTriangle, { size: 14, className: "shrink-0 text-amber-500" }),
             daysSinceLastEntry === 1 ? "It's been 1 day since your last update — add today's entry below." : `It's been ${daysSinceLastEntry} days since your last update — add today's entry below.`
@@ -1521,7 +1470,7 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Delete a row if an entry was a mistake.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Delete a row if an entry was a mistake.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
           fundSeries.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: "Return by fund, since purchase" }),
