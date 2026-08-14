@@ -28,7 +28,7 @@
       ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
     },
     "conversions": {
-      ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer')",
+      ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer' || root.child('roles').child(auth.uid).child('role').val() === 'service')",
       ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
     },
     "daily": {

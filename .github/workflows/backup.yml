@@ -1,0 +1,69 @@
+name: Weekly database backup
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Export holdings, loans, conversions, daily from Firebase
+        run: |
+          set -euo pipefail
+
+          FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          ID_TOKEN=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
+            | jq -r '.idToken')
+
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to get a Firebase auth token, aborting."
+            exit 1
+          fi
+
+          DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
+          HOLDINGS=$(curl -sf "${DB}/holdings.json?auth=${ID_TOKEN}")
+          LOANS=$(curl -sf "${DB}/loans.json?auth=${ID_TOKEN}")
+          CONVERSIONS=$(curl -sf "${DB}/conversions.json?auth=${ID_TOKEN}")
+          DAILY=$(curl -sf "${DB}/daily.json?auth=${ID_TOKEN}")
+
+          mkdir -p backups
+          STAMP=$(date -u +%Y-%m-%d)
+          jq -n \
+            --argjson holdings "$HOLDINGS" \
+            --argjson loans "$LOANS" \
+            --argjson conversions "$CONVERSIONS" \
+            --argjson daily "$DAILY" \
+            --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{generatedAt: $generatedAt, holdings: $holdings, loans: $loans, conversions: $conversions, daily: $daily}' \
+            > "backups/backup-${STAMP}.json"
+
+          echo "Wrote backups/backup-${STAMP}.json"
+
+      - name: Keep only the most recent 12 backups
+        run: |
+          cd backups
+          ls backup-*.json 2>/dev/null | sort | head -n -12 | xargs -r rm --
+          cd ..
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backups/
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Weekly database backup $(date -u +%Y-%m-%d)"
+          git push
