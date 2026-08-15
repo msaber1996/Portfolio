@@ -95,6 +95,27 @@
       /* @__PURE__ */ jsx("line", { x1: "12", y1: "17", x2: "12.01", y2: "17" })
     ] });
   }
+  function Menu(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: [
+      /* @__PURE__ */ jsx("line", { x1: "3", y1: "6", x2: "21", y2: "6" }),
+      /* @__PURE__ */ jsx("line", { x1: "3", y1: "12", x2: "21", y2: "12" }),
+      /* @__PURE__ */ jsx("line", { x1: "3", y1: "18", x2: "21", y2: "18" })
+    ] });
+  }
+  function X(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: [
+      /* @__PURE__ */ jsx("line", { x1: "18", y1: "6", x2: "6", y2: "18" }),
+      /* @__PURE__ */ jsx("line", { x1: "6", y1: "6", x2: "18", y2: "18" })
+    ] });
+  }
+  function Users(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: [
+      /* @__PURE__ */ jsx("path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }),
+      /* @__PURE__ */ jsx("circle", { cx: "9", cy: "7", r: "4" }),
+      /* @__PURE__ */ jsx("path", { d: "M22 21v-2a4 4 0 0 0-3-3.87" }),
+      /* @__PURE__ */ jsx("path", { d: "M16 3.13a4 4 0 0 1 0 7.75" })
+    ] });
+  }
 
   // App.jsx
   var SEED_HOLDINGS = [
@@ -859,6 +880,9 @@
     const [liveRates, setLiveRates] = useState(null);
     const [dismissedAlertDate, setDismissedAlertDate] = useState(null);
     const [dismissedOfficeDueDate, setDismissedOfficeDueDate] = useState(null);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [view, setView] = useState("dashboard");
+    const showAdmin = isOwner && view === "admin";
     const saveTimers = useRef({});
     useEffect(() => {
       let cancelled = false;
@@ -1288,14 +1312,14 @@ Save anyway?`);
       ] });
     }
     return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 text-neutral-900 font-sans", children: [
-      dailyAlert && dailyAlert.date !== dismissedAlertDate && /* @__PURE__ */ jsx("div", { className: "bg-amber-50 border-b-2 border-amber-400", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
+      !showAdmin && dailyAlert && dailyAlert.date !== dismissedAlertDate && /* @__PURE__ */ jsx("div", { className: "bg-amber-50 border-b-2 border-amber-400", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
         /* @__PURE__ */ jsx("div", { className: "text-sm text-amber-900 leading-relaxed", children: [
           /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Notable move today — " }),
           dailyAlert.triggers.join(" · ")
         ] }),
         /* @__PURE__ */ jsx("button", { onClick: () => setDismissedAlertDate(dailyAlert.date), className: "text-xs text-amber-700 underline shrink-0 whitespace-nowrap", children: "Dismiss" })
       ] }) }),
-      officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate && /* @__PURE__ */ jsx("div", { className: `border-b-2 ${officeDueAlert.daysUntilDue < 0 ? "bg-red-50 border-red-400" : "bg-amber-50 border-amber-400"}`, children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
+      !showAdmin && officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate && /* @__PURE__ */ jsx("div", { className: `border-b-2 ${officeDueAlert.daysUntilDue < 0 ? "bg-red-50 border-red-400" : "bg-amber-50 border-amber-400"}`, children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
         /* @__PURE__ */ jsx("div", { className: `text-sm leading-relaxed ${officeDueAlert.daysUntilDue < 0 ? "text-red-900" : "text-amber-900"}`, children: [
           /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Office installment — " }),
           officeDueAlert.daysUntilDue < 0 ? `${egp(OFFICE_QUARTERLY_INSTALLMENT)} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)} day${Math.abs(officeDueAlert.daysUntilDue) === 1 ? "" : "s"} ago.` : officeDueAlert.daysUntilDue === 0 ? `${egp(OFFICE_QUARTERLY_INSTALLMENT)} is due today.` : `${egp(OFFICE_QUARTERLY_INSTALLMENT)} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue} day${officeDueAlert.daysUntilDue === 1 ? "" : "s"}.`
@@ -1311,51 +1335,55 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("div", { className: "flex items-start justify-between gap-6 mt-3", children: [
-          /* @__PURE__ */ jsx("h1", { className: "font-serif text-4xl md:text-6xl leading-tight tracking-tight text-neutral-900", children: "Portfolio Readiness" }),
-          /* @__PURE__ */ jsx("div", { className: "shrink-0 mt-2 flex flex-col sm:flex-row gap-2", children: [
+          /* @__PURE__ */ jsx("h1", { className: "font-serif text-4xl md:text-6xl leading-tight tracking-tight text-neutral-900", children: showAdmin ? "Manage access" : "Portfolio Readiness" }),
+          /* @__PURE__ */ jsx("div", { className: "shrink-0 mt-2 relative", children: showAdmin ? /* @__PURE__ */ jsx(
+            "button",
+            {
+              onClick: () => setView("dashboard"),
+              className: "inline-flex items-center gap-2 border border-neutral-300 text-neutral-700 text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-100 transition-colors",
+              children: "\u2190 Back to portfolio"
+            }
+          ) : [
             /* @__PURE__ */ jsx(
               "button",
               {
-                onClick: downloadReport,
-                className: "inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-700 transition-colors",
-                children: [
-                  /* @__PURE__ */ jsx(FileDown, { size: 14 }),
-                  " Download report"
-                ]
-              }
-            ),
-            /* @__PURE__ */ jsx(
-              "button",
-              {
-                onClick: handleExportBackup,
+                onClick: () => setMenuOpen((v) => !v),
                 className: "inline-flex items-center gap-2 border border-neutral-900 text-neutral-900 text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-100 transition-colors",
                 children: [
-                  /* @__PURE__ */ jsx(FileDown, { size: 14 }),
-                  " Backup data"
+                  /* @__PURE__ */ jsx(menuOpen ? X : Menu, { size: 14 }),
+                  " Menu"
                 ]
               }
             ),
-            onSignOut && /* @__PURE__ */ jsx(
-              "button",
-              {
-                onClick: onSignOut,
-                className: "inline-flex items-center gap-2 border border-neutral-300 text-neutral-500 text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-100 transition-colors",
-                children: "Log out"
-              }
-            )
+            menuOpen && /* @__PURE__ */ jsx("div", { className: "fixed inset-0 z-10", onClick: () => setMenuOpen(false) }),
+            menuOpen && /* @__PURE__ */ jsx("div", { className: "absolute right-0 mt-2 w-52 bg-white border border-neutral-300 shadow-lg z-20 flex flex-col", children: [
+              /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); downloadReport(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left", children: [
+                /* @__PURE__ */ jsx(FileDown, { size: 14 }),
+                " Download report"
+              ] }),
+              /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); handleExportBackup(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
+                /* @__PURE__ */ jsx(FileDown, { size: 14 }),
+                " Backup data"
+              ] }),
+              isOwner && /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); setView("admin"); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
+                /* @__PURE__ */ jsx(Users, { size: 14 }),
+                " Manage access"
+              ] }),
+              onSignOut && /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); onSignOut(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-500 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: "Log out" })
+            ] })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("p", { className: "mt-3 max-w-xl text-neutral-600 text-base leading-relaxed", children: canEdit ? 'Every holding, loan, and conversion below is editable. Add a new fund, certificate, loan, or gold position at any time \u2014 the daily form and every total pick it up automatically. "Download report" saves a standalone file you can open, print to PDF, or send to anyone \u2014 no publishing needed.' : 'You have view-only access \u2014 every number below is live, but editing is off. "Download report" saves a standalone file you can open, print to PDF, or send to anyone.' })
+        /* @__PURE__ */ jsx("p", { className: "mt-3 max-w-xl text-neutral-600 text-base leading-relaxed", children: showAdmin ? "Only you see this page. Share the signup link with anyone you want to give view-only access to, then upgrade them to editor here if needed." : canEdit ? 'Every holding, loan, and conversion below is editable. Add a new fund, certificate, loan, or gold position at any time \u2014 the daily form and every total pick it up automatically. "Download report" saves a standalone file you can open, print to PDF, or send to anyone \u2014 no publishing needed.' : 'You have view-only access \u2014 every number below is live, but editing is off. "Download report" saves a standalone file you can open, print to PDF, or send to anyone.' })
       ] }) }),
-      /* @__PURE__ */ jsx("main", { className: "max-w-5xl mx-auto px-6 bg-neutral-50", children: [
-        isOwner && /* @__PURE__ */ jsx("section", { className: "py-10 border-b border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "00", title: "Access & sharing", dek: "Only you see this section. Share the signup link with anyone you want to give view-only access to, then upgrade them to editor here if needed." }),
+      /* @__PURE__ */ jsx("main", { className: "max-w-5xl mx-auto px-6 bg-neutral-50", children: showAdmin ? [
+        /* @__PURE__ */ jsx("section", { className: "py-10", children: [
           /* @__PURE__ */ jsx("div", { className: "mb-6 border border-neutral-300 bg-white p-4 flex flex-col sm:flex-row sm:items-center gap-3", children: [
             /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500 shrink-0", children: "Signup link" }),
             /* @__PURE__ */ jsx("code", { className: "text-xs text-neutral-700 break-all", children: typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}?signup=1` : "" })
           ] }),
           /* @__PURE__ */ jsx(UsersAdminPanel, {})
-        ] }),
+        ] })
+      ] : [
         /* @__PURE__ */ jsx("section", { className: "grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 py-10 border-b border-neutral-200", children: [
           /* @__PURE__ */ jsx("div", { className: "flex flex-col items-center md:items-start md:col-span-1", children: [
             /* @__PURE__ */ jsx(ReadinessDial, { score: readiness }),
