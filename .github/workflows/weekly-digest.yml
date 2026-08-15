@@ -42,10 +42,10 @@ jobs:
           HOLDINGS=$(curl -sf "${DB}/holdings.json?auth=${ID_TOKEN}")
 
           # Valuation math mirrors computeDay/dailyAlert in bundle.js. The
-          # certificate list and office installment schedule below are snapshots
-          # from bundle.js's CERTIFICATES / OFFICE_INSTALLMENT_SCHEDULE constants
-          # — update all three together (here, daily-alert-check.yml, bundle.js)
-          # if either changes.
+          # certificate/loan lists and office installment schedule below are
+          # snapshots from bundle.js's CERTIFICATES / LOAN_FACILITIES /
+          # OFFICE_INSTALLMENT_SCHEDULE constants — update all three files
+          # together (here, daily-alert-check.yml, bundle.js) if any changes.
           BODY=$(node -e '
             const daily = JSON.parse(process.argv[1]) || {};
             const loans = JSON.parse(process.argv[2]) || {};
@@ -98,8 +98,21 @@ jobs:
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const daysUntil = (d) => d ? Math.round((new Date(d + "T00:00:00") - today) / 864e5) : null;
+            const LOAN_FACILITIES = [
+              { label: "Secured loan •7090", outstanding: 1029942.21, maturityDate: "2027-07-28" },
+              { label: "Secured loan •8850", outstanding: 407873.82, maturityDate: "2027-07-28" },
+              { label: "Secured loan •6620", outstanding: 48570571.04, maturityDate: "2029-07-03" },
+              { label: "Secured loan •7070", outstanding: 2595557.28, maturityDate: "2027-07-28" },
+              { label: "Secured loan •8860", outstanding: 9103.45, maturityDate: "2027-07-28" },
+              { label: "Secured loan •7080", outstanding: 736642.96, maturityDate: "2027-07-28" },
+              { label: "Secured loan •4470", outstanding: 31162767.24, maturityDate: "2029-02-03" },
+              { label: "Secured loan •3800", outstanding: 5856814.07, maturityDate: "2028-04-03" },
+              { label: "Secured loan •5500", outstanding: 772549.21, maturityDate: "2027-06-28" }
+            ];
             const matured = CERTIFICATES.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d < 0; });
             const soon = CERTIFICATES.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d >= 0 && d <= 30; });
+            const loansMatured = LOAN_FACILITIES.filter((l) => { const d = daysUntil(l.maturityDate); return d !== null && d < 0; });
+            const loansSoon = LOAN_FACILITIES.filter((l) => { const d = daysUntil(l.maturityDate); return d !== null && d >= 0 && d <= 30; });
             const lines = [];
             lines.push(`Portfolio weekly digest — as of ${latest.date}`);
             lines.push("");
@@ -118,6 +131,16 @@ jobs:
               lines.push("");
               lines.push(`Certificates maturing within 30 days (${soon.length}):`);
               soon.forEach((c) => lines.push(`  - ${c.label}, ${fmt(c.amount)} EGP, matures ${c.maturityDate}`));
+            }
+            if (loansMatured.length) {
+              lines.push("");
+              lines.push(`Loans past maturity (${loansMatured.length}):`);
+              loansMatured.forEach((l) => lines.push(`  - ${l.label}, ${fmt(l.outstanding)} EGP outstanding, matured ${l.maturityDate}`));
+            }
+            if (loansSoon.length) {
+              lines.push("");
+              lines.push(`Loans maturing within 30 days (${loansSoon.length}):`);
+              loansSoon.forEach((l) => lines.push(`  - ${l.label}, ${fmt(l.outstanding)} EGP outstanding, matures ${l.maturityDate}`));
             }
             const OFFICE_INSTALLMENT_SCHEDULE = [
               { date: "2026-09-16", amount: 17029500 },
