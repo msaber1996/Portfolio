@@ -39,9 +39,9 @@ jobs:
           LAST_OFFICE_ALERT=$(curl -sf "${DB}/serviceState/lastOfficeAlertDate.json?auth=${ID_TOKEN}")
 
           # Mirrors the on-site banners (bundle.js: dailyAlert / officeDueAlert)
-          # so the site and this email stay in sync. Office due date is a guess
-          # (OFFICE_INSTALLMENT_ANCHOR_DATE = 2026-01-28, cycled quarterly) —
-          # correct it in bundle.js and here together if the real date differs.
+          # so the site and this email stay in sync. Office installment schedule
+          # is the real payment plan (office_deal_amr.xlsx) — keep it in sync with
+          # OFFICE_INSTALLMENT_SCHEDULE in bundle.js and weekly-digest.yml if it changes.
           RESULT=$(node -e '
             const daily = JSON.parse(process.argv[1]) || {};
             const loans = JSON.parse(process.argv[2]) || {};
@@ -89,28 +89,61 @@ jobs:
               }
             }
 
-            const OFFICE_INSTALLMENT_ANCHOR_DATE = "2026-01-28";
-            const OFFICE_QUARTERLY_INSTALLMENT = 9093753;
+            const OFFICE_INSTALLMENT_SCHEDULE = [
+              { date: "2026-09-16", amount: 17029500 },
+              { date: "2026-12-16", amount: 9093753 },
+              { date: "2027-03-16", amount: 9093753 },
+              { date: "2027-06-16", amount: 9093753 },
+              { date: "2027-09-16", amount: 9093753 },
+              { date: "2027-12-16", amount: 9093753 },
+              { date: "2028-03-16", amount: 9093753 },
+              { date: "2028-06-16", amount: 9093753 },
+              { date: "2028-09-16", amount: 9093753 },
+              { date: "2028-12-16", amount: 9093753 },
+              { date: "2029-03-16", amount: 9093753 },
+              { date: "2029-06-16", amount: 9093753 },
+              { date: "2029-09-16", amount: 9093753 },
+              { date: "2029-12-16", amount: 9093753 },
+              { date: "2030-03-16", amount: 9093753 },
+              { date: "2030-06-16", amount: 34059000 },
+              { date: "2030-09-16", amount: 9093753 },
+              { date: "2030-12-16", amount: 9093753 },
+              { date: "2031-03-16", amount: 9093753 },
+              { date: "2031-06-16", amount: 26123253 },
+              { date: "2031-09-16", amount: 9093753 },
+              { date: "2031-12-16", amount: 9093753 },
+              { date: "2032-03-16", amount: 9093753 },
+              { date: "2032-06-16", amount: 9093753 },
+              { date: "2032-09-16", amount: 9093753 },
+              { date: "2032-12-16", amount: 9093753 },
+              { date: "2033-03-16", amount: 9093753 },
+              { date: "2033-06-16", amount: 9093753 },
+              { date: "2033-09-16", amount: 9093753 },
+              { date: "2033-12-16", amount: 9093753 },
+              { date: "2034-03-16", amount: 9093753 },
+              { date: "2034-06-16", amount: 8753163 }
+            ];
             const OFFICE_DUE_WARNING_DAYS = 14;
-            const anchor = new Date(OFFICE_INSTALLMENT_ANCHOR_DATE + "T00:00:00");
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const nextDue = new Date(anchor);
-            while (nextDue < today) { nextDue.setMonth(nextDue.getMonth() + 3); }
-            const nextDueStr = nextDue.toISOString().slice(0, 10);
-            const daysUntilDue = Math.round((nextDue - today) / 864e5);
+            const todayStr = today.toISOString().slice(0, 10);
+            const nextRow = OFFICE_INSTALLMENT_SCHEDULE.find((row) => row.date >= todayStr);
             let officeDueDate = null;
-            if (daysUntilDue <= OFFICE_DUE_WARNING_DAYS && lastOfficeAlert !== nextDueStr) {
-              officeDueDate = nextDueStr;
-              const amt = Math.round(OFFICE_QUARTERLY_INSTALLMENT).toLocaleString("en-US");
-              triggers.push(daysUntilDue < 0
-                ? `Office installment: ${amt} EGP was due ${nextDueStr}, ${Math.abs(daysUntilDue)}d ago`
-                : daysUntilDue === 0
-                ? `Office installment: ${amt} EGP is due today (${nextDueStr})`
-                : `Office installment: ${amt} EGP due ${nextDueStr}, in ${daysUntilDue}d`);
+            if (nextRow) {
+              const nextDue = new Date(nextRow.date + "T00:00:00");
+              const daysUntilDue = Math.round((nextDue - today) / 864e5);
+              if (daysUntilDue <= OFFICE_DUE_WARNING_DAYS && lastOfficeAlert !== nextRow.date) {
+                officeDueDate = nextRow.date;
+                const amt = Math.round(nextRow.amount).toLocaleString("en-US");
+                triggers.push(daysUntilDue < 0
+                  ? `Office installment: ${amt} EGP was due ${nextRow.date}, ${Math.abs(daysUntilDue)}d ago`
+                  : daysUntilDue === 0
+                  ? `Office installment: ${amt} EGP is due today (${nextRow.date})`
+                  : `Office installment: ${amt} EGP due ${nextRow.date}, in ${daysUntilDue}d`);
+              }
             }
 
-            console.log(JSON.stringify({ trigger: triggers.length > 0, triggers, date: days.length ? days[days.length - 1].date : nextDueStr, officeDueDate }));
+            console.log(JSON.stringify({ trigger: triggers.length > 0, triggers, date: days.length ? days[days.length - 1].date : (nextRow ? nextRow.date : todayStr), officeDueDate }));
           ' "$DAILY" "$LOANS" "$HOLDINGS" "$LAST_OFFICE_ALERT")
 
           echo "$RESULT"

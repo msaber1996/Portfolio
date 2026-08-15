@@ -149,20 +149,45 @@
     { unit: "2A-D2-G01", size: "529.5m\xB2", parking: 4, totalPrice: 93700000, advance: 4685000, remaining: 89015000 },
     { unit: "2A-D2-G02", size: "529.5m\xB2", parking: 4, totalPrice: 93260000, advance: 4663000, remaining: 88597000 }
   ];
-  var OFFICE_QUARTERLY_INSTALLMENT = 9093753;
-  var OFFICE_INSTALLMENT_ANCHOR_DATE = "2026-01-28";
-  var nextQuarterlyDueDate = (anchorDateStr) => {
-    const anchor = new Date(anchorDateStr + "T00:00:00");
+  var OFFICE_INSTALLMENT_SCHEDULE = [
+    { date: "2026-09-16", amount: 17029500 },
+    { date: "2026-12-16", amount: 9093753 },
+    { date: "2027-03-16", amount: 9093753 },
+    { date: "2027-06-16", amount: 9093753 },
+    { date: "2027-09-16", amount: 9093753 },
+    { date: "2027-12-16", amount: 9093753 },
+    { date: "2028-03-16", amount: 9093753 },
+    { date: "2028-06-16", amount: 9093753 },
+    { date: "2028-09-16", amount: 9093753 },
+    { date: "2028-12-16", amount: 9093753 },
+    { date: "2029-03-16", amount: 9093753 },
+    { date: "2029-06-16", amount: 9093753 },
+    { date: "2029-09-16", amount: 9093753 },
+    { date: "2029-12-16", amount: 9093753 },
+    { date: "2030-03-16", amount: 9093753 },
+    { date: "2030-06-16", amount: 34059000 },
+    { date: "2030-09-16", amount: 9093753 },
+    { date: "2030-12-16", amount: 9093753 },
+    { date: "2031-03-16", amount: 9093753 },
+    { date: "2031-06-16", amount: 26123253 },
+    { date: "2031-09-16", amount: 9093753 },
+    { date: "2031-12-16", amount: 9093753 },
+    { date: "2032-03-16", amount: 9093753 },
+    { date: "2032-06-16", amount: 9093753 },
+    { date: "2032-09-16", amount: 9093753 },
+    { date: "2032-12-16", amount: 9093753 },
+    { date: "2033-03-16", amount: 9093753 },
+    { date: "2033-06-16", amount: 9093753 },
+    { date: "2033-09-16", amount: 9093753 },
+    { date: "2033-12-16", amount: 9093753 },
+    { date: "2034-03-16", amount: 9093753 },
+    { date: "2034-06-16", amount: 8753163 }
+  ];
+  var nextOfficeInstallment = () => {
     const today = /* @__PURE__ */ new Date();
     today.setHours(0, 0, 0, 0);
-    const next = new Date(anchor);
-    while (next < today) {
-      next.setMonth(next.getMonth() + 3);
-    }
-    const y = next.getFullYear();
-    const m = String(next.getMonth() + 1).padStart(2, "0");
-    const d = String(next.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    return OFFICE_INSTALLMENT_SCHEDULE.find((row) => row.date >= todayStr) || null;
   };
   var SEED_LOANS = [
     { id: "loan-egp", label: "Secured EGP loans (9 facilities)", currency: "EGP", amount: 91141821.28, rate: "", installment: 4031095.38 },
@@ -1061,9 +1086,11 @@ Save anyway?`);
       return triggers.length ? { date: currDay.date, triggers } : null;
     }, [computedHistory, totalLiabilities]);
     const OFFICE_DUE_WARNING_DAYS = 14;
-    const officeNextDueDate = nextQuarterlyDueDate(OFFICE_INSTALLMENT_ANCHOR_DATE);
+    const nextOfficeInstallmentRow = nextOfficeInstallment();
+    const officeNextDueDate = nextOfficeInstallmentRow ? nextOfficeInstallmentRow.date : null;
+    const officeNextDueAmount = nextOfficeInstallmentRow ? nextOfficeInstallmentRow.amount : 0;
     const officeDaysUntilDue = daysUntil(officeNextDueDate);
-    const officeDueAlert = officeDaysUntilDue !== null && officeDaysUntilDue <= OFFICE_DUE_WARNING_DAYS ? { date: officeNextDueDate, daysUntilDue: officeDaysUntilDue } : null;
+    const officeDueAlert = officeDaysUntilDue !== null && officeDaysUntilDue <= OFFICE_DUE_WARNING_DAYS ? { date: officeNextDueDate, amount: officeNextDueAmount, daysUntilDue: officeDaysUntilDue } : null;
     const totalEgpInvestment = useMemo(() => {
       return holdings.filter((h) => h.currency === "EGP").reduce((s, h) => s + h.investment, 0);
     }, [holdings]);
@@ -1249,7 +1276,7 @@ Save anyway?`);
   <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding balance</th><th class="num">Monthly installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${LOAN_FACILITIES.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
 
   <h2>Office units</h2>
-  <p class="note">Still being paid off in quarterly installments — only the 5% advance (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Recurring payment: ${egp(OFFICE_QUARTERLY_INSTALLMENT)} every 3 months. Next due ${fmtDate(officeNextDueDate)}.</p>
+  <p class="note">Still being paid off in installments per the payment schedule — only the 5% advance (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}.</p>
   <table><tr><th>Office</th><th>Size</th><th class="num">Parking</th><th class="num">Total price</th><th class="num">Advance paid</th><th class="num">Remaining installments</th></tr>${officeUnitsRowsHtml}<tr><td><b>Total (${OFFICE_UNITS.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(officeUnitsTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.advance)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.remaining)}</b></td></tr></table>
 
   <h2>Monthly cash flow</h2>
@@ -1303,7 +1330,8 @@ Save anyway?`);
       conversionRunningBalance,
       egpNet,
       usdNet,
-      officeNextDueDate
+      officeNextDueDate,
+      officeNextDueAmount
     ]);
     if (loadState === "loading") {
       return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
@@ -1322,7 +1350,7 @@ Save anyway?`);
       !showAdmin && officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate && /* @__PURE__ */ jsx("div", { className: `border-b-2 ${officeDueAlert.daysUntilDue < 0 ? "bg-red-50 border-red-400" : "bg-amber-50 border-amber-400"}`, children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
         /* @__PURE__ */ jsx("div", { className: `text-sm leading-relaxed ${officeDueAlert.daysUntilDue < 0 ? "text-red-900" : "text-amber-900"}`, children: [
           /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Office installment — " }),
-          officeDueAlert.daysUntilDue < 0 ? `${egp(OFFICE_QUARTERLY_INSTALLMENT)} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)} day${Math.abs(officeDueAlert.daysUntilDue) === 1 ? "" : "s"} ago.` : officeDueAlert.daysUntilDue === 0 ? `${egp(OFFICE_QUARTERLY_INSTALLMENT)} is due today.` : `${egp(OFFICE_QUARTERLY_INSTALLMENT)} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue} day${officeDueAlert.daysUntilDue === 1 ? "" : "s"}.`
+          officeDueAlert.daysUntilDue < 0 ? `${egp(officeDueAlert.amount)} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)} day${Math.abs(officeDueAlert.daysUntilDue) === 1 ? "" : "s"} ago.` : officeDueAlert.daysUntilDue === 0 ? `${egp(officeDueAlert.amount)} is due today.` : `${egp(officeDueAlert.amount)} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue} day${officeDueAlert.daysUntilDue === 1 ? "" : "s"}.`
         ] }),
         /* @__PURE__ */ jsx("button", { onClick: () => setDismissedOfficeDueDate(officeDueAlert.date), className: `text-xs underline shrink-0 whitespace-nowrap ${officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700"}`, children: "Dismiss" })
       ] }) }),
@@ -1492,7 +1520,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "Office units", dek: `${OFFICE_UNITS.length} units, ${egp(OFFICE_UNITS.reduce((s, u) => s + u.totalPrice, 0))} full contract price — only the advance paid counts toward Total Assets above.` }),
           /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "These are still being paid off in quarterly installments, so they aren't fully owned yet — only the 5% advance is counted as an asset. The full price and what's still owed are shown here for reference." }),
           /* @__PURE__ */ jsx(OfficeUnitsTable, { units: OFFICE_UNITS }),
-          /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Recurring payment: ${egp(OFFICE_QUARTERLY_INSTALLMENT)} every 3 months (next few years, through ~2034). Next due ${fmtDate(officeNextDueDate)}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` })
+          /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per the installment schedule, through ~2034. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Monthly cash flow, by currency", dek: "Certificate and fund income measured against loan installments, each currency on its own terms." }),
