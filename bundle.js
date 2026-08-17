@@ -1125,7 +1125,7 @@ Save anyway?`);
       if (!firstComputed || !latestComputed || computedHistory.length < 2) return null;
       const changeVal = latestComputed.markedToMarket - firstComputed.markedToMarket;
       const changePct = firstComputed.markedToMarket ? changeVal / firstComputed.markedToMarket * 100 : 0;
-      const firstByLabel = new Map(firstComputed.rows.filter((r) => r.gainPct !== void 0).map((r) => [r.label, r.gainPct]));
+      const firstByLabel = new Map(firstComputed.rows.filter((r) => r.purchaseNav != null).map((r) => [r.label, r.gainPct]));
       const movers = latestComputed.rows.filter((r) => firstByLabel.has(r.label)).map((r) => ({ label: r.label, delta: r.gainPct - firstByLabel.get(r.label), last: r.gainPct }));
       const byLevel = [...movers].sort((a, b) => b.last - a.last);
       const strongest = byLevel[0];
