@@ -138,7 +138,7 @@
     { id: "certs", type: "fixed", label: "EGP certificates & CDs (incl. CIB)", currency: "EGP", investment: 457780000, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "treasury", type: "fixed", label: "NBE Treasury Bills (364-day)", currency: "EGP", investment: 84014400, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "usdcd", type: "fixed", label: "USD certificate (CIB)", currency: "USD", investment: 8e5, purchaseNav: 0, grams: 0, navGroup: "" },
-    { id: "usdcash", type: "fixed", label: "USD cash (NBE)", currency: "USD", investment: 511618, purchaseNav: 0, grams: 0, navGroup: "" },
+    { id: "usdcash", type: "fixed", label: "USD term deposit (NBE, 4.6%, monthly renewal)", currency: "USD", investment: 512382, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "brokerage", type: "fixed", label: "Brokerage (Tycoon)", currency: "EGP", investment: 9e6, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "offices", type: "fixed", label: "Office units (5, advance paid)", currency: "EGP", investment: 17029500, purchaseNav: 0, grams: 0, navGroup: "" }
   ];
@@ -237,7 +237,8 @@
   ];
   var CASH_FLOW = {
     egp: { income: 7120225, outflow: 4031095.38 },
-    usd: { income: 3e3, outflow: 0 }
+    usd: { income: 3e3 + 1964, outflow: 0 }
+    // 3,000 from the CIB USD certificate; 1,964 = 512,382 NBE term deposit @ 4.6%/yr, monthly.
   };
   var uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
   var FIREBASE_CONFIG = {
@@ -1284,7 +1285,7 @@ Save anyway?`);
     <tr><td>EGP \u2014 certificate &amp; fund income</td><td class="num mono">${egp(CASH_FLOW.egp.income)}</td></tr>
     <tr><td>EGP \u2014 loan installments</td><td class="num mono">${egp(CASH_FLOW.egp.outflow)}</td></tr>
     <tr><td><b>EGP \u2014 net monthly surplus</b></td><td class="num mono"><b>${egp(egpNet)}</b></td></tr>
-    <tr><td>USD \u2014 certificate income</td><td class="num mono">${usd(CASH_FLOW.usd.income)}</td></tr>
+    <tr><td>USD \u2014 certificate &amp; deposit income</td><td class="num mono">${usd(CASH_FLOW.usd.income)}</td></tr>
     <tr><td><b>USD \u2014 net monthly surplus</b></td><td class="num mono"><b>${usd(usdNet)}</b></td></tr>
   </table>
 
@@ -1453,7 +1454,7 @@ Save anyway?`);
             /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-5", children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total invested in USD" }),
               /* @__PURE__ */ jsx("div", { className: "font-mono text-2xl md:text-3xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: totalUsdInvestment, format: usd }) }),
-              /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-2", children: "Beltone, the USD certificate, and uncommitted USD cash." })
+              /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-2", children: "Beltone, the CIB certificate, and the NBE term deposit." })
             ] })
           ] }),
           /* @__PURE__ */ jsx("div", { className: "mt-4 text-xs text-neutral-500", children: [
@@ -1533,7 +1534,7 @@ Save anyway?`);
               /* @__PURE__ */ jsx(AnimatedNumber, { value: egpNet, format: egp })
             ] }), emphasis: true, sub: "surplus" })
           ] }) : /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-6", children: [
-            /* @__PURE__ */ jsx(Stat, { label: "Certificate income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.usd.income, format: usd }), sub: "per month" }),
+            /* @__PURE__ */ jsx(Stat, { label: "Certificate & deposit income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.usd.income, format: usd }), sub: "per month" }),
             /* @__PURE__ */ jsx(Stat, { label: "Net monthly position", value: /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-1", children: [
               /* @__PURE__ */ jsx(ArrowUpRight, { size: 18, strokeWidth: 1.5 }),
               /* @__PURE__ */ jsx(AnimatedNumber, { value: usdNet, format: usd })
