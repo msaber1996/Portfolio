@@ -1030,14 +1030,13 @@ Save anyway?`);
       return out;
     }, [history, accumulatingGroups]);
     const computedHistory = useMemo(() => history.map((e) => computeDay(e, holdings, navAdjustByDate[e.date])), [history, holdings, navAdjustByDate]);
-    const fundSeries = useMemo(() => navFields.map((f) => {
-      const holding = holdings.find((h) => h.type === "fund" && h.navGroup === f.key);
+    const fundSeries = useMemo(() => holdings.filter((h) => h.type === "fund" && h.navGroup).map((holding) => {
       const points = computedHistory.map((d) => {
-        const row = d.rows.find((r) => r.id === holding?.id);
+        const row = d.rows.find((r) => r.id === holding.id);
         return { date: d.date, value: row ? row.gainPct : 0 };
       });
-      return { key: f.key, label: f.label, points };
-    }), [navFields, holdings, computedHistory]);
+      return { key: holding.id, label: holding.label, points };
+    }), [holdings, computedHistory]);
     const latestComputed = computedHistory[computedHistory.length - 1];
     const firstComputed = computedHistory[0];
     const today = /* @__PURE__ */ new Date();
