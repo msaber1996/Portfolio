@@ -122,6 +122,12 @@
       /* @__PURE__ */ jsx("path", { d: "m15 5 4 4" })
     ] });
   }
+  function Bell(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: [
+      /* @__PURE__ */ jsx("path", { d: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" }),
+      /* @__PURE__ */ jsx("path", { d: "M10.3 21a1.94 1.94 0 0 0 3.4 0" })
+    ] });
+  }
 
   // App.jsx
   var SEED_HOLDINGS = [
@@ -916,8 +922,17 @@
     const [dismissedAlertDate, setDismissedAlertDate] = useState(null);
     const [dismissedOfficeDueDate, setDismissedOfficeDueDate] = useState(null);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [bellOpen, setBellOpen] = useState(false);
     const [view, setView] = useState("dashboard");
     const [editingDate, setEditingDate] = useState(null);
+    const [notifPermission, setNotifPermission] = useState(() => typeof window !== "undefined" && "Notification" in window ? window.Notification.permission : "unsupported");
+    const [notifiedIds, setNotifiedIds] = useState(() => {
+      try {
+        return typeof window !== "undefined" ? JSON.parse(window.localStorage.getItem("notifiedAlertIds") || "[]") : [];
+      } catch {
+        return [];
+      }
+    });
     const showAdmin = isOwner && view === "admin";
     const saveTimers = useRef({});
     useEffect(() => {
@@ -1108,6 +1123,48 @@ Save anyway?`);
     const officeNextDueAmount = nextOfficeInstallmentRow ? nextOfficeInstallmentRow.amount : 0;
     const officeDaysUntilDue = daysUntil(officeNextDueDate);
     const officeDueAlert = officeDaysUntilDue !== null && officeDaysUntilDue <= OFFICE_DUE_WARNING_DAYS ? { date: officeNextDueDate, amount: officeNextDueAmount, daysUntilDue: officeDaysUntilDue } : null;
+    const activeAlerts = useMemo(() => {
+      const list = [];
+      if (dailyAlert && dailyAlert.date !== dismissedAlertDate) {
+        list.push({ id: `daily-${dailyAlert.date}`, severity: "warning", text: `Notable move today — ${dailyAlert.triggers.join(" · ")}` });
+      }
+      if (officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate) {
+        const amt = egp(officeDueAlert.amount);
+        list.push({ id: `office-${officeDueAlert.date}`, severity: officeDueAlert.daysUntilDue < 0 ? "danger" : "warning", text: officeDueAlert.daysUntilDue < 0 ? `Office installment ${amt} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)}d ago` : officeDueAlert.daysUntilDue === 0 ? `Office installment ${amt} is due today` : `Office installment ${amt} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue}d` });
+      }
+      CERTIFICATES.forEach((c, i) => {
+        const d = daysUntil(c.maturityDate);
+        if (d === null || d > MATURITY_WARNING_DAYS) return;
+        list.push({ id: `cert-${i}-${c.maturityDate}`, severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${c.label} matured ${fmtDate(c.maturityDate)}, ${Math.abs(d)}d ago` : `${c.label} matures ${fmtDate(c.maturityDate)}, in ${d}d` });
+      });
+      LOAN_FACILITIES.forEach((l, i) => {
+        const d = daysUntil(l.maturityDate);
+        if (d === null || d > MATURITY_WARNING_DAYS) return;
+        list.push({ id: `loan-${i}-${l.maturityDate}`, severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${l.label} matured ${fmtDate(l.maturityDate)}, ${Math.abs(d)}d ago` : `${l.label} matures ${fmtDate(l.maturityDate)}, in ${d}d` });
+      });
+      return list;
+    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate]);
+    const requestNotifPermission = useCallback(() => {
+      if (typeof window === "undefined" || !("Notification" in window)) return;
+      window.Notification.requestPermission().then((perm) => setNotifPermission(perm));
+    }, []);
+    useEffect(() => {
+      if (notifPermission !== "granted" || typeof window === "undefined") return;
+      const fresh = activeAlerts.filter((a) => !notifiedIds.includes(a.id));
+      if (fresh.length === 0) return;
+      fresh.forEach((a) => {
+        try {
+          new window.Notification("Portfolio Readiness", { body: a.text });
+        } catch {
+        }
+      });
+      const updated = [...notifiedIds, ...fresh.map((a) => a.id)];
+      setNotifiedIds(updated);
+      try {
+        window.localStorage.setItem("notifiedAlertIds", JSON.stringify(updated));
+      } catch {
+      }
+    }, [activeAlerts, notifPermission, notifiedIds]);
     const totalEgpInvestment = useMemo(() => {
       return holdings.filter((h) => h.currency === "EGP").reduce((s, h) => s + h.investment, 0);
     }, [holdings]);
@@ -1381,7 +1438,7 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("div", { className: "flex items-start justify-between gap-6 mt-3", children: [
           /* @__PURE__ */ jsx("h1", { className: "font-serif text-4xl md:text-6xl leading-tight tracking-tight text-neutral-900", children: showAdmin ? "Manage access" : "Portfolio Readiness" }),
-          /* @__PURE__ */ jsx("div", { className: "shrink-0 mt-2 relative", children: showAdmin ? /* @__PURE__ */ jsx(
+          /* @__PURE__ */ jsx("div", { className: "shrink-0 mt-2 flex items-center gap-2", children: showAdmin ? /* @__PURE__ */ jsx(
             "button",
             {
               onClick: () => setView("dashboard"),
@@ -1389,32 +1446,54 @@ Save anyway?`);
               children: "\u2190 Back to portfolio"
             }
           ) : [
-            /* @__PURE__ */ jsx(
-              "button",
-              {
-                onClick: () => setMenuOpen((v) => !v),
-                className: "inline-flex items-center gap-2 border border-neutral-900 text-neutral-900 text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-100 transition-colors",
-                children: [
-                  /* @__PURE__ */ jsx(menuOpen ? X : Menu, { size: 14 }),
-                  " Menu"
-                ]
-              }
-            ),
-            menuOpen && /* @__PURE__ */ jsx("div", { className: "fixed inset-0 z-10", onClick: () => setMenuOpen(false) }),
-            menuOpen && /* @__PURE__ */ jsx("div", { className: "absolute right-0 mt-2 w-52 bg-white border border-neutral-300 shadow-lg z-20 flex flex-col", children: [
-              /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); downloadReport(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left", children: [
-                /* @__PURE__ */ jsx(FileDown, { size: 14 }),
-                " Download report"
-              ] }),
-              /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); handleExportBackup(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
-                /* @__PURE__ */ jsx(FileDown, { size: 14 }),
-                " Backup data"
-              ] }),
-              isOwner && /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); setView("admin"); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
-                /* @__PURE__ */ jsx(Users, { size: 14 }),
-                " Manage access"
-              ] }),
-              onSignOut && /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); onSignOut(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-500 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: "Log out" })
+            /* @__PURE__ */ jsx("div", { className: "relative", children: [
+              /* @__PURE__ */ jsx(
+                "button",
+                {
+                  onClick: () => setBellOpen((v) => !v),
+                  className: "relative inline-flex items-center justify-center border border-neutral-300 text-neutral-700 p-2 hover:bg-neutral-100 transition-colors",
+                  "aria-label": "Notifications",
+                  children: [
+                    /* @__PURE__ */ jsx(Bell, { size: 14 }),
+                    activeAlerts.length > 0 && /* @__PURE__ */ jsx("span", { className: "absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center font-mono", children: activeAlerts.length })
+                  ]
+                }
+              ),
+              bellOpen && /* @__PURE__ */ jsx("div", { className: "fixed inset-0 z-10", onClick: () => setBellOpen(false) }),
+              bellOpen && /* @__PURE__ */ jsx("div", { className: "absolute right-0 mt-2 w-80 bg-white border border-neutral-300 shadow-lg z-20", children: [
+                /* @__PURE__ */ jsx("div", { className: "px-4 py-2.5 border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500", children: "Notifications" }),
+                activeAlerts.length === 0 ? /* @__PURE__ */ jsx("div", { className: "px-4 py-4 text-xs text-neutral-400", children: "No active alerts." }) : /* @__PURE__ */ jsx("div", { className: "max-h-72 overflow-y-auto", children: activeAlerts.map((a) => /* @__PURE__ */ jsx("div", { className: `px-4 py-2.5 text-xs leading-relaxed border-b border-neutral-100 ${a.severity === "danger" ? "text-red-800" : "text-amber-800"}`, children: a.text }, a.id)) }),
+                /* @__PURE__ */ jsx("div", { className: "px-4 py-2.5 border-t border-neutral-200", children: notifPermission === "unsupported" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Browser notifications aren't supported here." }) : notifPermission === "granted" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-emerald-700", children: "Browser notifications enabled." }) : notifPermission === "denied" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Browser notifications blocked \u2014 enable them in your browser's site settings." }) : /* @__PURE__ */ jsx("button", { onClick: requestNotifPermission, className: "text-xs underline text-neutral-700", children: "Enable browser notifications" }) })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsx("div", { className: "relative", children: [
+              /* @__PURE__ */ jsx(
+                "button",
+                {
+                  onClick: () => setMenuOpen((v) => !v),
+                  className: "inline-flex items-center gap-2 border border-neutral-900 text-neutral-900 text-xs uppercase tracking-wide px-4 py-2 hover:bg-neutral-100 transition-colors",
+                  children: [
+                    /* @__PURE__ */ jsx(menuOpen ? X : Menu, { size: 14 }),
+                    " Menu"
+                  ]
+                }
+              ),
+              menuOpen && /* @__PURE__ */ jsx("div", { className: "fixed inset-0 z-10", onClick: () => setMenuOpen(false) }),
+              menuOpen && /* @__PURE__ */ jsx("div", { className: "absolute right-0 mt-2 w-52 bg-white border border-neutral-300 shadow-lg z-20 flex flex-col", children: [
+                /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); downloadReport(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left", children: [
+                  /* @__PURE__ */ jsx(FileDown, { size: 14 }),
+                  " Download report"
+                ] }),
+                /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); handleExportBackup(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
+                  /* @__PURE__ */ jsx(FileDown, { size: 14 }),
+                  " Backup data"
+                ] }),
+                isOwner && /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); setView("admin"); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
+                  /* @__PURE__ */ jsx(Users, { size: 14 }),
+                  " Manage access"
+                ] }),
+                onSignOut && /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); onSignOut(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-500 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: "Log out" })
+              ] })
             ] })
           ] })
         ] }),
