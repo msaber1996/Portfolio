@@ -116,6 +116,12 @@
       /* @__PURE__ */ jsx("path", { d: "M16 3.13a4 4 0 0 1 0 7.75" })
     ] });
   }
+  function Pencil(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: [
+      /* @__PURE__ */ jsx("path", { d: "M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" }),
+      /* @__PURE__ */ jsx("path", { d: "m15 5 4 4" })
+    ] });
+  }
 
   // App.jsx
   var SEED_HOLDINGS = [
@@ -561,6 +567,9 @@
   function RowDeleteButton({ onClick }) {
     return /* @__PURE__ */ jsx("button", { onClick, className: "text-neutral-300 hover:text-neutral-700 transition-colors p-1", "aria-label": "Delete row", children: /* @__PURE__ */ jsx(Trash2, { size: 14 }) });
   }
+  function RowEditButton({ onClick }) {
+    return /* @__PURE__ */ jsx("button", { onClick, className: "text-neutral-300 hover:text-neutral-700 transition-colors p-1", "aria-label": "Edit row", children: /* @__PURE__ */ jsx(Pencil, { size: 14 }) });
+  }
   function AddRowButton({ onClick, label }) {
     return /* @__PURE__ */ jsx("button", { onClick, className: "mt-2 inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-neutral-600 border border-neutral-300 px-3 py-1.5 hover:border-neutral-600 transition-colors", children: [
       /* @__PURE__ */ jsx(Plus, { size: 13 }),
@@ -810,13 +819,13 @@
       canEdit && /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add conversion" })
     ] });
   }
-  function DailyPricingForm({ onSave, saving, defaults, navFields, liveRates, canEdit = true }) {
+  function DailyPricingForm({ onSave, saving, defaults, navFields, liveRates, canEdit = true, isEditing = false }) {
     const [form, setForm] = useState(defaults);
     useEffect(() => setForm(defaults), [defaults]);
     const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
     return /* @__PURE__ */ jsx("div", { className: "border border-neutral-300", children: [
       /* @__PURE__ */ jsx("div", { className: "bg-neutral-900 text-white px-4 py-2 flex items-center justify-between", children: [
-        /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide", children: "Today's update" }),
+        /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide", children: isEditing ? "Editing entry" : "Today's update" }),
         /* @__PURE__ */ jsx("input", { type: "date", value: form.date, onChange: set("date"), disabled: !canEdit, className: "bg-neutral-900 text-white font-mono text-xs border border-neutral-600 px-2 py-1 disabled:opacity-60" })
       ] }),
       liveRates?.updatedAt && /* @__PURE__ */ jsx("div", { className: "px-4 pt-3 text-xs text-neutral-400", children: `Rate and gold pre-filled from live market data, last refreshed ${new Date(liveRates.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} — you can still edit them below.` }),
@@ -836,8 +845,8 @@
       ] }),
       canEdit ? /* @__PURE__ */ jsx("div", { className: "px-4 pb-4 flex items-center gap-3", children: [
         /* @__PURE__ */ jsx("button", { onClick: () => onSave(form), disabled: saving, className: "inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 disabled:opacity-50", children: [
-          saving ? /* @__PURE__ */ jsx(Loader2, { size: 14, className: "animate-spin" }) : /* @__PURE__ */ jsx(Plus, { size: 14 }),
-          saving ? "Saving" : "Save today's entry"
+          saving ? /* @__PURE__ */ jsx(Loader2, { size: 14, className: "animate-spin" }) : isEditing ? /* @__PURE__ */ jsx(Check, { size: 14 }) : /* @__PURE__ */ jsx(Plus, { size: 14 }),
+          saving ? "Saving" : isEditing ? "Save changes" : "Save today's entry"
         ] }),
         /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Overwrites the entry for this date if one already exists." })
       ] }) : /* @__PURE__ */ jsx("div", { className: "px-4 pb-4", children: /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Viewer access — you can look, but only an editor can save a new entry." }) })
@@ -908,6 +917,7 @@
     const [dismissedOfficeDueDate, setDismissedOfficeDueDate] = useState(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const [view, setView] = useState("dashboard");
+    const [editingDate, setEditingDate] = useState(null);
     const showAdmin = isOwner && view === "admin";
     const saveTimers = useRef({});
     useEffect(() => {
@@ -966,6 +976,8 @@
       const gold = !alreadySavedToday && liveRates?.gold ? liveRates.gold : base.gold;
       return { ...base, date: todayStr, rate, gold };
     }, [latest, liveRates]);
+    const editingEntry = useMemo(() => editingDate ? history.find((e) => e.date === editingDate) : null, [editingDate, history]);
+    const formDefaults = editingEntry || defaultsForForm;
     const daysSinceLastEntry = useMemo(() => {
       if (!latest?.date) return null;
       const today = /* @__PURE__ */ new Date();
@@ -998,14 +1010,19 @@ Save anyway?`);
       }
       setSaving(true);
       await saveJson(`daily/${clean.date}`, clean);
-      setHistory((h) => [...h.filter((e) => e.date !== clean.date), clean].sort((a, b) => a.date.localeCompare(b.date)));
+      if (editingDate && editingDate !== clean.date) {
+        await deleteKey(`daily/${editingDate}`);
+      }
+      setHistory((h) => [...h.filter((e) => e.date !== clean.date && e.date !== editingDate), clean].sort((a, b) => a.date.localeCompare(b.date)));
+      setEditingDate(null);
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1800);
       setSaving(false);
-    }, [navFields, accumulatingGroups, latest]);
+    }, [navFields, accumulatingGroups, latest, editingDate]);
     const handleDeleteDay = useCallback(async (date) => {
       await deleteKey(`daily/${date}`);
       setHistory((h) => h.filter((e) => e.date !== date));
+      setEditingDate((d) => d === date ? null : d);
     }, []);
     const navAdjustByDate = useMemo(() => {
       const out = {};
@@ -1540,20 +1557,28 @@ Save anyway?`);
             ] }), emphasis: true, sub: "surplus — no active USD loan" })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically." }),
-          daysSinceLastEntry >= 1 && /* @__PURE__ */ jsx("div", { className: "mb-4 flex items-center gap-2 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800", children: [
+        /* @__PURE__ */ jsx("section", { id: "daily-pricing-form", className: "py-10 border-t border-neutral-200", children: [
+          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically. Editing an existing day? Use the pencil icon on its row in History and analysis below." }),
+          !editingEntry && daysSinceLastEntry >= 1 && /* @__PURE__ */ jsx("div", { className: "mb-4 flex items-center gap-2 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800", children: [
             /* @__PURE__ */ jsx(AlertTriangle, { size: 14, className: "shrink-0 text-amber-500" }),
             daysSinceLastEntry === 1 ? "It's been 1 day since your last update — add today's entry below." : `It's been ${daysSinceLastEntry} days since your last update — add today's entry below.`
           ] }),
-          /* @__PURE__ */ jsx(DailyPricingForm, { onSave: handleSaveDay, saving, defaults: defaultsForForm, navFields, liveRates, canEdit }),
+          editingEntry && /* @__PURE__ */ jsx("div", { className: "mb-4 flex items-center justify-between gap-2 border border-neutral-300 bg-neutral-100 px-3 py-2 text-xs text-neutral-700", children: [
+            /* @__PURE__ */ jsx("span", { children: [
+              "Editing the entry for ",
+              /* @__PURE__ */ jsx("b", { children: fmtDate(editingEntry.date) }),
+              " — changes overwrite that day when saved."
+            ] }),
+            /* @__PURE__ */ jsx("button", { onClick: () => setEditingDate(null), className: "text-xs underline shrink-0", children: "Cancel" })
+          ] }),
+          /* @__PURE__ */ jsx(DailyPricingForm, { onSave: handleSaveDay, saving, defaults: formDefaults, navFields, liveRates, canEdit, isEditing: !!editingEntry }),
           savedFlash && /* @__PURE__ */ jsx("div", { className: "mt-3 inline-flex items-center gap-2 text-xs text-neutral-600 border border-neutral-300 px-3 py-1.5", children: [
             /* @__PURE__ */ jsx(Check, { size: 13 }),
             " Saved to history"
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Delete a row if an entry was a mistake.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
           fundSeries.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: "Return by fund, since purchase" }),
@@ -1654,13 +1679,19 @@ Save anyway?`);
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Gain / loss" }),
               canEdit && /* @__PURE__ */ jsx("th", { className: "py-2 px-3" })
             ] }) }),
-            /* @__PURE__ */ jsx("tbody", { children: [...computedHistory].reverse().map((d) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+            /* @__PURE__ */ jsx("tbody", { children: [...computedHistory].reverse().map((d) => /* @__PURE__ */ jsx("tr", { className: `border-b border-neutral-100 ${d.date === editingDate ? "bg-neutral-50" : ""}`, children: [
               /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-neutral-700", children: d.date }),
               /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-right text-neutral-700", children: fmt(d.rate, 2) }),
               /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-right text-neutral-700", children: fmt(d.gold) }),
               /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-right text-neutral-900", children: egp(d.markedToMarket) }),
               /* @__PURE__ */ jsx("td", { className: `py-2 px-3 font-mono text-right ${d.gain >= 0 ? "text-neutral-900" : "text-neutral-500"}`, children: signedEgp(d.gain) }),
-              canEdit && /* @__PURE__ */ jsx("td", { className: "py-2 px-3 text-right", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => handleDeleteDay(d.date) }) })
+              canEdit && /* @__PURE__ */ jsx("td", { className: "py-2 px-3 text-right whitespace-nowrap", children: [
+                /* @__PURE__ */ jsx(RowEditButton, { onClick: () => {
+                  setEditingDate(d.date);
+                  document.getElementById("daily-pricing-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                } }),
+                /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => handleDeleteDay(d.date) })
+              ] })
             ] }, d.date)) })
           ] }) })
         ] }),
