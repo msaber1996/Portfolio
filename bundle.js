@@ -1110,8 +1110,8 @@ Save anyway?`);
       const leverageDelta = currLeverage - prevLeverage;
       const rateDelta = prevDay.rate ? (currDay.rate - prevDay.rate) / prevDay.rate * 100 : 0;
       const triggers = [];
-      const LEVERAGE_THRESHOLD_POINTS = 3;
-      const RATE_THRESHOLD_PCT = 3;
+      const LEVERAGE_THRESHOLD_POINTS = 1;
+      const RATE_THRESHOLD_PCT = 1;
       if (Math.abs(leverageDelta) >= LEVERAGE_THRESHOLD_POINTS) {
         triggers.push(`Leverage ${leverageDelta >= 0 ? "+" : "−"}${Math.abs(leverageDelta).toFixed(1)} points since ${prevDay.date} (now ${currLeverage.toFixed(1)}%)`);
       }

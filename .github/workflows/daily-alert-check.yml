@@ -86,10 +86,10 @@ jobs:
               const currLeverage = currAssets ? (totalLiabilities / currAssets) * 100 : 0;
               const leverageDelta = currLeverage - prevLeverage;
               const rateDelta = prevDay.rate ? ((currDay.rate - prevDay.rate) / prevDay.rate) * 100 : 0;
-              if (Math.abs(leverageDelta) >= 3) {
+              if (Math.abs(leverageDelta) >= 1) {
                 triggers.push(`Leverage ${leverageDelta >= 0 ? "+" : "−"}${Math.abs(leverageDelta).toFixed(1)} points since ${prevDay.date} (now ${currLeverage.toFixed(1)}%)`);
               }
-              if (Math.abs(rateDelta) >= 3) {
+              if (Math.abs(rateDelta) >= 1) {
                 triggers.push(`USD/EGP rate ${rateDelta >= 0 ? "+" : "−"}${Math.abs(rateDelta).toFixed(1)}% since ${prevDay.date} (now ${currDay.rate})`);
               }
             }
