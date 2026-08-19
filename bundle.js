@@ -2038,28 +2038,6 @@ Save anyway?`);
       }
     };
     useEffect(() => {
-      if (!user) return;
-      let timer;
-      const IDLE_LIMIT_MS = 6e4;
-      const resetTimer = () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          if (hasBiometricCredential(user.uid)) {
-            setLocked(true);
-          } else {
-            window.firebase.auth(firebaseApp).signOut();
-          }
-        }, IDLE_LIMIT_MS);
-      };
-      const activityEvents = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
-      activityEvents.forEach((ev) => window.addEventListener(ev, resetTimer));
-      resetTimer();
-      return () => {
-        clearTimeout(timer);
-        activityEvents.forEach((ev) => window.removeEventListener(ev, resetTimer));
-      };
-    }, [user]);
-    useEffect(() => {
       if (typeof window === "undefined" || !window.PublicKeyCredential || !window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
         return;
       }
