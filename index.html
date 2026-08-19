@@ -41,5 +41,12 @@
 </div>
 <!-- bump ?v= on every bundle.js change, or Safari keeps serving the cached old copy -->
 <script src="bundle.js?v=53"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>
