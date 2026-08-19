@@ -1998,6 +1998,7 @@ Save anyway?`);
     const [unlocking, setUnlocking] = useState(false);
     const [biometricSupported, setBiometricSupported] = useState(false);
     const [biometricEnabled, setBiometricEnabled] = useState(false);
+    const skipNextLockRef = useRef(false);
     const isSignupMode = typeof window !== "undefined" && /[?&]signup=1\b/.test(window.location.search);
     useEffect(() => {
       if (!firebaseApp || !window.firebase.auth) {
@@ -2047,7 +2048,8 @@ Save anyway?`);
     useEffect(() => {
       const enabled = user ? hasBiometricCredential(user.uid) : false;
       setBiometricEnabled(enabled);
-      if (enabled) setLocked(true);
+      if (enabled && !skipNextLockRef.current) setLocked(true);
+      skipNextLockRef.current = false;
     }, [user]);
     useEffect(() => {
       if (!user || !hasBiometricCredential(user.uid)) return;
@@ -2083,8 +2085,10 @@ Save anyway?`);
       setSigningIn(true);
       try {
         const email = username.includes("@") ? username : `${username}@${AUTH_EMAIL_DOMAIN}`;
+        skipNextLockRef.current = true;
         await window.firebase.auth(firebaseApp).signInWithEmailAndPassword(email, password);
       } catch {
+        skipNextLockRef.current = false;
         setSignInError("Wrong username or password.");
       }
       setSigningIn(false);
