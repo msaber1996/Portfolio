@@ -128,6 +128,12 @@
       /* @__PURE__ */ jsx("path", { d: "M10.3 21a1.94 1.94 0 0 0 3.4 0" })
     ] });
   }
+  function Lock(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: [
+      /* @__PURE__ */ jsx("rect", { x: "3", y: "11", width: "18", height: "11", rx: "2" }),
+      /* @__PURE__ */ jsx("path", { d: "M7 11V7a5 5 0 0 1 10 0v4" })
+    ] });
+  }
 
   // App.jsx
   var SEED_HOLDINGS = [
@@ -357,6 +363,46 @@
     const outputArray = new Uint8Array(rawData.length);
     for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
     return outputArray;
+  };
+  var BIOMETRIC_KEY_PREFIX = "biometricCredential_";
+  var bufToBase64Url = (buf) => {
+    const bytes = new Uint8Array(buf);
+    let str = "";
+    for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+    return window.btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  };
+  var base64UrlToBuf = (b64url) => {
+    const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - b64url.length % 4) % 4);
+    const str = window.atob(b64);
+    const bytes = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i);
+    return bytes.buffer;
+  };
+  var registerBiometricCredential = async (uid, label) => {
+    const challenge = window.crypto.getRandomValues(new Uint8Array(32));
+    const userId = new TextEncoder().encode(uid).slice(0, 64);
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: "Portfolio Readiness" },
+        user: { id: userId, name: label || uid, displayName: label || "Portfolio user" },
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+        timeout: 6e4
+      }
+    });
+    return bufToBase64Url(cred.rawId);
+  };
+  var verifyBiometricCredential = async (credentialIdB64) => {
+    const challenge = window.crypto.getRandomValues(new Uint8Array(32));
+    await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{ id: base64UrlToBuf(credentialIdB64), type: "public-key" }],
+        userVerification: "required",
+        timeout: 6e4
+      }
+    });
   };
   var MATURITY_WARNING_DAYS = 30;
   var daysUntil = (dateStr) => {
@@ -915,7 +961,7 @@
       }) })
     ] }) });
   }
-  function PortfolioReadinessApp({ onSignOut, role, uid }) {
+  function PortfolioReadinessApp({ onSignOut, role, uid, biometricSupported, biometricEnabled, onEnableBiometricLock, onDisableBiometricLock }) {
     const canEdit = role === "owner" || role === "editor";
     const isOwner = role === "owner";
     const [openAsset, setOpenAsset] = useState(null);
@@ -936,6 +982,8 @@
     const [editingDate, setEditingDate] = useState(null);
     const [notifPermission, setNotifPermission] = useState(() => typeof window !== "undefined" && "Notification" in window ? window.Notification.permission : "unsupported");
     const [pushStatus, setPushStatus] = useState("idle");
+    const [biometricBusy, setBiometricBusy] = useState(false);
+    const [biometricError, setBiometricError] = useState("");
     const showAdmin = isOwner && view === "admin";
     const saveTimers = useRef({});
     useEffect(() => {
@@ -1180,6 +1228,20 @@ Save anyway?`);
         setPushStatus("error");
       }
     }, [uid]);
+    const toggleBiometricLock = useCallback(async () => {
+      setBiometricError("");
+      setBiometricBusy(true);
+      try {
+        if (biometricEnabled) {
+          onDisableBiometricLock();
+        } else {
+          await onEnableBiometricLock();
+        }
+      } catch {
+        setBiometricError("Couldn't set up Face ID / Touch ID — try again.");
+      }
+      setBiometricBusy(false);
+    }, [biometricEnabled, onEnableBiometricLock, onDisableBiometricLock]);
     const totalEgpInvestment = useMemo(() => {
       return holdings.filter((h) => h.currency === "EGP").reduce((s, h) => s + h.investment, 0);
     }, [holdings]);
@@ -1503,6 +1565,10 @@ Save anyway?`);
                   /* @__PURE__ */ jsx(FileDown, { size: 14 }),
                   " Backup data"
                 ] }),
+                biometricSupported && /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); toggleBiometricLock(); }, disabled: biometricBusy, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200 disabled:opacity-50", children: [
+                  /* @__PURE__ */ jsx(Lock, { size: 14 }),
+                  biometricBusy ? " Working…" : biometricEnabled ? " Disable Face ID lock" : " Enable Face ID lock"
+                ] }),
                 isOwner && /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); setView("admin"); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
                   /* @__PURE__ */ jsx(Users, { size: 14 }),
                   " Manage access"
@@ -1512,7 +1578,11 @@ Save anyway?`);
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("p", { className: "mt-3 max-w-xl text-neutral-600 text-base leading-relaxed", children: showAdmin ? "Only you see this page. Share the signup link with anyone you want to give view-only access to, then upgrade them to editor here if needed." : canEdit ? 'Every holding, loan, and conversion below is editable. Add a new fund, certificate, loan, or gold position at any time \u2014 the daily form and every total pick it up automatically. "Download report" saves a standalone file you can open, print to PDF, or send to anyone \u2014 no publishing needed.' : 'You have view-only access \u2014 every number below is live, but editing is off. "Download report" saves a standalone file you can open, print to PDF, or send to anyone.' })
+        /* @__PURE__ */ jsx("p", { className: "mt-3 max-w-xl text-neutral-600 text-base leading-relaxed", children: showAdmin ? "Only you see this page. Share the signup link with anyone you want to give view-only access to, then upgrade them to editor here if needed." : canEdit ? 'Every holding, loan, and conversion below is editable. Add a new fund, certificate, loan, or gold position at any time \u2014 the daily form and every total pick it up automatically. "Download report" saves a standalone file you can open, print to PDF, or send to anyone \u2014 no publishing needed.' : 'You have view-only access \u2014 every number below is live, but editing is off. "Download report" saves a standalone file you can open, print to PDF, or send to anyone.' }),
+        biometricError && /* @__PURE__ */ jsx("div", { className: "mt-3 inline-flex items-center gap-2 text-xs text-red-700 border border-red-300 bg-red-50 px-3 py-1.5", children: [
+          biometricError,
+          /* @__PURE__ */ jsx("button", { onClick: () => setBiometricError(""), className: "underline shrink-0", children: "Dismiss" })
+        ] })
       ] }) }),
       /* @__PURE__ */ jsx("main", { className: "max-w-5xl mx-auto px-6 bg-neutral-50", children: showAdmin ? [
         /* @__PURE__ */ jsx("section", { className: "py-10", children: [
@@ -1902,6 +1972,18 @@ Save anyway?`);
       /* @__PURE__ */ jsx("button", { onClick: onSignOut, className: "text-xs uppercase tracking-wide border border-neutral-300 px-4 py-2 hover:bg-neutral-100 transition-colors", children: "Log out" })
     ] }) });
   }
+  function LockScreen({ onUnlock, onSignOut, error, unlocking }) {
+    return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center p-6 font-sans", children: /* @__PURE__ */ jsx("div", { className: "w-full max-w-sm border border-neutral-300 bg-white p-6 text-center", children: [
+      /* @__PURE__ */ jsx("h1", { className: "font-serif text-2xl text-neutral-900 mb-3", children: "Locked" }),
+      /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-5", children: "Unlock with Face ID / Touch ID to continue." }),
+      /* @__PURE__ */ jsx("button", { onClick: onUnlock, disabled: unlocking, className: "w-full inline-flex items-center justify-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2.5 hover:bg-neutral-700 transition-colors disabled:opacity-50", children: [
+        unlocking ? /* @__PURE__ */ jsx(Loader2, { size: 14, className: "animate-spin" }) : null,
+        unlocking ? "Verifying" : "Unlock"
+      ] }),
+      error && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-600 mt-3", children: error }),
+      /* @__PURE__ */ jsx("button", { onClick: onSignOut, className: "text-xs text-neutral-400 underline mt-5", children: "Log out instead" })
+    ] }) });
+  }
   function PortfolioReadiness() {
     const [user, setUser] = useState(null);
     const [authChecked, setAuthChecked] = useState(false);
@@ -1911,6 +1993,11 @@ Save anyway?`);
     const [signingUp, setSigningUp] = useState(false);
     const [signedUp, setSignedUp] = useState(false);
     const [role, setRole] = useState(null);
+    const [locked, setLocked] = useState(false);
+    const [lockError, setLockError] = useState("");
+    const [unlocking, setUnlocking] = useState(false);
+    const [biometricSupported, setBiometricSupported] = useState(false);
+    const [biometricEnabled, setBiometricEnabled] = useState(false);
     const isSignupMode = typeof window !== "undefined" && /[?&]signup=1\b/.test(window.location.search);
     useEffect(() => {
       if (!firebaseApp || !window.firebase.auth) {
@@ -1943,6 +2030,13 @@ Save anyway?`);
       db.ref(`roles/${user.uid}/lastSeenAt`).set(Date.now()).catch(() => {
       });
     }, [user]);
+    const hasBiometricCredential = (uid) => {
+      try {
+        return !!window.localStorage.getItem(`${BIOMETRIC_KEY_PREFIX}${uid}`);
+      } catch {
+        return false;
+      }
+    };
     useEffect(() => {
       if (!user) return;
       let timer;
@@ -1950,7 +2044,11 @@ Save anyway?`);
       const resetTimer = () => {
         clearTimeout(timer);
         timer = setTimeout(() => {
-          window.firebase.auth(firebaseApp).signOut();
+          if (hasBiometricCredential(user.uid)) {
+            setLocked(true);
+          } else {
+            window.firebase.auth(firebaseApp).signOut();
+          }
         }, IDLE_LIMIT_MS);
       };
       const activityEvents = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
@@ -1961,6 +2059,47 @@ Save anyway?`);
         activityEvents.forEach((ev) => window.removeEventListener(ev, resetTimer));
       };
     }, [user]);
+    useEffect(() => {
+      if (typeof window === "undefined" || !window.PublicKeyCredential || !window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+        return;
+      }
+      window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(setBiometricSupported).catch(() => {
+      });
+    }, []);
+    useEffect(() => {
+      const enabled = user ? hasBiometricCredential(user.uid) : false;
+      setBiometricEnabled(enabled);
+      if (enabled) setLocked(true);
+    }, [user]);
+    useEffect(() => {
+      if (!user || !hasBiometricCredential(user.uid)) return;
+      const onVisibility = () => {
+        if (document.visibilityState === "hidden") setLocked(true);
+      };
+      document.addEventListener("visibilitychange", onVisibility);
+      return () => document.removeEventListener("visibilitychange", onVisibility);
+    }, [user]);
+    const handleUnlock = async () => {
+      setLockError("");
+      setUnlocking(true);
+      try {
+        const credId = window.localStorage.getItem(`${BIOMETRIC_KEY_PREFIX}${user.uid}`);
+        await verifyBiometricCredential(credId);
+        setLocked(false);
+      } catch {
+        setLockError("Couldn't verify — try again.");
+      }
+      setUnlocking(false);
+    };
+    const handleEnableBiometricLock = async () => {
+      const credId = await registerBiometricCredential(user.uid, user.email);
+      window.localStorage.setItem(`${BIOMETRIC_KEY_PREFIX}${user.uid}`, credId);
+      setBiometricEnabled(true);
+    };
+    const handleDisableBiometricLock = () => {
+      window.localStorage.removeItem(`${BIOMETRIC_KEY_PREFIX}${user.uid}`);
+      setBiometricEnabled(false);
+    };
     const handleSignIn = async (username, password) => {
       setSignInError("");
       setSigningIn(true);
@@ -1998,6 +2137,9 @@ Save anyway?`);
       }
       return /* @__PURE__ */ jsx(LoginScreen, { onSignIn: handleSignIn, error: signInError, loading: signingIn });
     }
+    if (locked) {
+      return /* @__PURE__ */ jsx(LockScreen, { onUnlock: handleUnlock, onSignOut: handleSignOut, error: lockError, unlocking });
+    }
     if (role === null) {
       return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
         /* @__PURE__ */ jsx(Loader2, { className: "animate-spin mr-2", size: 16 }),
@@ -2007,7 +2149,7 @@ Save anyway?`);
     if (role !== "owner" && role !== "editor" && role !== "viewer" && role !== "service") {
       return /* @__PURE__ */ jsx(PendingApprovalScreen, { role, onSignOut: handleSignOut });
     }
-    return /* @__PURE__ */ jsx(ReportErrorBoundary, { children: /* @__PURE__ */ jsx(PortfolioReadinessApp, { onSignOut: handleSignOut, role, uid: user.uid }) });
+    return /* @__PURE__ */ jsx(ReportErrorBoundary, { children: /* @__PURE__ */ jsx(PortfolioReadinessApp, { onSignOut: handleSignOut, role, uid: user.uid, biometricSupported, biometricEnabled, onEnableBiometricLock: handleEnableBiometricLock, onDisableBiometricLock: handleDisableBiometricLock }) });
   }
 
   // entry.jsx
