@@ -349,6 +349,15 @@
     if (days < 30) return `${days}d ago`;
     return new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
   };
+  var VAPID_PUBLIC_KEY = "BDsFBOfGQe43ogEGBoN28q6sBO9LG8VlIxKUiOmjaibntTDwxa2eCR1vb7XpPplYelCgSGiP3Uwsiel03x63SNE";
+  var urlBase64ToUint8Array = (base64String) => {
+    const padding = "=".repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  };
   var MATURITY_WARNING_DAYS = 30;
   var daysUntil = (dateStr) => {
     if (!dateStr) return null;
@@ -926,13 +935,7 @@
     const [view, setView] = useState("dashboard");
     const [editingDate, setEditingDate] = useState(null);
     const [notifPermission, setNotifPermission] = useState(() => typeof window !== "undefined" && "Notification" in window ? window.Notification.permission : "unsupported");
-    const [notifiedIds, setNotifiedIds] = useState(() => {
-      try {
-        return typeof window !== "undefined" ? JSON.parse(window.localStorage.getItem("notifiedAlertIds") || "[]") : [];
-      } catch {
-        return [];
-      }
-    });
+    const [pushStatus, setPushStatus] = useState("idle");
     const showAdmin = isOwner && view === "admin";
     const saveTimers = useRef({});
     useEffect(() => {
@@ -1144,27 +1147,39 @@ Save anyway?`);
       });
       return list;
     }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate]);
-    const requestNotifPermission = useCallback(() => {
-      if (typeof window === "undefined" || !("Notification" in window)) return;
-      window.Notification.requestPermission().then((perm) => setNotifPermission(perm));
-    }, []);
     useEffect(() => {
-      if (notifPermission !== "granted" || typeof window === "undefined") return;
-      const fresh = activeAlerts.filter((a) => !notifiedIds.includes(a.id));
-      if (fresh.length === 0) return;
-      fresh.forEach((a) => {
-        try {
-          new window.Notification("Portfolio Readiness", { body: a.text });
-        } catch {
-        }
-      });
-      const updated = [...notifiedIds, ...fresh.map((a) => a.id)];
-      setNotifiedIds(updated);
-      try {
-        window.localStorage.setItem("notifiedAlertIds", JSON.stringify(updated));
-      } catch {
+      if (typeof navigator === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+        setPushStatus("unsupported");
+        return;
       }
-    }, [activeAlerts, notifPermission, notifiedIds]);
+      navigator.serviceWorker.ready.then((reg) => reg.pushManager.getSubscription()).then((sub) => {
+        setPushStatus(sub ? "subscribed" : "idle");
+      }).catch(() => setPushStatus("idle"));
+    }, []);
+    const subscribeToPush = useCallback(async () => {
+      if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      setPushStatus("subscribing");
+      try {
+        const perm = await window.Notification.requestPermission();
+        setNotifPermission(perm);
+        if (perm !== "granted") {
+          setPushStatus("idle");
+          return;
+        }
+        const registration = await navigator.serviceWorker.ready;
+        let sub = await registration.pushManager.getSubscription();
+        if (!sub) {
+          sub = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+        }
+        await db.ref(`pushSubscriptions/${uid}`).set(sub.toJSON());
+        setPushStatus("subscribed");
+      } catch {
+        setPushStatus("error");
+      }
+    }, [uid]);
     const totalEgpInvestment = useMemo(() => {
       return holdings.filter((h) => h.currency === "EGP").reduce((s, h) => s + h.investment, 0);
     }, [holdings]);
@@ -1463,7 +1478,7 @@ Save anyway?`);
               bellOpen && /* @__PURE__ */ jsx("div", { className: "absolute right-0 mt-2 w-80 bg-white border border-neutral-300 shadow-lg z-20", children: [
                 /* @__PURE__ */ jsx("div", { className: "px-4 py-2.5 border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500", children: "Notifications" }),
                 activeAlerts.length === 0 ? /* @__PURE__ */ jsx("div", { className: "px-4 py-4 text-xs text-neutral-400", children: "No active alerts." }) : /* @__PURE__ */ jsx("div", { className: "max-h-72 overflow-y-auto", children: activeAlerts.map((a) => /* @__PURE__ */ jsx("div", { className: `px-4 py-2.5 text-xs leading-relaxed border-b border-neutral-100 ${a.severity === "danger" ? "text-red-800" : "text-amber-800"}`, children: a.text }, a.id)) }),
-                /* @__PURE__ */ jsx("div", { className: "px-4 py-2.5 border-t border-neutral-200", children: notifPermission === "unsupported" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Browser notifications aren't supported here." }) : notifPermission === "granted" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-emerald-700", children: "Browser notifications enabled." }) : notifPermission === "denied" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Browser notifications blocked \u2014 enable them in your browser's site settings." }) : /* @__PURE__ */ jsx("button", { onClick: requestNotifPermission, className: "text-xs underline text-neutral-700", children: "Enable browser notifications" }) })
+                /* @__PURE__ */ jsx("div", { className: "px-4 py-2.5 border-t border-neutral-200", children: pushStatus === "unsupported" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Push notifications aren't supported here." }) : pushStatus === "subscribed" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-emerald-700", children: "Push notifications enabled \u2014 you'll get these even if the site is closed." }) : notifPermission === "denied" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Notifications blocked \u2014 enable them in your browser's site settings." }) : pushStatus === "subscribing" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Enabling\u2026" }) : /* @__PURE__ */ jsx("button", { onClick: subscribeToPush, className: "text-xs underline text-neutral-700", children: "Enable push notifications" }) })
               ] })
             ] }),
             /* @__PURE__ */ jsx("div", { className: "relative", children: [

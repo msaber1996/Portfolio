@@ -9,11 +9,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check leverage/FX thresholds and email if crossed
+      - name: Check leverage/FX thresholds and email/push if crossed
         env:
           MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
           MAIL_APP_PASSWORD: ${{ secrets.MAIL_APP_PASSWORD }}
           MAIL_TO: ${{ secrets.MAIL_TO }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
         run: |
           set -euo pipefail
 
@@ -225,6 +226,43 @@ jobs:
             --upload-file /tmp/mail.txt
 
           echo "Alert email sent."
+
+          # --- Push notifications (Web Push), same trigger as the email above ---
+          if [ -n "${VAPID_PRIVATE_KEY:-}" ]; then
+            VAPID_PUBLIC_KEY="BDsFBOfGQe43ogEGBoN28q6sBO9LG8VlIxKUiOmjaibntTDwxa2eCR1vb7XpPplYelCgSGiP3Uwsiel03x63SNE"
+            SUBSCRIPTIONS=$(curl -sf "${DB}/pushSubscriptions.json?auth=${ID_TOKEN}")
+            if [ "$SUBSCRIPTIONS" != "null" ] && [ -n "$SUBSCRIPTIONS" ]; then
+              npm install --no-save --silent web-push > /dev/null 2>&1
+              PUSH_BODY=$(echo "$RESULT" | jq -r '.triggers | join(" · ")')
+              node -e '
+                const webpush = require("web-push");
+                const subs = JSON.parse(process.argv[1]) || {};
+                const body = process.argv[2];
+                webpush.setVapidDetails("mailto:msaber1996@gmail.com", process.argv[3], process.argv[4]);
+                const payload = JSON.stringify({ title: "Portfolio alert", body, url: "https://msaber1996.github.io/Portfolio/" });
+                (async () => {
+                  for (const [uid, sub] of Object.entries(subs)) {
+                    try {
+                      await webpush.sendNotification(sub, payload);
+                    } catch (e) {
+                      if (e.statusCode === 404 || e.statusCode === 410) console.log(`STALE_SUB:${uid}`);
+                      else console.error(`Push failed for ${uid}:`, e.statusCode || e.message);
+                    }
+                  }
+                })();
+              ' "$SUBSCRIPTIONS" "$PUSH_BODY" "$VAPID_PUBLIC_KEY" "$VAPID_PRIVATE_KEY" > /tmp/push_result.txt 2>&1 || true
+              cat /tmp/push_result.txt
+              grep '^STALE_SUB:' /tmp/push_result.txt | sed 's/^STALE_SUB://' | while read -r stale_uid; do
+                curl -sf -X DELETE "${DB}/pushSubscriptions/${stale_uid}.json?auth=${ID_TOKEN}" > /dev/null || true
+                echo "Removed stale push subscription for ${stale_uid}."
+              done
+              echo "Push notifications attempted."
+            else
+              echo "No push subscriptions to notify."
+            fi
+          else
+            echo "VAPID_PRIVATE_KEY not set — skipping push notifications."
+          fi
 
           OFFICE_DUE_DATE=$(echo "$RESULT" | jq -r '.officeDueDate')
           if [ "$OFFICE_DUE_DATE" != "null" ]; then
