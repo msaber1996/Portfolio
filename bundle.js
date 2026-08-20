@@ -609,6 +609,47 @@
       points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
     ] });
   }
+  function TradingViewWidget({ symbols, height = 400 }) {
+    const containerRef = useRef(null);
+    useEffect(() => {
+      const el = containerRef.current;
+      if (!el) return;
+      el.innerHTML = '<div class="tradingview-widget-container__widget"></div>';
+      const script = document.createElement("script");
+      script.type = "text/javascript";
+      script.src = "https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js";
+      script.async = true;
+      script.text = JSON.stringify({
+        symbols,
+        chartOnly: false,
+        width: "100%",
+        height,
+        locale: "en",
+        colorTheme: "light",
+        autosize: false,
+        showVolume: false,
+        showMA: false,
+        hideDateRanges: false,
+        hideMarketStatus: false,
+        hideSymbolLogo: false,
+        scalePosition: "right",
+        scaleMode: "Normal",
+        fontFamily: "-apple-system, BlinkMacSystemFont, Trebuchet MS, Roboto, Ubuntu, sans-serif",
+        fontSize: "10",
+        noTimeScale: false,
+        valuesTracking: "1",
+        changeMode: "price-and-percent",
+        chartType: "area",
+        gridLineColor: "rgba(240, 243, 250, 0)",
+        lineWidth: 2
+      });
+      el.appendChild(script);
+      return () => {
+        el.innerHTML = "";
+      };
+    }, [JSON.stringify(symbols), height]);
+    return /* @__PURE__ */ jsx("div", { className: "tradingview-widget-container", ref: containerRef, style: { minHeight: `${height}px` } });
+  }
   function Cell({ value, onChange, type = "text", align = "left", width = "w-full", placeholder, readOnly = false }) {
     return /* @__PURE__ */ jsx(
       "input",
@@ -1858,6 +1899,13 @@ Save anyway?`);
               ] })
             ] }, d.date)) })
           ] }) })
+        ] }),
+        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+          /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "Live markets", dek: "Gold and USD/EGP, live from the market — the same two prices that drive every figure above. The leverage/FX alert (site banner, email, push) already watches both." }),
+          /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Gold", "OANDA:XAUUSD|1D"]], height: 400 }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["USD/EGP", "FX_IDC:USDEGP|1D"]], height: 400 })
+          ] })
         ] }),
         /* @__PURE__ */ jsx("footer", { className: "py-10 border-t-2 border-neutral-900 text-xs text-neutral-500 flex justify-between", children: [
           /* @__PURE__ */ jsx("span", { children: "Figures as tracked in the working file. For internal review, not financial advice." }),
