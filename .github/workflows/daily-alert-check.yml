@@ -39,6 +39,7 @@ jobs:
           HOLDINGS=$(curl -sf "${DB}/holdings.json?auth=${ID_TOKEN}")
           LAST_OFFICE_ALERT=$(curl -sf "${DB}/serviceState/lastOfficeAlertDate.json?auth=${ID_TOKEN}")
           LAST_MATURITY_ALERTS=$(curl -sf "${DB}/serviceState/alertedMaturities.json?auth=${ID_TOKEN}")
+          LIVE_RATES=$(curl -sf "${DB}/liveRates.json?auth=${ID_TOKEN}")
 
           # Mirrors the on-site banners (bundle.js: dailyAlert / officeDueAlert)
           # and the certificate-maturity highlighting (CertificatesTable) so the
@@ -52,31 +53,30 @@ jobs:
             const holdings = JSON.parse(process.argv[3]) || {};
             const lastOfficeAlert = JSON.parse(process.argv[4] || "null");
             const alertedMaturities = JSON.parse(process.argv[5] || "null") || {};
+            const liveRates = JSON.parse(process.argv[6] || "null") || {};
             const days = Object.values(daily).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
 
             const triggers = [];
 
-            if (days.length >= 2) {
-              const prevDay = days[days.length - 2];
-              const currDay = days[days.length - 1];
-              function computeAssets(entry) {
-                const rate = Number(entry.rate) || 0;
-                const goldPrice = Number(entry.gold) || 0;
-                let total = 0;
-                Object.values(holdings).filter(Boolean).forEach((h) => {
-                  if (h.type === "fund") {
-                    const raw = entry[h.navGroup];
-                    const nav = raw !== undefined && raw !== "" ? Number(raw) : h.purchaseNav;
-                    const current = h.purchaseNav ? (h.investment / h.purchaseNav) * nav : 0;
-                    total += h.currency === "USD" ? current * rate : current;
-                  } else if (h.type === "gold") {
-                    total += goldPrice * (h.grams || 0);
-                  } else {
-                    total += h.currency === "USD" ? h.investment * rate : h.investment;
-                  }
-                });
-                return total;
-              }
+            function computeAssets(entry) {
+              const rate = Number(entry.rate) || 0;
+              const goldPrice = Number(entry.gold) || 0;
+              let total = 0;
+              Object.values(holdings).filter(Boolean).forEach((h) => {
+                if (h.type === "fund") {
+                  const raw = entry[h.navGroup];
+                  const nav = raw !== undefined && raw !== "" ? Number(raw) : h.purchaseNav;
+                  const current = h.purchaseNav ? (h.investment / h.purchaseNav) * nav : 0;
+                  total += h.currency === "USD" ? current * rate : current;
+                } else if (h.type === "gold") {
+                  total += goldPrice * (h.grams || 0);
+                } else {
+                  total += h.currency === "USD" ? h.investment * rate : h.investment;
+                }
+              });
+              return total;
+            }
+            function compareDays(prevDay, currDay, sinceLabel) {
               const totalLiabilities = Object.values(loans).filter(Boolean).reduce(
                 (s, l) => s + (l.currency === "USD" ? l.amount * (Number(currDay.rate) || 0) : l.amount), 0
               );
@@ -87,11 +87,31 @@ jobs:
               const leverageDelta = currLeverage - prevLeverage;
               const rateDelta = prevDay.rate ? ((currDay.rate - prevDay.rate) / prevDay.rate) * 100 : 0;
               if (Math.abs(leverageDelta) >= 1) {
-                triggers.push(`Leverage ${leverageDelta >= 0 ? "+" : "−"}${Math.abs(leverageDelta).toFixed(1)} points since ${prevDay.date} (now ${currLeverage.toFixed(1)}%)`);
+                triggers.push(`Leverage ${leverageDelta >= 0 ? "+" : "−"}${Math.abs(leverageDelta).toFixed(1)} points since ${sinceLabel} (now ${currLeverage.toFixed(1)}%)`);
               }
               if (Math.abs(rateDelta) >= 1) {
-                triggers.push(`USD/EGP rate ${rateDelta >= 0 ? "+" : "−"}${Math.abs(rateDelta).toFixed(1)}% since ${prevDay.date} (now ${currDay.rate})`);
+                triggers.push(`USD/EGP rate ${rateDelta >= 0 ? "+" : "−"}${Math.abs(rateDelta).toFixed(1)}% since ${sinceLabel} (now ${currDay.rate})`);
               }
+            }
+
+            // Saved-day-to-saved-day: catches moves between two entries someone
+            // actually clicked "Save" on.
+            if (days.length >= 2) {
+              const prevDay = days[days.length - 2];
+              const currDay = days[days.length - 1];
+              compareDays(prevDay, currDay, prevDay.date);
+            }
+
+            // Live-vs-last-saved: the site only records a new /daily entry when
+            // someone opens it and saves — on days nobody does that, the above
+            // check has nothing new to compare, so real price moves went
+            // unnoticed. This mirrors the site's own "live preview" (bundle.js:
+            // isLivePreview) by layering today's live rate/gold onto the last
+            // saved day's fund NAVs, so it fires even without a manual save.
+            if (days.length >= 1 && liveRates.rate && liveRates.gold) {
+              const lastSaved = days[days.length - 1];
+              const liveDay = { ...lastSaved, rate: liveRates.rate, gold: liveRates.gold };
+              compareDays(lastSaved, liveDay, `${lastSaved.date} (live pricing)`);
             }
 
             const OFFICE_INSTALLMENT_SCHEDULE = [
@@ -199,7 +219,7 @@ jobs:
             checkMaturities(LOAN_FACILITIES, "loan");
 
             console.log(JSON.stringify({ trigger: triggers.length > 0, triggers, date: days.length ? days[days.length - 1].date : (nextRow ? nextRow.date : todayStr), officeDueDate, newMaturityAlerts }));
-          ' "$DAILY" "$LOANS" "$HOLDINGS" "$LAST_OFFICE_ALERT" "$LAST_MATURITY_ALERTS")
+          ' "$DAILY" "$LOANS" "$HOLDINGS" "$LAST_OFFICE_ALERT" "$LAST_MATURITY_ALERTS" "$LIVE_RATES")
 
           echo "$RESULT"
           TRIGGER=$(echo "$RESULT" | jq -r '.trigger')
