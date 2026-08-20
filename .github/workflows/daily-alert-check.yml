@@ -40,6 +40,7 @@ jobs:
           LAST_OFFICE_ALERT=$(curl -sf "${DB}/serviceState/lastOfficeAlertDate.json?auth=${ID_TOKEN}")
           LAST_MATURITY_ALERTS=$(curl -sf "${DB}/serviceState/alertedMaturities.json?auth=${ID_TOKEN}")
           LIVE_RATES=$(curl -sf "${DB}/liveRates.json?auth=${ID_TOKEN}")
+          MARKET_HISTORY=$(curl -sf "${DB}/marketHistory.json?auth=${ID_TOKEN}")
 
           # Mirrors the on-site banners (bundle.js: dailyAlert / officeDueAlert)
           # and the certificate-maturity highlighting (CertificatesTable) so the
@@ -54,6 +55,7 @@ jobs:
             const lastOfficeAlert = JSON.parse(process.argv[4] || "null");
             const alertedMaturities = JSON.parse(process.argv[5] || "null") || {};
             const liveRates = JSON.parse(process.argv[6] || "null") || {};
+            const marketHistory = JSON.parse(process.argv[7] || "null") || {};
             const days = Object.values(daily).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
 
             const triggers = [];
@@ -112,6 +114,31 @@ jobs:
               const lastSaved = days[days.length - 1];
               const liveDay = { ...lastSaved, rate: liveRates.rate, gold: liveRates.gold };
               compareDays(lastSaved, liveDay, `${lastSaved.date} (live pricing)`);
+            }
+
+            // Market watch: oil and major indices aren't part of any holding
+            // (not counted in leverage), tracked purely for the site's "Live
+            // markets" section — 1% day-over-day move on any of them triggers.
+            const MARKET_INSTRUMENTS = [
+              { key: "oil", label: "Oil (WTI)" },
+              { key: "sp500", label: "S&P 500" },
+              { key: "nasdaq", label: "Nasdaq" },
+              { key: "dow", label: "Dow Jones" },
+              { key: "egx30", label: "EGX30" }
+            ];
+            const marketDays = Object.values(marketHistory).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
+            if (marketDays.length >= 2) {
+              const prevM = marketDays[marketDays.length - 2];
+              const currM = marketDays[marketDays.length - 1];
+              MARKET_INSTRUMENTS.forEach(({ key, label }) => {
+                const prevVal = Number(prevM[key]);
+                const currVal = Number(currM[key]);
+                if (!prevVal || !currVal) return;
+                const delta = ((currVal - prevVal) / prevVal) * 100;
+                if (Math.abs(delta) >= 1) {
+                  triggers.push(`${label} ${delta >= 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)}% since ${prevM.date} (now ${currVal.toLocaleString("en-US")})`);
+                }
+              });
             }
 
             const OFFICE_INSTALLMENT_SCHEDULE = [
@@ -219,7 +246,7 @@ jobs:
             checkMaturities(LOAN_FACILITIES, "loan");
 
             console.log(JSON.stringify({ trigger: triggers.length > 0, triggers, date: days.length ? days[days.length - 1].date : (nextRow ? nextRow.date : todayStr), officeDueDate, newMaturityAlerts }));
-          ' "$DAILY" "$LOANS" "$HOLDINGS" "$LAST_OFFICE_ALERT" "$LAST_MATURITY_ALERTS" "$LIVE_RATES")
+          ' "$DAILY" "$LOANS" "$HOLDINGS" "$LAST_OFFICE_ALERT" "$LAST_MATURITY_ALERTS" "$LIVE_RATES" "$MARKET_HISTORY")
 
           echo "$RESULT"
           TRIGGER=$(echo "$RESULT" | jq -r '.trigger')

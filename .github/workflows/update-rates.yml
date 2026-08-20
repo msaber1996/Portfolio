@@ -1,4 +1,4 @@
-name: Update live rate & gold price
+name: Update live rate, gold price & market watch
 
 on:
   schedule:
@@ -9,7 +9,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch USD/EGP rate and gold price, push to Firebase
+      - name: Fetch prices, push to Firebase
         run: |
           set -euo pipefail
 
@@ -23,13 +23,28 @@ jobs:
 
           GOLD_EGP_GRAM=$(awk -v u="$GOLD_USD_OZ" -v r="$RATE" 'BEGIN { printf "%.2f", u * r / 31.1034768 }')
           TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          TODAY=$(date -u +%Y-%m-%d)
 
           echo "Rate: $RATE, Gold: $GOLD_EGP_GRAM EGP/g, as of $TS"
 
+          # Oil (WTI) and major indices — Yahoo Finance's public chart endpoint,
+          # same "no API key needed" posture as the rate/gold sources above.
+          # Not part of any holding, so not counted in leverage — tracked purely
+          # for the "Live markets" section and its own threshold alert.
+          fetch_yahoo() {
+            curl -sf "https://query1.finance.yahoo.com/v8/finance/chart/$1?interval=1d&range=1d" \
+              -H "User-Agent: Mozilla/5.0" | jq -r '.chart.result[0].meta.regularMarketPrice // empty'
+          }
+          OIL=$(fetch_yahoo "CL=F" || echo "")
+          SP500=$(fetch_yahoo "%5EGSPC" || echo "")
+          NASDAQ=$(fetch_yahoo "%5EIXIC" || echo "")
+          DOW=$(fetch_yahoo "%5EDJI" || echo "")
+          EGX30=$(fetch_yahoo "%5ECASE30" || echo "")
+          echo "Oil: ${OIL:-n/a}, S&P500: ${SP500:-n/a}, Nasdaq: ${NASDAQ:-n/a}, Dow: ${DOW:-n/a}, EGX30: ${EGX30:-n/a}"
+
           FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
-          # Dedicated low-privilege account (role: "service" in /roles), restricted by the
-          # database rules to writing only /liveRates. Not a secret worth protecting beyond
-          # that role scoping, same posture as the already-public Firebase client apiKey above.
+          # Dedicated low-privilege account (role: "service" in /roles), scoped by
+          # the database rules to just the paths this workflow and its siblings need.
           ID_TOKEN=$(curl -sf -X POST \
             -H "Content-Type: application/json" \
             -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
@@ -41,6 +56,21 @@ jobs:
             exit 1
           fi
 
+          DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
+
           curl -sf -X PUT \
             -d "{\"rate\": ${RATE}, \"gold\": ${GOLD_EGP_GRAM}, \"updatedAt\": \"${TS}\"}" \
-            "https://portfolio-8ac1d-default-rtdb.firebaseio.com/liveRates.json?auth=${ID_TOKEN}"
+            "${DB}/liveRates.json?auth=${ID_TOKEN}"
+
+          MARKET_JSON=$(jq -n \
+            --argjson oil "${OIL:-null}" \
+            --argjson sp500 "${SP500:-null}" \
+            --argjson nasdaq "${NASDAQ:-null}" \
+            --argjson dow "${DOW:-null}" \
+            --argjson egx30 "${EGX30:-null}" \
+            --arg date "$TODAY" \
+            --arg updatedAt "$TS" \
+            '{date: $date, oil: $oil, sp500: $sp500, nasdaq: $nasdaq, dow: $dow, egx30: $egx30, updatedAt: $updatedAt}')
+          curl -sf -X PUT -d "$MARKET_JSON" \
+            "${DB}/marketHistory/${TODAY}.json?auth=${ID_TOKEN}"
+          echo "Wrote marketHistory/${TODAY}: $MARKET_JSON"

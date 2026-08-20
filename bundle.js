@@ -1901,10 +1901,13 @@ Save anyway?`);
           ] }) })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "Live markets", dek: "Gold and USD/EGP, live from the market — the same two prices that drive every figure above. The leverage/FX alert (site banner, email, push) already watches both." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "Live markets", dek: "Gold, USD/EGP, oil, and the major indices — the leverage/FX alert (site banner, email, push) watches gold and USD/EGP; a separate 1% move alert watches the rest." }),
           /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [
             /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Gold", "OANDA:XAUUSD|1D"]], height: 400 }),
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["USD/EGP", "FX_IDC:USDEGP|1D"]], height: 400 })
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["USD/EGP", "FX_IDC:USDEGP|1D"]], height: 400 }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Oil (WTI)", "TVC:USOIL|1D"]], height: 400 }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["EGX 30", "EGX:EGX30|1D"]], height: 400 }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["S&P 500", "FOREXCOM:SPXUSD|1D"], ["Nasdaq", "FOREXCOM:NSXUSD|1D"], ["Dow Jones", "FOREXCOM:DJI|1D"]], height: 300 })
           ] })
         ] }),
         /* @__PURE__ */ jsx("footer", { className: "py-10 border-t-2 border-neutral-900 text-xs text-neutral-500 flex justify-between", children: [
