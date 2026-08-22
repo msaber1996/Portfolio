@@ -811,6 +811,8 @@
   }
   function MetalRowsTable({ rows, showGrams }) {
     const totals = rows.reduce((s, r) => ({ invested: s.invested + (r.investmentNative || 0), value: s.value + (r.value || 0), grams: s.grams + (r.grams || 0) }), { invested: 0, value: 0, grams: 0 });
+    const totalGain = totals.value - totals.invested;
+    const totalGainPct = totals.invested ? totalGain / totals.invested * 100 : 0;
     return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Holding" }),
@@ -833,7 +835,10 @@
         showGrams && /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: totals.grams.toLocaleString() }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(totals.invested) }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.value) }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
+        /* @__PURE__ */ jsx("td", { className: `py-2 pr-3 text-right font-mono tabular-nums ${totalGain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: [
+          signedEgp(totalGain),
+          /* @__PURE__ */ jsx("span", { className: "block text-xs font-normal", children: pctStr(totalGainPct) })
+        ] }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" })
       ] }) })
     ] }) });
@@ -1224,6 +1229,13 @@ Save anyway?`);
       }),
       [holdings, ASSETS]
     );
+    const metalOverall = useMemo(() => {
+      const rows = [...metalFundRows, ...metalPhysicalRows];
+      const invested = rows.reduce((s, r) => s + (r.investmentNative || 0), 0);
+      const value = rows.reduce((s, r) => s + (r.value || 0), 0);
+      const gain = value - invested;
+      return { invested, value, gain, gainPct: invested ? gain / invested * 100 : 0 };
+    }, [metalFundRows, metalPhysicalRows]);
     const totalLiabilities = useMemo(
       () => loans.reduce((s, l) => s + (l.currency === "USD" ? l.amount * (displayComputed?.rate || 0) : l.amount), 0),
       [loans, displayComputed]
@@ -1957,6 +1969,23 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "11", title: "Metal: funds vs physical", dek: "Paper gold exposure (AZ Gold Fund) against the actual bars in hand, side by side." }),
+          /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-white p-4 flex flex-wrap gap-x-8 gap-y-3", children: [
+            /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Gold overall — invested" }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg text-neutral-900", children: egp(metalOverall.invested) })
+            ] }),
+            /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Current value" }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg text-neutral-900", children: egp(metalOverall.value) })
+            ] }),
+            /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total gain / loss" }),
+              /* @__PURE__ */ jsx("div", { className: `font-mono text-lg ${metalOverall.gain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: [
+                signedEgp(metalOverall.gain),
+                /* @__PURE__ */ jsx("span", { className: "ml-2 text-sm", children: `(${pctStr(metalOverall.gainPct)})` })
+              ] })
+            ] })
+          ] }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: "Metal funds (paper gold)" }),
             /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalFundRows, showGrams: false })
