@@ -71,6 +71,11 @@ jobs:
             --arg date "$TODAY" \
             --arg updatedAt "$TS" \
             '{date: $date, oil: $oil, sp500: $sp500, nasdaq: $nasdaq, dow: $dow, egx30: $egx30, updatedAt: $updatedAt}')
-          curl -sf -X PUT -d "$MARKET_JSON" \
-            "${DB}/marketHistory/${TODAY}.json?auth=${ID_TOKEN}"
-          echo "Wrote marketHistory/${TODAY}: $MARKET_JSON"
+          # Non-fatal: liveRates (the important write) already succeeded above,
+          # so don't let a marketHistory failure (e.g. rules not republished
+          # yet) mark the whole run red.
+          if curl -sf -X PUT -d "$MARKET_JSON" "${DB}/marketHistory/${TODAY}.json?auth=${ID_TOKEN}" > /dev/null; then
+            echo "Wrote marketHistory/${TODAY}: $MARKET_JSON"
+          else
+            echo "Could not write marketHistory/${TODAY} (rules not republished yet?) — liveRates was still updated fine."
+          fi

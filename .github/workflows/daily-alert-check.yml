@@ -40,7 +40,10 @@ jobs:
           LAST_OFFICE_ALERT=$(curl -sf "${DB}/serviceState/lastOfficeAlertDate.json?auth=${ID_TOKEN}")
           LAST_MATURITY_ALERTS=$(curl -sf "${DB}/serviceState/alertedMaturities.json?auth=${ID_TOKEN}")
           LIVE_RATES=$(curl -sf "${DB}/liveRates.json?auth=${ID_TOKEN}")
-          MARKET_HISTORY=$(curl -sf "${DB}/marketHistory.json?auth=${ID_TOKEN}")
+          # Tolerate marketHistory being unreadable (e.g. rules not republished
+          # yet) instead of aborting the whole script under set -e — the
+          # leverage/FX/office/maturity checks below don't depend on it.
+          MARKET_HISTORY=$(curl -sf "${DB}/marketHistory.json?auth=${ID_TOKEN}" || echo "null")
 
           # Mirrors the on-site banners (bundle.js: dailyAlert / officeDueAlert)
           # and the certificate-maturity highlighting (CertificatesTable) so the
