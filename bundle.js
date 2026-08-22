@@ -1721,30 +1721,8 @@ Save anyway?`);
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "01", title: "Investment, by currency", dek: "What is actually committed in each currency, at cost \u2014 drawn live from the holdings list below." }),
-          /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-5", children: [
-              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total invested in EGP" }),
-              /* @__PURE__ */ jsx("div", { className: "font-mono text-2xl md:text-3xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: totalEgpInvestment, format: egp }) }),
-              /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-2", children: "Certificates, EGP funds, gold and brokerage, at cost." })
-            ] }),
-            /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-5", children: [
-              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total invested in USD" }),
-              /* @__PURE__ */ jsx("div", { className: "font-mono text-2xl md:text-3xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: totalUsdInvestment, format: usd }) }),
-              /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-2", children: "Beltone, the CIB certificate, and the NBE term deposit." })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsx("div", { className: "mt-4 text-xs text-neutral-500", children: [
-            "Of ",
-            usd(totalIncomingUsd),
-            " received from outside transfers, ",
-            usd(conversionRunningBalance),
-            " remains in USD today \u2014 see the conversion history in section 03."
-          ] })
-        ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "02", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "01", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
           /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${CERTIFICATES.length} EGP certificates & CDs, individually` }),
@@ -1753,11 +1731,7 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
-          /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange, canEdit })
-        ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "What the assets are worth", dek: `${ASSETS.length} holdings, ${egp(totalAssets)} in total, priced ${asOfLabel}. Expand a row for its detail.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "02", title: "What the assets are worth", dek: `${ASSETS.length} holdings, ${egp(totalAssets)} in total, priced ${asOfLabel}. Expand a row for its detail.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-neutral-50 p-5", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Your variable investments, in plain terms" }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Funds, gold, and Beltone — the holdings whose price moves day to day. Certificates (fixed principal) aren't included here." }),
@@ -1781,6 +1755,56 @@ Save anyway?`);
             ] })
           ] }),
           /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id) }, a.id)) })
+        ] }),
+        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+          /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Metal: funds vs physical", dek: "Paper gold exposure (AZ Gold Fund) against the actual bars in hand, side by side." }),
+          /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-white p-4 flex flex-wrap gap-x-8 gap-y-3", children: [
+            /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Gold overall — invested" }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg text-neutral-900", children: egp(metalOverall.invested) })
+            ] }),
+            /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Current value" }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg text-neutral-900", children: egp(metalOverall.value) })
+            ] }),
+            /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total gain / loss" }),
+              /* @__PURE__ */ jsx("div", { className: `font-mono text-lg ${metalOverall.gain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: [
+                signedEgp(metalOverall.gain),
+                /* @__PURE__ */ jsx("span", { className: "ml-2 text-sm", children: `(${pctStr(metalOverall.gainPct)})` })
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: "Metal funds (paper gold)" }),
+            /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalFundRows, showGrams: false })
+          ] }),
+          /* @__PURE__ */ jsx("div", { children: [
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: "Physical gold" }),
+            /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalPhysicalRows, showGrams: true })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsx("section", { className: "py-10", children: [
+          /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Investment, by currency", dek: "What is actually committed in each currency, at cost \u2014 drawn live from the holdings list below." }),
+          /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-5", children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total invested in EGP" }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-2xl md:text-3xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: totalEgpInvestment, format: egp }) }),
+              /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-2", children: "Certificates, EGP funds, gold and brokerage, at cost." })
+            ] }),
+            /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-5", children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total invested in USD" }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-2xl md:text-3xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: totalUsdInvestment, format: usd }) }),
+              /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-2", children: "Beltone, the CIB certificate, and the NBE term deposit." })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsx("div", { className: "mt-4 text-xs text-neutral-500", children: [
+            "Of ",
+            usd(totalIncomingUsd),
+            " received from outside transfers, ",
+            usd(conversionRunningBalance),
+            " remains in USD today \u2014 see the conversion history in section 08."
+          ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "What is owed", dek: `${loans.length} facilities, ${egp(totalLiabilities)} outstanding. Add or remove a loan freely.` }),
@@ -1819,8 +1843,22 @@ Save anyway?`);
             ] }), emphasis: true, sub: "surplus — no active USD loan" })
           ] })
         ] }),
+        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
+          /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange, canEdit })
+        ] }),
+        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+          /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "Live markets", dek: "Gold, USD/EGP, oil, and the major indices — the leverage/FX alert (site banner, email, push) watches gold and USD/EGP; a separate 1% move alert watches the rest." }),
+          /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Gold", "OANDA:XAUUSD|1D"]], height: 400 }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["USD/EGP", "FX_IDC:USDEGP|1D"]], height: 400 }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Oil (WTI)", "TVC:USOIL|1D"]], height: 400 }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["EGX 30", "EGX:EGX30|1D"]], height: 400 }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["S&P 500", "FOREXCOM:SPXUSD|1D"], ["Nasdaq", "FOREXCOM:NSXUSD|1D"], ["Dow Jones", "FOREXCOM:DJI|1D"]], height: 300 })
+          ] })
+        ] }),
         /* @__PURE__ */ jsx("section", { id: "daily-pricing-form", className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically. Editing an existing day? Use the pencil icon on its row in History and analysis below." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically. Editing an existing day? Use the pencil icon on its row in History and analysis below." }),
           !editingEntry && daysSinceLastEntry >= 1 && /* @__PURE__ */ jsx("div", { className: "mb-4 flex items-center gap-2 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800", children: [
             /* @__PURE__ */ jsx(AlertTriangle, { size: 14, className: "shrink-0 text-amber-500" }),
             daysSinceLastEntry === 1 ? "It's been 1 day since your last update — add today's entry below." : `It's been ${daysSinceLastEntry} days since your last update — add today's entry below.`
@@ -1840,7 +1878,7 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "11", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
           fundSeries.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: "Return by fund, since purchase" }),
@@ -1956,44 +1994,6 @@ Save anyway?`);
               ] })
             ] }, d.date)) })
           ] }) })
-        ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "Live markets", dek: "Gold, USD/EGP, oil, and the major indices — the leverage/FX alert (site banner, email, push) watches gold and USD/EGP; a separate 1% move alert watches the rest." }),
-          /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Gold", "OANDA:XAUUSD|1D"]], height: 400 }),
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["USD/EGP", "FX_IDC:USDEGP|1D"]], height: 400 }),
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Oil (WTI)", "TVC:USOIL|1D"]], height: 400 }),
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["EGX 30", "EGX:EGX30|1D"]], height: 400 }),
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["S&P 500", "FOREXCOM:SPXUSD|1D"], ["Nasdaq", "FOREXCOM:NSXUSD|1D"], ["Dow Jones", "FOREXCOM:DJI|1D"]], height: 300 })
-          ] })
-        ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "11", title: "Metal: funds vs physical", dek: "Paper gold exposure (AZ Gold Fund) against the actual bars in hand, side by side." }),
-          /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-white p-4 flex flex-wrap gap-x-8 gap-y-3", children: [
-            /* @__PURE__ */ jsx("div", { children: [
-              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Gold overall — invested" }),
-              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg text-neutral-900", children: egp(metalOverall.invested) })
-            ] }),
-            /* @__PURE__ */ jsx("div", { children: [
-              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Current value" }),
-              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg text-neutral-900", children: egp(metalOverall.value) })
-            ] }),
-            /* @__PURE__ */ jsx("div", { children: [
-              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total gain / loss" }),
-              /* @__PURE__ */ jsx("div", { className: `font-mono text-lg ${metalOverall.gain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: [
-                signedEgp(metalOverall.gain),
-                /* @__PURE__ */ jsx("span", { className: "ml-2 text-sm", children: `(${pctStr(metalOverall.gainPct)})` })
-              ] })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: "Metal funds (paper gold)" }),
-            /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalFundRows, showGrams: false })
-          ] }),
-          /* @__PURE__ */ jsx("div", { children: [
-            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: "Physical gold" }),
-            /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalPhysicalRows, showGrams: true })
-          ] })
         ] }),
         /* @__PURE__ */ jsx("footer", { className: "py-10 border-t-2 border-neutral-900 text-xs text-neutral-500 flex justify-between", children: [
           /* @__PURE__ */ jsx("span", { children: "Figures as tracked in the working file. For internal review, not financial advice." }),
