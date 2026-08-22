@@ -456,6 +456,46 @@
     const totalAssets = markedToMarket + fixedEgp;
     return { ...entry, rate, gold: goldPrice, rows, markedToMarket, markedToMarketCost, gain: markedToMarket - markedToMarketCost, totalAssets };
   }
+  function useSortState(defaultKey, defaultDir = "desc") {
+    const [sortKey, setSortKey] = useState(defaultKey);
+    const [sortDir, setSortDir] = useState(defaultDir);
+    const handleSort = (key) => {
+      if (key === sortKey) {
+        setSortDir((d) => d === "asc" ? "desc" : "asc");
+      } else {
+        setSortKey(key);
+        setSortDir(defaultDir);
+      }
+    };
+    return [sortKey, sortDir, handleSort];
+  }
+  function sortRows(rows, key, dir, getVal) {
+    if (!key) return rows;
+    const factor = dir === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const va = getVal(a, key);
+      const vb = getVal(b, key);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === "string") return va.localeCompare(vb) * factor;
+      return (va - vb) * factor;
+    });
+  }
+  function SortTh({ label, sortKey, activeKey, dir, onSort, align = "left" }) {
+    const active = sortKey === activeKey;
+    return /* @__PURE__ */ jsx(
+      "th",
+      {
+        className: `${align === "right" ? "text-right" : "text-left"} py-2 pr-3 cursor-pointer select-none hover:text-neutral-800 transition-colors`,
+        onClick: () => onSort(sortKey),
+        children: [
+          label,
+          active && /* @__PURE__ */ jsx("span", { className: "ml-1 text-neutral-400", children: dir === "asc" ? "▲" : "▼" })
+        ]
+      }
+    );
+  }
   function SectionHeading({ index, title, dek }) {
     return /* @__PURE__ */ jsx("div", { className: "mb-8 flex items-start gap-4 border-b border-neutral-200 pb-4", children: [
       /* @__PURE__ */ jsx("span", { className: "font-mono text-xs text-neutral-400 pt-1 tabular-nums", children: index }),
@@ -680,24 +720,26 @@
     ] });
   }
   function HoldingsTable({ holdings, onChange, currentValueById, currentValueCurrencyById, canEdit = true }) {
+    const [sortKey, sortDir, handleSort] = useSortState(null);
     const update = (id, patch) => onChange(holdings.map((h) => h.id === id ? { ...h, ...patch } : h));
     const remove = (id) => onChange(holdings.filter((h) => h.id !== id));
     const add = () => onChange([...holdings, { id: uid(), type: "fund", label: "New fund", currency: "EGP", investment: 0, purchaseNav: 100, purchaseDate: "", navGroup: "new" + holdings.length, grams: 0 }]);
+    const sorted = sortRows(holdings, sortKey, sortDir, (h, k) => k === "currentValue" ? currentValueById?.[h.id] ?? 0 : h[k]);
     return /* @__PURE__ */ jsx("div", { children: [
       /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Type" }),
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Label" }),
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Currency" }),
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Purchase date" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Investment" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Purchase NAV / price" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Grams" }),
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "NAV group" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Current value" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Type", sortKey: "type", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Label", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Currency", sortKey: "currency", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Purchase date", sortKey: "purchaseDate", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Investment", sortKey: "investment", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Purchase NAV / price", sortKey: "purchaseNav", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Grams", sortKey: "grams", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "NAV group", sortKey: "navGroup", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Current value", sortKey: "currentValue", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
           canEdit && /* @__PURE__ */ jsx("th", { className: "py-2" })
         ] }) }),
-        /* @__PURE__ */ jsx("tbody", { children: holdings.map((h) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+        /* @__PURE__ */ jsx("tbody", { children: sorted.map((h) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: /* @__PURE__ */ jsx(Select, { value: h.type, onChange: (v) => update(h.id, { type: v }), options: ["fund", "gold", "fixed"], readOnly: !canEdit }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-40", children: /* @__PURE__ */ jsx(Cell, { value: h.label, onChange: (v) => update(h.id, { label: v }), readOnly: !canEdit }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: h.currency, onChange: (v) => update(h.id, { currency: v }), options: ["EGP", "USD"], readOnly: !canEdit }) }),
@@ -715,20 +757,22 @@
     ] });
   }
   function LoansTable({ loans, onChange, canEdit = true }) {
+    const [sortKey, sortDir, handleSort] = useSortState(null);
     const update = (id, patch) => onChange(loans.map((l) => l.id === id ? { ...l, ...patch } : l));
     const remove = (id) => onChange(loans.filter((l) => l.id !== id));
     const add = () => onChange([...loans, { id: uid(), label: "New loan", currency: "EGP", amount: 0, rate: "", installment: 0 }]);
+    const sorted = sortRows(loans, sortKey, sortDir, (l, k) => l[k]);
     return /* @__PURE__ */ jsx("div", { children: [
       /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Label" }),
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Currency" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Amount" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Rate %" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Monthly installment" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Label", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Currency", sortKey: "currency", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Amount", sortKey: "amount", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Rate %", sortKey: "rate", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Monthly installment", sortKey: "installment", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
           canEdit && /* @__PURE__ */ jsx("th", { className: "py-2" })
         ] }) }),
-        /* @__PURE__ */ jsx("tbody", { children: loans.map((l) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+        /* @__PURE__ */ jsx("tbody", { children: sorted.map((l) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-48", children: /* @__PURE__ */ jsx(Cell, { value: l.label, onChange: (v) => update(l.id, { label: v }), readOnly: !canEdit }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: l.currency, onChange: (v) => update(l.id, { currency: v }), options: ["EGP", "USD"], readOnly: !canEdit }) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.amount, onChange: (v) => update(l.id, { amount: Number(v) || 0 }), readOnly: !canEdit }) }),
@@ -741,21 +785,23 @@
     ] });
   }
   function OfficeUnitsTable({ units }) {
+    const [sortKey, sortDir, handleSort] = useSortState("totalPrice");
     const totals = units.reduce((s, u) => ({
       totalPrice: s.totalPrice + u.totalPrice,
       advance: s.advance + u.advance,
       remaining: s.remaining + u.remaining
     }), { totalPrice: 0, advance: 0, remaining: 0 });
+    const sorted = sortRows(units, sortKey, sortDir, (u, k) => u[k]);
     return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
-        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Office" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Office", sortKey: "unit", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Size" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Parking" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Total price" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Advance paid (5%)" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Remaining installments" })
+        /* @__PURE__ */ jsx(SortTh, { label: "Parking", sortKey: "parking", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Total price", sortKey: "totalPrice", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Advance paid (5%)", sortKey: "advance", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Remaining installments", sortKey: "remaining", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" })
       ] }) }),
-      /* @__PURE__ */ jsx("tbody", { children: units.map((u) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+      /* @__PURE__ */ jsx("tbody", { children: sorted.map((u) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: u.unit }),
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: u.size }),
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: u.parking }),
@@ -774,22 +820,24 @@
     ] }) });
   }
   function LoanFacilitiesTable({ facilities }) {
+    const [sortKey, sortDir, handleSort] = useSortState("outstanding");
     const totals = facilities.reduce((s, f) => ({
       amountFinanced: s.amountFinanced + f.amountFinanced,
       outstanding: s.outstanding + f.outstanding,
       installment: s.installment + f.installment
     }), { amountFinanced: 0, outstanding: 0, installment: 0 });
+    const sorted = sortRows(facilities, sortKey, sortDir, (f, k) => f[k]);
     return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
-        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Facility" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Rate %" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Amount financed" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Outstanding balance" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Monthly installment" }),
-        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Opened" }),
-        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Matures" })
+        /* @__PURE__ */ jsx(SortTh, { label: "Facility", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Rate %", sortKey: "rate", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Amount financed", sortKey: "amountFinanced", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Outstanding balance", sortKey: "outstanding", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Monthly installment", sortKey: "installment", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Opened", sortKey: "openDate", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Matures", sortKey: "maturityDate", activeKey: sortKey, dir: sortDir, onSort: handleSort })
       ] }) }),
-      /* @__PURE__ */ jsx("tbody", { children: facilities.map((f) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+      /* @__PURE__ */ jsx("tbody", { children: sorted.map((f) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: f.label }),
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: f.rate.toFixed(1) }),
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(f.amountFinanced) }),
@@ -810,19 +858,21 @@
     ] }) });
   }
   function MetalRowsTable({ rows, showGrams }) {
+    const [sortKey, sortDir, handleSort] = useSortState("value");
     const totals = rows.reduce((s, r) => ({ invested: s.invested + (r.investmentNative || 0), value: s.value + (r.value || 0), grams: s.grams + (r.grams || 0) }), { invested: 0, value: 0, grams: 0 });
     const totalGain = totals.value - totals.invested;
     const totalGainPct = totals.invested ? totalGain / totals.invested * 100 : 0;
+    const sorted = sortRows(rows, sortKey, sortDir, (r, k) => k === "investmentNative" ? r.investmentNative || 0 : k === "value" ? r.value || 0 : k === "gainPct" ? r.gainPct || 0 : r[k]);
     return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
-        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Holding" }),
-        showGrams && /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Grams" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Invested" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Current value" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Gain / loss" }),
-        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Purchased" })
+        /* @__PURE__ */ jsx(SortTh, { label: "Holding", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+        showGrams && /* @__PURE__ */ jsx(SortTh, { label: "Grams", sortKey: "grams", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Invested", sortKey: "investmentNative", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Current value", sortKey: "value", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Gain / loss", sortKey: "gainPct", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Purchased", sortKey: "purchaseDate", activeKey: sortKey, dir: sortDir, onSort: handleSort })
       ] }) }),
-      /* @__PURE__ */ jsx("tbody", { children: rows.map((r) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+      /* @__PURE__ */ jsx("tbody", { children: sorted.map((r) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: r.label }),
         showGrams && /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: (r.grams || 0).toLocaleString() }),
         /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(r.investmentNative || 0) }),
@@ -844,10 +894,12 @@
     ] }) });
   }
   function CertificatesTable({ certificates }) {
+    const [sortKey, sortDir, handleSort] = useSortState("amount");
     const total = certificates.reduce((s, c) => s + c.amount, 0);
     const totalMonthlyInterest = certificates.reduce((s, c) => s + c.amount * c.rate / 100 / 12, 0);
     const maturedCount = certificates.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d < 0; }).length;
     const maturingSoonCount = certificates.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d >= 0 && d <= MATURITY_WARNING_DAYS; }).length;
+    const sorted = sortRows(certificates, sortKey, sortDir, (c, k) => k === "monthlyInterest" ? c.amount * c.rate / 100 / 12 : c[k]);
     return /* @__PURE__ */ jsx("div", { children: [
       (maturedCount > 0 || maturingSoonCount > 0) && /* @__PURE__ */ jsx("div", { className: "mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-300 px-3 py-2", children: [
         maturedCount > 0 && `${maturedCount} certificate${maturedCount === 1 ? "" : "s"} already past maturity. `,
@@ -855,14 +907,14 @@
       ] }),
       /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Certificate" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Rate %" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Amount" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Monthly interest" }),
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Opened" }),
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Matures" })
+          /* @__PURE__ */ jsx(SortTh, { label: "Certificate", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Rate %", sortKey: "rate", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Amount", sortKey: "amount", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Monthly interest", sortKey: "monthlyInterest", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Opened", sortKey: "openDate", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Matures", sortKey: "maturityDate", activeKey: sortKey, dir: sortDir, onSort: handleSort })
         ] }) }),
-        /* @__PURE__ */ jsx("tbody", { children: certificates.map((c, i) => {
+        /* @__PURE__ */ jsx("tbody", { children: sorted.map((c, i) => {
           const days = daysUntil(c.maturityDate);
           const matured = days !== null && days < 0;
           const maturingSoon = days !== null && days >= 0 && days <= MATURITY_WARNING_DAYS;
