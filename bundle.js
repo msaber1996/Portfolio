@@ -1304,9 +1304,9 @@ Save anyway?`);
       const rateDelta = prevDay.rate ? (currDay.rate - prevDay.rate) / prevDay.rate * 100 : 0;
       const goldDelta = prevDay.gold ? (currDay.gold - prevDay.gold) / prevDay.gold * 100 : 0;
       const triggers = [];
-      const LEVERAGE_THRESHOLD_POINTS = 1;
-      const RATE_THRESHOLD_PCT = 1;
-      const GOLD_THRESHOLD_PCT = 1;
+      const LEVERAGE_THRESHOLD_POINTS = 0.5;
+      const RATE_THRESHOLD_PCT = 0.5;
+      const GOLD_THRESHOLD_PCT = 0.5;
       if (Math.abs(leverageDelta) >= LEVERAGE_THRESHOLD_POINTS) {
         triggers.push(`Leverage ${leverageDelta >= 0 ? "+" : "−"}${Math.abs(leverageDelta).toFixed(1)} points since ${prevDay.date} (now ${currLeverage.toFixed(1)}%)`);
       }
