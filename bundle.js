@@ -1495,6 +1495,9 @@ Save anyway?`);
       const officeUnitsRowsHtml = OFFICE_UNITS.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(u.advance)}</td><td class="num mono">${egp(u.remaining)}</td></tr>`).join("");
       const officeUnitsTotals = OFFICE_UNITS.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + u.advance, remaining: s.remaining + u.remaining }), { totalPrice: 0, advance: 0, remaining: 0 });
       const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td></tr>`).join("");
+      const metalFundRowsHtml = metalFundRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
+      const metalPhysicalRowsHtml = metalPhysicalRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${(r.grams || 0).toLocaleString()}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
+      const metalOverallGain = metalOverall.value - metalOverall.invested;
       const performanceRankingRowsHtml = performanceRanking.map((r, i) => {
         const netGain = r.currentNative - r.investmentNative;
         const fmtNative = (n) => r.currency === "USD" ? usd(n) : egp(n);
@@ -1546,13 +1549,11 @@ Save anyway?`);
     <div><div class="stat-label">Leverage</div><div class="stat-value mono">${debtRatioPct.toFixed(1)}%</div></div>
   </div>
 
-  <h2>Investment, by currency</h2>
-  <table>
-    <tr><td>Total invested in EGP</td><td class="num mono">${egp(totalEgpInvestment)}</td></tr>
-    <tr><td>Total invested in USD</td><td class="num mono">${usd(totalUsdInvestment)}</td></tr>
-    <tr><td>Received from outside transfers</td><td class="num mono">${usd(totalIncomingUsd)}</td></tr>
-    <tr><td>Remaining in USD today</td><td class="num mono">${usd(conversionRunningBalance)}</td></tr>
-  </table>
+  <h2>Holdings</h2>
+  <table><tr><th>Holding</th><th>Purchase date</th><th class="num">Purchase amount</th><th class="num">Bought at</th><th class="num">Now</th><th class="num">Gain</th><th class="num">Value</th><th class="num">% of total</th></tr>${rowsHtml}</table>
+  <p class="note">The ${CERTIFICATES.length} EGP certificates & CDs, individually — these roll up into the single "EGP certificates & CDs" holding above.</p>
+  <table><tr><th>Certificate</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Monthly interest</th><th>Opened</th><th>Matures</th></tr>${certificateRowsHtml}<tr><td><b>Total (${CERTIFICATES.length})</b></td><td></td><td class="num mono"><b>${egp(certificateTotal)}</b></td><td class="num mono"><b>${egp(certificateMonthlyInterestTotal)}</b></td><td></td><td></td></tr></table>
+  <p class="note">Total monthly interest across all certificates reconciles with the "EGP — certificate & fund income" line in the cash flow section below.</p>
 
   <h2>Variable investments (funds, gold, Beltone — excludes certificates)</h2>
   <table>
@@ -1562,14 +1563,24 @@ Save anyway?`);
     <tr><td>Total profit</td><td class="num mono">${signedEgp(variableInvestments.totalProfit)}</td></tr>
   </table>
 
-  <h2>Holdings</h2>
-  <table><tr><th>Holding</th><th>Purchase date</th><th class="num">Purchase amount</th><th class="num">Bought at</th><th class="num">Now</th><th class="num">Gain</th><th class="num">Value</th><th class="num">% of total</th></tr>${rowsHtml}</table>
-  <p class="note">The ${CERTIFICATES.length} EGP certificates & CDs, individually — these roll up into the single "EGP certificates & CDs" holding above.</p>
-  <table><tr><th>Certificate</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Monthly interest</th><th>Opened</th><th>Matures</th></tr>${certificateRowsHtml}<tr><td><b>Total (${CERTIFICATES.length})</b></td><td></td><td class="num mono"><b>${egp(certificateTotal)}</b></td><td class="num mono"><b>${egp(certificateMonthlyInterestTotal)}</b></td><td></td><td></td></tr></table>
-  <p class="note">Total monthly interest across all certificates reconciles with the "EGP — certificate & fund income" line in the cash flow section below.</p>
+  <h2>Metal: funds vs physical</h2>
+  <table>
+    <tr><td>Total invested</td><td class="num mono">${egp(metalOverall.invested)}</td></tr>
+    <tr><td>Current value</td><td class="num mono">${egp(metalOverall.value)}</td></tr>
+    <tr><td>Gain / loss</td><td class="num mono">${signedEgp(metalOverallGain)} (${pctStr(metalOverall.gainPct)})</td></tr>
+  </table>
+  <p class="note">Gold funds</p>
+  <table><tr><th>Holding</th><th class="num">Invested</th><th class="num">Current value</th><th class="num">Gain</th><th>Purchased</th></tr>${metalFundRowsHtml}</table>
+  <p class="note">Physical gold</p>
+  <table><tr><th>Holding</th><th class="num">Grams</th><th class="num">Invested</th><th class="num">Current value</th><th class="num">Gain</th><th>Purchased</th></tr>${metalPhysicalRowsHtml}</table>
 
-  <h2>Currency conversion history</h2>
-  <table><tr><th>Date</th><th>Type</th><th class="num">Amount, USD</th><th class="num">Running balance</th></tr>${convRowsHtml}</table>
+  <h2>Investment, by currency</h2>
+  <table>
+    <tr><td>Total invested in EGP</td><td class="num mono">${egp(totalEgpInvestment)}</td></tr>
+    <tr><td>Total invested in USD</td><td class="num mono">${usd(totalUsdInvestment)}</td></tr>
+    <tr><td>Received from outside transfers</td><td class="num mono">${usd(totalIncomingUsd)}</td></tr>
+    <tr><td>Remaining in USD today</td><td class="num mono">${usd(conversionRunningBalance)}</td></tr>
+  </table>
 
   <h2>What is owed</h2>
   <table><tr><th>Facility</th><th class="num">Amount</th><th class="num">Monthly installment</th></tr>${loanRowsHtml}</table>
@@ -1588,6 +1599,9 @@ Save anyway?`);
     <tr><td>USD \u2014 certificate &amp; deposit income</td><td class="num mono">${usd(CASH_FLOW.usd.income)}</td></tr>
     <tr><td><b>USD \u2014 net monthly surplus</b></td><td class="num mono"><b>${usd(usdNet)}</b></td></tr>
   </table>
+
+  <h2>Currency conversion history</h2>
+  <table><tr><th>Date</th><th>Type</th><th class="num">Amount, USD</th><th class="num">Running balance</th></tr>${convRowsHtml}</table>
 
   <h2>Performance ranking, strongest to weakest</h2>
   <p class="note">As of ${asOfLabel} — regenerate this report after any new day's entry to refresh the ranking.</p>
@@ -1632,7 +1646,10 @@ Save anyway?`);
       egpNet,
       usdNet,
       officeNextDueDate,
-      officeNextDueAmount
+      officeNextDueAmount,
+      metalFundRows,
+      metalPhysicalRows,
+      metalOverall
     ]);
     if (loadState === "loading") {
       return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
