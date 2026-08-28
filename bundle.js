@@ -404,6 +404,20 @@
       }
     });
   };
+  var REBALANCE_CATEGORIES = [
+    { key: "gold", label: "Gold (funds + physical)" },
+    { key: "egpFunds", label: "EGP funds" },
+    { key: "usdFunds", label: "USD funds" },
+    { key: "egpFixed", label: "EGP fixed income" },
+    { key: "usdFixed", label: "USD fixed income" },
+    { key: "realEstate", label: "Real estate (office units)" }
+  ];
+  var classifyHolding = (h) => {
+    if (h.type === "gold" || h.type === "fund" && h.navGroup === "azgold") return "gold";
+    if (h.type === "fund") return h.currency === "USD" ? "usdFunds" : "egpFunds";
+    if (h.id === "offices") return "realEstate";
+    return h.currency === "USD" ? "usdFixed" : "egpFixed";
+  };
   var MATURITY_WARNING_DAYS = 30;
   var daysUntil = (dateStr) => {
     if (!dateStr) return null;
@@ -893,6 +907,34 @@
       ] }) })
     ] }) });
   }
+  function AllocationTable({ rows, onTargetChange, canEdit }) {
+    const targetTotal = rows.reduce((s, r) => s + r.targetPct, 0);
+    return /* @__PURE__ */ jsx("div", { children: [
+      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+        /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
+          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3 font-normal", children: "Category" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Current value" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Current %" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Target %" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Drift" }),
+          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3 font-normal", children: "Suggestion" })
+        ] }) }),
+        /* @__PURE__ */ jsx("tbody", { children: rows.map((r) => {
+          const overweight = r.hasTarget && r.driftPt > 0.5;
+          const underweight = r.hasTarget && r.driftPt < -0.5;
+          return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: r.label }),
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(r.value) }),
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: `${r.currentPct.toFixed(1)}%` }),
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-24", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: r.hasTarget ? r.targetPct : "", placeholder: `${r.currentPct.toFixed(1)}%`, onChange: (v) => onTargetChange(r.key, v === "" ? "" : Number(v)), readOnly: !canEdit }) }),
+            /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 text-right font-mono tabular-nums ${overweight ? "text-amber-700" : underweight ? "text-blue-700" : "text-neutral-400"}`, children: r.hasTarget ? `${r.driftPt >= 0 ? "+" : "−"}${Math.abs(r.driftPt).toFixed(1)}pt` : "—" }),
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-xs", children: overweight ? /* @__PURE__ */ jsx("span", { className: "text-amber-700", children: `Overweight — trim ~${egp(Math.abs(r.driftValue))}` }) : underweight ? /* @__PURE__ */ jsx("span", { className: "text-blue-700", children: `Underweight — add ~${egp(Math.abs(r.driftValue))}` }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-400", children: r.hasTarget ? "On target" : "No target set" }) })
+          ] }, r.key);
+        }) })
+      ] }) }),
+      /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mt-3", children: `Targets currently sum to ${`${targetTotal.toFixed(1)}%`}${Math.abs(targetTotal - 100) > 0.5 ? " — doesn't add up to 100%, so drift figures above may not net out." : "."} Leave a target blank to track a category without flagging drift.` })
+    ] });
+  }
   function CertificatesTable({ certificates }) {
     const [sortKey, sortDir, handleSort] = useSortState("amount");
     const total = certificates.reduce((s, c) => s + c.amount, 0);
@@ -1111,16 +1153,18 @@
     const [pushStatus, setPushStatus] = useState("idle");
     const [biometricBusy, setBiometricBusy] = useState(false);
     const [biometricError, setBiometricError] = useState("");
+    const [rebalanceTargets, setRebalanceTargets] = useState({});
     const showAdmin = isOwner && view === "admin";
     const saveTimers = useRef({});
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, c, lr] = await Promise.all([
+        const [h, l, c, lr, rt] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
           loadJson("conversions", SEED_CONVERSIONS),
-          loadJson("liveRates", null)
+          loadJson("liveRates", null),
+          loadJson("rebalanceTargets", {})
         ]);
         let dailyEntries = [];
         try {
@@ -1136,6 +1180,7 @@
           setConversions(c);
           setHistory(dailyEntries);
           setLiveRates(lr);
+          setRebalanceTargets(rt || {});
           setLoadState("ready");
         }
       })();
@@ -1151,6 +1196,7 @@
     const handleHoldingsChange = (next) => debouncedSave("holdings", next, setHoldings);
     const handleLoansChange = (next) => debouncedSave("loans", next, setLoans);
     const handleConversionsChange = (next) => debouncedSave("conversions", next, setConversions);
+    const handleRebalanceTargetChange = (key, value) => debouncedSave("rebalanceTargets", { ...rebalanceTargets, [key]: value }, setRebalanceTargets);
     const navFields = useMemo(() => {
       const seen = /* @__PURE__ */ new Map();
       holdings.filter((h) => h.type === "fund" && h.navGroup).forEach((h) => {
@@ -1288,6 +1334,25 @@ Save anyway?`);
       const gain = value - invested;
       return { invested, value, gain, gainPct: invested ? gain / invested * 100 : 0 };
     }, [metalFundRows, metalPhysicalRows]);
+    const allocationRows = useMemo(() => {
+      const totals = {};
+      REBALANCE_CATEGORIES.forEach((c) => totals[c.key] = 0);
+      ASSETS.forEach((a) => {
+        const h = holdings.find((x) => x.id === a.id);
+        if (!h) return;
+        const key = classifyHolding(h);
+        totals[key] = (totals[key] || 0) + a.value;
+      });
+      return REBALANCE_CATEGORIES.map((c) => {
+        const value = totals[c.key] || 0;
+        const currentPct = totalAssets ? value / totalAssets * 100 : 0;
+        const hasTarget = rebalanceTargets[c.key] !== void 0 && rebalanceTargets[c.key] !== null && rebalanceTargets[c.key] !== "";
+        const targetPct = hasTarget ? Number(rebalanceTargets[c.key]) : currentPct;
+        const driftPt = currentPct - targetPct;
+        const driftValue = totalAssets * (driftPt / 100);
+        return { ...c, value, currentPct, targetPct, hasTarget, driftPt, driftValue };
+      });
+    }, [ASSETS, holdings, totalAssets, rebalanceTargets]);
     const totalLiabilities = useMemo(
       () => loans.reduce((s, l) => s + (l.currency === "USD" ? l.amount * (displayComputed?.rate || 0) : l.amount), 0),
       [loans, displayComputed]
@@ -1795,7 +1860,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${CERTIFICATES.length} EGP certificates & CDs, individually` }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “EGP certificates & CDs” holding above. Monthly interest reconciles with the “EGP — certificate & fund income” line in section 07." }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “EGP certificates & CDs” holding above. Monthly interest reconciles with the “EGP — certificate & fund income” line in section 08." }),
             /* @__PURE__ */ jsx(CertificatesTable, { certificates: CERTIFICATES })
           ] })
         ] }),
@@ -1853,8 +1918,12 @@ Save anyway?`);
             /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalPhysicalRows, showGrams: true })
           ] })
         ] }),
+        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+          /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Portfolio allocation vs targets", dek: "How the portfolio is actually split across asset classes, against the targets you set \u2014 not market predictions, just your own drift." }),
+          /* @__PURE__ */ jsx(AllocationTable, { rows: allocationRows, onTargetChange: handleRebalanceTargetChange, canEdit })
+        ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Investment, by currency", dek: "What is actually committed in each currency, at cost \u2014 drawn live from the holdings list below." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "Investment, by currency", dek: "What is actually committed in each currency, at cost \u2014 drawn live from the holdings list below." }),
           /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-8", children: [
             /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-5", children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total invested in EGP" }),
@@ -1872,11 +1941,11 @@ Save anyway?`);
             usd(totalIncomingUsd),
             " received from outside transfers, ",
             usd(conversionRunningBalance),
-            " remains in USD today \u2014 see the conversion history in section 08."
+            " remains in USD today \u2014 see the conversion history in section 09."
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "What is owed", dek: `${loans.length} facilities, ${egp(totalLiabilities)} outstanding. Add or remove a loan freely.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "What is owed", dek: `${loans.length} facilities, ${egp(totalLiabilities)} outstanding. Add or remove a loan freely.` }),
           /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange, canEdit }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${LOAN_FACILITIES.length} secured EGP facilities, individually` }),
@@ -1889,13 +1958,13 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "Office units", dek: `${OFFICE_UNITS.length} units, ${egp(OFFICE_UNITS.reduce((s, u) => s + u.totalPrice, 0))} full contract price — only the advance paid counts toward Total Assets above.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Office units", dek: `${OFFICE_UNITS.length} units, ${egp(OFFICE_UNITS.reduce((s, u) => s + u.totalPrice, 0))} full contract price — only the advance paid counts toward Total Assets above.` }),
           /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "These are still being paid off in quarterly installments, so they aren't fully owned yet — only the 5% advance is counted as an asset. The full price and what's still owed are shown here for reference." }),
           /* @__PURE__ */ jsx(OfficeUnitsTable, { units: OFFICE_UNITS }),
           /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per the installment schedule, through ~2034. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Monthly cash flow, by currency", dek: "Certificate and fund income measured against loan installments, each currency on its own terms." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Monthly cash flow, by currency", dek: "Certificate and fund income measured against loan installments, each currency on its own terms." }),
           /* @__PURE__ */ jsx("div", { className: "flex gap-2 mb-6", children: /* @__PURE__ */ jsx(Toggle, { options: [{ id: "egp", label: "EGP" }, { id: "usd", label: "USD" }], value: ccy, onChange: setCcy }) }),
           ccy === "egp" ? /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-6", children: [
             /* @__PURE__ */ jsx(Stat, { label: "Certificate & fund income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.egp.income, format: egp }), sub: "per month" }),
@@ -1913,11 +1982,11 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
           /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange, canEdit })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "Live markets", dek: "Gold, USD/EGP, oil, and the major indices — the leverage/FX alert (site banner, email, push) watches gold and USD/EGP; a separate 1% move alert watches the rest." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "Live markets", dek: "Gold, USD/EGP, oil, and the major indices — the leverage/FX alert (site banner, email, push) watches gold and USD/EGP; a separate 1% move alert watches the rest." }),
           /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [
             /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Gold", "OANDA:XAUUSD|1D"]], height: 400 }),
             /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["USD/EGP", "FX_IDC:USDEGP|1D"]], height: 400 }),
@@ -1927,7 +1996,7 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "daily-pricing-form", className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically. Editing an existing day? Use the pencil icon on its row in History and analysis below." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "11", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically. Editing an existing day? Use the pencil icon on its row in History and analysis below." }),
           !editingEntry && daysSinceLastEntry >= 1 && /* @__PURE__ */ jsx("div", { className: "mb-4 flex items-center gap-2 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800", children: [
             /* @__PURE__ */ jsx(AlertTriangle, { size: 14, className: "shrink-0 text-amber-500" }),
             daysSinceLastEntry === 1 ? "It's been 1 day since your last update — add today's entry below." : `It's been ${daysSinceLastEntry} days since your last update — add today's entry below.`
@@ -1947,7 +2016,7 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "11", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "12", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
           fundSeries.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: "Return by fund, since purchase" }),
