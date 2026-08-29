@@ -114,18 +114,26 @@ jobs:
             // Live-vs-last-saved: the site only records a new /daily entry when
             // someone opens it and saves — on days nobody does that, the above
             // check has nothing new to compare, so real price moves went
-            // unnoticed. This mirrors the site's own "live preview" (bundle.js:
-            // isLivePreview) by layering today's live rate/gold onto the last
-            // saved day's fund NAVs, so it fires even without a manual save.
+            // unnoticed. This mirrors the live preview already shown on the
+            // site (bundle.js: isLivePreview) by layering the live rate and
+            // gold price onto the fund NAVs from the last saved day, so it
+            // fires even without a manual save.
+            // NOTE: no apostrophes and no single-quote characters allowed
+            // anywhere in this comment block — it lives inside a bash
+            // single-quoted string, which has no escape mechanism, so a
+            // stray apostrophe here silently breaks the whole script with
+            // a bash syntax error before any of this code even runs.
             if (days.length >= 1 && liveRates.rate && liveRates.gold) {
               const lastSaved = days[days.length - 1];
               const liveDay = { ...lastSaved, rate: liveRates.rate, gold: liveRates.gold };
               compareDays(lastSaved, liveDay, `${lastSaved.date} (live pricing)`);
             }
 
-            // Market watch: oil and major indices aren't part of any holding
-            // (not counted in leverage), tracked purely for the site's "Live
-            // markets" section — 1% day-over-day move on any of them triggers.
+            // Market watch: oil and major indices are not part of any
+            // holding (not counted in leverage), tracked purely for the
+            // "Live markets" section on the site — a 0.5% day-over-day
+            // move on any of them triggers. No apostrophes in this comment
+            // either, for the same bash single-quote reason as above.
             const MARKET_INSTRUMENTS = [
               { key: "oil", label: "Oil (WTI)" },
               { key: "sp500", label: "S&P 500" },
