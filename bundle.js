@@ -907,14 +907,21 @@
       ] }) })
     ] }) });
   }
-  function AllocationTable({ rows, onTargetChange, canEdit }) {
+  function AllocationTable({ rows, onTargetChange, onApplySuggested, hasSuggestion, canEdit }) {
     const targetTotal = rows.reduce((s, r) => s + r.targetPct, 0);
     return /* @__PURE__ */ jsx("div", { children: [
+      /* @__PURE__ */ jsx("div", { className: "mb-4 border border-neutral-300 bg-neutral-50 p-4", children: [
+        /* @__PURE__ */ jsx("div", { className: "flex items-start justify-between gap-4 flex-wrap", children: [
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-600 max-w-xl", children: hasSuggestion ? "Suggested % is a diversification heuristic, not a market prediction: it looks at how much each category has actually swung day to day in your saved history, then weights steadier categories higher and choppier ones lower (inverse volatility). It says nothing about where prices are headed next." : "Suggested % needs a bit more saved history (at least 5 days) to compute a meaningful volatility estimate for every category — keep saving daily entries and it will appear here." }),
+          hasSuggestion && canEdit && /* @__PURE__ */ jsx("button", { onClick: onApplySuggested, className: "shrink-0 text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors", children: "Apply suggested to all" })
+        ] })
+      ] }),
       /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3 font-normal", children: "Category" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Current value" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Current %" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Suggested %" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Target %" }),
           /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Drift" }),
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3 font-normal", children: "Suggestion" })
@@ -926,6 +933,7 @@
             /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: r.label }),
             /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(r.value) }),
             /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: `${r.currentPct.toFixed(1)}%` }),
+            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: r.suggestedPct != null ? `${r.suggestedPct.toFixed(1)}%` : "—" }),
             /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-24", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: r.hasTarget ? r.targetPct : "", placeholder: `${r.currentPct.toFixed(1)}%`, onChange: (v) => onTargetChange(r.key, v === "" ? "" : Number(v)), readOnly: !canEdit }) }),
             /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 text-right font-mono tabular-nums ${overweight ? "text-amber-700" : underweight ? "text-blue-700" : "text-neutral-400"}`, children: r.hasTarget ? `${r.driftPt >= 0 ? "+" : "−"}${Math.abs(r.driftPt).toFixed(1)}pt` : "—" }),
             /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-xs", children: overweight ? /* @__PURE__ */ jsx("span", { className: "text-amber-700", children: `Overweight — trim ~${egp(Math.abs(r.driftValue))}` }) : underweight ? /* @__PURE__ */ jsx("span", { className: "text-blue-700", children: `Underweight — add ~${egp(Math.abs(r.driftValue))}` }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-400", children: r.hasTarget ? "On target" : "No target set" }) })
@@ -1334,6 +1342,50 @@ Save anyway?`);
       const gain = value - invested;
       return { invested, value, gain, gainPct: invested ? gain / invested * 100 : 0 };
     }, [metalFundRows, metalPhysicalRows]);
+    const categoryHistorySeries = useMemo(() => {
+      const series = {};
+      REBALANCE_CATEGORIES.forEach((c) => series[c.key] = []);
+      computedHistory.forEach((day) => {
+        const totals = {};
+        REBALANCE_CATEGORIES.forEach((c) => totals[c.key] = 0);
+        day.rows.forEach((r) => {
+          const h = holdings.find((x) => x.id === r.id);
+          if (!h) return;
+          totals[classifyHolding(h)] += r.value;
+        });
+        REBALANCE_CATEGORIES.forEach((c) => series[c.key].push(totals[c.key]));
+      });
+      return series;
+    }, [computedHistory, holdings]);
+    const MIN_VOLATILITY_SAMPLES = 4;
+    const categoryVolatility = useMemo(() => {
+      const vols = {};
+      REBALANCE_CATEGORIES.forEach((c) => {
+        const values = categoryHistorySeries[c.key] || [];
+        const returns = [];
+        for (let i = 1; i < values.length; i++) {
+          if (values[i - 1] > 0) returns.push((values[i] - values[i - 1]) / values[i - 1] * 100);
+        }
+        if (returns.length < MIN_VOLATILITY_SAMPLES) {
+          vols[c.key] = null;
+          return;
+        }
+        const mean = returns.reduce((s, v) => s + v, 0) / returns.length;
+        const variance = returns.reduce((s, v) => s + (v - mean) ** 2, 0) / returns.length;
+        vols[c.key] = { stdev: Math.sqrt(variance), sampleSize: returns.length };
+      });
+      return vols;
+    }, [categoryHistorySeries]);
+    const suggestedAllocation = useMemo(() => {
+      const VOLATILITY_FLOOR_PCT = 0.05;
+      const entries = REBALANCE_CATEGORIES.map((c) => ({ key: c.key, vol: categoryVolatility[c.key] }));
+      if (entries.some((e) => !e.vol)) return null;
+      const weights = entries.map((e) => 1 / Math.max(e.vol.stdev, VOLATILITY_FLOOR_PCT));
+      const totalWeight = weights.reduce((s, w) => s + w, 0);
+      const out = {};
+      entries.forEach((e, i) => out[e.key] = weights[i] / totalWeight * 100);
+      return out;
+    }, [categoryVolatility]);
     const allocationRows = useMemo(() => {
       const totals = {};
       REBALANCE_CATEGORIES.forEach((c) => totals[c.key] = 0);
@@ -1350,9 +1402,17 @@ Save anyway?`);
         const targetPct = hasTarget ? Number(rebalanceTargets[c.key]) : currentPct;
         const driftPt = currentPct - targetPct;
         const driftValue = totalAssets * (driftPt / 100);
-        return { ...c, value, currentPct, targetPct, hasTarget, driftPt, driftValue };
+        const suggestedPct = suggestedAllocation ? suggestedAllocation[c.key] : null;
+        const volatility = categoryVolatility[c.key];
+        return { ...c, value, currentPct, targetPct, hasTarget, driftPt, driftValue, suggestedPct, volatility };
       });
-    }, [ASSETS, holdings, totalAssets, rebalanceTargets]);
+    }, [ASSETS, holdings, totalAssets, rebalanceTargets, suggestedAllocation, categoryVolatility]);
+    const handleApplySuggestedTargets = () => {
+      if (!suggestedAllocation) return;
+      const next = { ...rebalanceTargets };
+      REBALANCE_CATEGORIES.forEach((c) => next[c.key] = Number(suggestedAllocation[c.key].toFixed(1)));
+      debouncedSave("rebalanceTargets", next, setRebalanceTargets);
+    };
     const totalLiabilities = useMemo(
       () => loans.reduce((s, l) => s + (l.currency === "USD" ? l.amount * (displayComputed?.rate || 0) : l.amount), 0),
       [loans, displayComputed]
@@ -1920,7 +1980,7 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Portfolio allocation vs targets", dek: "How the portfolio is actually split across asset classes, against the targets you set \u2014 not market predictions, just your own drift." }),
-          /* @__PURE__ */ jsx(AllocationTable, { rows: allocationRows, onTargetChange: handleRebalanceTargetChange, canEdit })
+          /* @__PURE__ */ jsx(AllocationTable, { rows: allocationRows, onTargetChange: handleRebalanceTargetChange, onApplySuggested: handleApplySuggestedTargets, hasSuggestion: !!suggestedAllocation, canEdit })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "Investment, by currency", dek: "What is actually committed in each currency, at cost \u2014 drawn live from the holdings list below." }),
