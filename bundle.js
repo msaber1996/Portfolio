@@ -208,19 +208,19 @@
     return OFFICE_INSTALLMENT_SCHEDULE.find((row) => row.date >= todayStr) || null;
   };
   var SEED_LOANS = [
-    { id: "loan-egp", label: "Secured EGP loans (9 facilities)", currency: "EGP", amount: 91141821.28, rate: "", installment: 4031095.38 },
+    { id: "loan-egp", label: "Secured EGP loans (9 facilities)", currency: "EGP", amount: 88646115.24, rate: "", installment: 4031095.39 },
     { id: "loan-usd", label: "USD loan (CIB)", currency: "USD", amount: 72e4, rate: 7, installment: 22231.51 }
   ];
   var LOAN_FACILITIES = [
-    { label: "Secured loan •7090", amountFinanced: 2499900, outstanding: 1029942.21, installment: 97349.85, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
-    { label: "Secured loan •8850", amountFinanced: 990000, outstanding: 407873.82, installment: 38552.12, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
-    { label: "Secured loan •6620", amountFinanced: 50000000, outstanding: 48570571.04, installment: 1825262.29, rate: 19, openDate: "2026-07-19", maturityDate: "2029-07-03" },
-    { label: "Secured loan •7070", amountFinanced: 6300000, outstanding: 2595557.28, installment: 245331.34, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
-    { label: "Secured loan •8860", amountFinanced: 22100, outstanding: 9103.45, installment: 860.46, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
-    { label: "Secured loan •7080", amountFinanced: 1788000, outstanding: 736642.96, installment: 69627.29, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
-    { label: "Secured loan •4470", amountFinanced: 36000000, outstanding: 31162767.24, installment: 1317443.98, rate: 19, openDate: "2026-02-12", maturityDate: "2029-02-03" },
-    { label: "Secured loan •3800", amountFinanced: 9100000, outstanding: 5856814.07, installment: 357755.69, rate: 23.5, openDate: "2025-04-09", maturityDate: "2028-04-03" },
-    { label: "Secured loan •5500", amountFinanced: 2000000, outstanding: 772549.21, installment: 78912.36, rate: 23.5, openDate: "2024-06-26", maturityDate: "2027-06-28" }
+    { label: "Secured loan •7090", amountFinanced: 2499900, outstanding: 953434.38, installment: 97349.85, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
+    { label: "Secured loan •8850", amountFinanced: 990000, outstanding: 377575.48, installment: 38552.12, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
+    { label: "Secured loan •6620", amountFinanced: 50000000, outstanding: 47539977.26, installment: 1825262.29, rate: 19, openDate: "2026-07-19", maturityDate: "2029-07-03" },
+    { label: "Secured loan •7070", amountFinanced: 6300000, outstanding: 2402749.93, installment: 245331.35, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
+    { label: "Secured loan •8860", amountFinanced: 22100, outstanding: 8427.21, installment: 860.46, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
+    { label: "Secured loan •7080", amountFinanced: 1788000, outstanding: 681922.46, installment: 69627.29, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
+    { label: "Secured loan •4470", amountFinanced: 36000000, outstanding: 30355180.76, installment: 1317443.98, rate: 19, openDate: "2026-02-12", maturityDate: "2029-02-03" },
+    { label: "Secured loan •3800", amountFinanced: 9100000, outstanding: 5617577.52, installment: 357755.69, rate: 23.5, openDate: "2025-04-09", maturityDate: "2028-04-03" },
+    { label: "Secured loan •5500", amountFinanced: 2000000, outstanding: 709270.24, installment: 78912.36, rate: 23.5, openDate: "2024-06-26", maturityDate: "2027-06-28" }
   ];
   var CERTIFICATES = [
     { label: "Platinum monthly CD (Alexandria)", amount: 1100000, rate: 21.5, openDate: "2024-08-15", maturityDate: "2027-08-18" },

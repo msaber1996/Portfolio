@@ -114,15 +114,15 @@ jobs:
             today.setHours(0, 0, 0, 0);
             const daysUntil = (d) => d ? Math.round((new Date(d + "T00:00:00") - today) / 864e5) : null;
             const LOAN_FACILITIES = [
-              { label: "Secured loan •7090", outstanding: 1029942.21, maturityDate: "2027-07-28" },
-              { label: "Secured loan •8850", outstanding: 407873.82, maturityDate: "2027-07-28" },
-              { label: "Secured loan •6620", outstanding: 48570571.04, maturityDate: "2029-07-03" },
-              { label: "Secured loan •7070", outstanding: 2595557.28, maturityDate: "2027-07-28" },
-              { label: "Secured loan •8860", outstanding: 9103.45, maturityDate: "2027-07-28" },
-              { label: "Secured loan •7080", outstanding: 736642.96, maturityDate: "2027-07-28" },
-              { label: "Secured loan •4470", outstanding: 31162767.24, maturityDate: "2029-02-03" },
-              { label: "Secured loan •3800", outstanding: 5856814.07, maturityDate: "2028-04-03" },
-              { label: "Secured loan •5500", outstanding: 772549.21, maturityDate: "2027-06-28" }
+              { label: "Secured loan •7090", outstanding: 953434.38, maturityDate: "2027-07-28" },
+              { label: "Secured loan •8850", outstanding: 377575.48, maturityDate: "2027-07-28" },
+              { label: "Secured loan •6620", outstanding: 47539977.26, maturityDate: "2029-07-03" },
+              { label: "Secured loan •7070", outstanding: 2402749.93, maturityDate: "2027-07-28" },
+              { label: "Secured loan •8860", outstanding: 8427.21, maturityDate: "2027-07-28" },
+              { label: "Secured loan •7080", outstanding: 681922.46, maturityDate: "2027-07-28" },
+              { label: "Secured loan •4470", outstanding: 30355180.76, maturityDate: "2029-02-03" },
+              { label: "Secured loan •3800", outstanding: 5617577.52, maturityDate: "2028-04-03" },
+              { label: "Secured loan •5500", outstanding: 709270.24, maturityDate: "2027-06-28" }
             ];
             const matured = CERTIFICATES.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d < 0; });
             const soon = CERTIFICATES.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d >= 0 && d <= 30; });
