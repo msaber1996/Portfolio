@@ -222,7 +222,7 @@
     { label: "Secured loan •3800", amountFinanced: 9100000, outstanding: 5617577.52, installment: 357755.69, rate: 23.5, openDate: "2025-04-09", maturityDate: "2028-04-03" },
     { label: "Secured loan •5500", amountFinanced: 2000000, outstanding: 709270.24, installment: 78912.36, rate: 23.5, openDate: "2024-06-26", maturityDate: "2027-06-28" }
   ];
-  var CERTIFICATES = [
+  var SEED_CERTIFICATES = [
     { label: "Platinum monthly CD (Alexandria)", amount: 1100000, rate: 21.5, openDate: "2024-08-15", maturityDate: "2027-08-18" },
     { label: "Platinum monthly CD (Alexandria)", amount: 30000, rate: 21.5, openDate: "2024-08-15", maturityDate: "2027-08-18" },
     { label: "Variable-yield monthly platinum CD (Sea Shell)", amount: 106000000, rate: 19.5, openDate: "2026-07-12", maturityDate: "2029-07-13" },
@@ -473,6 +473,77 @@
     });
     const missingFacilities = facilities.filter((f, i) => !usedFacilityIndexes.has(i));
     return { updatedFacilities, changes, unmatchedRows, missingFacilities };
+  }
+  function matchCertificateStatementRows(rows, certificates) {
+    const keyOf = (amount, openDate) => `${Math.round(Number(amount) || 0)}|${openDate || ""}`;
+    const indexesByKey = {};
+    certificates.forEach((c, i) => {
+      const k = keyOf(c.amount, c.openDate);
+      (indexesByKey[k] = indexesByKey[k] || []).push(i);
+    });
+    const rowsByKey = {};
+    const unmatchedRows = [];
+    const skippedRows = [];
+    rows.forEach((row) => {
+      const productType = String(row["Product Type"] || "").trim();
+      if (productType && productType !== "Certificate Deposit") {
+        skippedRows.push(row);
+        return;
+      }
+      const amountRaw = row["Amount"];
+      const openDateRaw = row["Open Date"];
+      if (amountRaw === void 0 || amountRaw === null || openDateRaw === void 0 || openDateRaw === null) {
+        unmatchedRows.push(row);
+        return;
+      }
+      const openDate = parseLoanStatementDate(openDateRaw);
+      const amount = Number(amountRaw);
+      if (!openDate || Number.isNaN(amount)) {
+        unmatchedRows.push(row);
+        return;
+      }
+      const key = keyOf(amount, openDate);
+      (rowsByKey[key] = rowsByKey[key] || []).push(row);
+    });
+    const updatedCertificates = certificates.map((c) => ({ ...c }));
+    const changes = [];
+    const usedIndexes = /* @__PURE__ */ new Set();
+    Object.entries(rowsByKey).forEach(([key, keyRows]) => {
+      const indexes = indexesByKey[key] || [];
+      if (!indexes.length) {
+        keyRows.forEach((r) => unmatchedRows.push(r));
+        return;
+      }
+      keyRows.forEach((row, i) => {
+        if (i >= indexes.length) {
+          unmatchedRows.push(row);
+          return;
+        }
+        const idx = indexes[i];
+        usedIndexes.add(idx);
+        const cert = updatedCertificates[idx];
+        const rowChanges = [];
+        const rateRaw = row["Interest Rate"];
+        if (rateRaw !== void 0 && rateRaw !== null && rateRaw !== "") {
+          const newRate = Number(rateRaw);
+          if (!Number.isNaN(newRate) && Math.abs((cert.rate || 0) - newRate) > 5e-3) {
+            rowChanges.push({ key: "rate", label: "Interest Rate", oldVal: cert.rate, newVal: newRate });
+            cert.rate = newRate;
+          }
+        }
+        const maturityRaw = row["Maturity Date"];
+        if (maturityRaw !== void 0 && maturityRaw !== null && maturityRaw !== "") {
+          const newMaturity = parseLoanStatementDate(maturityRaw);
+          if (newMaturity && newMaturity !== cert.maturityDate) {
+            rowChanges.push({ key: "maturityDate", label: "Maturity Date", oldVal: cert.maturityDate, newVal: newMaturity });
+            cert.maturityDate = newMaturity;
+          }
+        }
+        if (rowChanges.length) changes.push({ label: cert.label, fields: rowChanges });
+      });
+    });
+    const missingCertificates = certificates.filter((c, i) => !usedIndexes.has(i));
+    return { updatedCertificates, changes, unmatchedRows, skippedRows, missingCertificates };
   }
   var MATURITY_WARNING_DAYS = 30;
   var daysUntil = (dateStr) => {
@@ -989,6 +1060,69 @@
       ] })
     ] });
   }
+  function CertificateStatementUpload({ certificates, onApply, canEdit }) {
+    const [preview, setPreview] = useState(null);
+    const [error, setError] = useState("");
+    const [busy, setBusy] = useState(false);
+    const inputRef = useRef(null);
+    if (!canEdit) return null;
+    const handleFile = async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      setError("");
+      setPreview(null);
+      try {
+        if (!window.XLSX) throw new Error("Spreadsheet reader did not load — check your connection and try again.");
+        const buf = await file.arrayBuffer();
+        const wb = window.XLSX.read(buf, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const grid = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+        const headerRowIdx = grid.findIndex((r) => r.some((cell) => String(cell || "").trim() === "Account Number"));
+        if (headerRowIdx === -1) throw new Error('Could not find a header row with "Account Number" in this file.');
+        const rows = window.XLSX.utils.sheet_to_json(sheet, { range: headerRowIdx, defval: null });
+        const result = matchCertificateStatementRows(rows, certificates);
+        setPreview(result);
+      } catch (err) {
+        setError(err.message || "Could not read that file.");
+      } finally {
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    };
+    const handleApply = async () => {
+      if (!preview) return;
+      setBusy(true);
+      await onApply(preview.updatedCertificates);
+      setBusy(false);
+      setPreview(null);
+    };
+    const fmtVal = (key, v) => key === "maturityDate" ? fmtDate(v) : `${Number(v).toFixed(2)}%`;
+    return /* @__PURE__ */ jsx("div", { className: "mb-6 border border-dashed border-neutral-300 p-4", children: [
+      /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between gap-4 flex-wrap", children: [
+        /* @__PURE__ */ jsx("div", { children: [
+          /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "Upload certificate statement" }),
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 max-w-md", children: "An .xlsx export with Amount, Open Date, Interest Rate, Maturity Date columns — matches each row to a certificate by amount and open date (certificates have no unique account number, unlike loans), and only updates rate or maturity date. New or closed certificates are flagged, never added or removed automatically." })
+        ] }),
+        /* @__PURE__ */ jsx("label", { className: "shrink-0 cursor-pointer text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors", children: [
+          "Choose file",
+          /* @__PURE__ */ jsx("input", { ref: inputRef, type: "file", accept: ".xlsx,.xls", onChange: handleFile, className: "hidden" })
+        ] })
+      ] }),
+      error && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-700 mt-3", children: error }),
+      preview && /* @__PURE__ */ jsx("div", { className: "mt-4", children: [
+        preview.changes.length === 0 ? /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500", children: "No differences found — every matched certificate already matches this file." }) : /* @__PURE__ */ jsx("div", { className: "space-y-2", children: preview.changes.map((c, i) => /* @__PURE__ */ jsx("div", { className: "text-xs border-b border-neutral-100 pb-2", children: [
+          /* @__PURE__ */ jsx("div", { className: "font-mono text-neutral-900", children: c.label }),
+          ...c.fields.map((f) => /* @__PURE__ */ jsx("div", { className: "text-neutral-500 pl-3", children: `${f.label}: ${fmtVal(f.key, f.oldVal)} → ${fmtVal(f.key, f.newVal)}` }))
+        ] }, i)) }),
+        preview.unmatchedRows.length > 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-amber-700 mt-3", children: `${preview.unmatchedRows.length} row(s) in the file did not match any existing certificate by amount + open date — could be a new certificate, not added automatically.` }),
+        preview.skippedRows.length > 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mt-1", children: `${preview.skippedRows.length} row(s) skipped — not a Certificate Deposit (e.g. a time deposit), out of scope here.` }),
+        preview.missingCertificates.length > 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mt-1", children: `${preview.missingCertificates.length} existing certificate${preview.missingCertificates.length === 1 ? "" : "s"} not present in this file — left unchanged: ${preview.missingCertificates.map((c) => c.label).join(", ")}.` }),
+        /* @__PURE__ */ jsx("div", { className: "flex gap-2 mt-4", children: [
+          /* @__PURE__ */ jsx("button", { onClick: handleApply, disabled: busy || preview.changes.length === 0, className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none", children: busy ? "Saving…" : `Apply ${preview.changes.length} update${preview.changes.length === 1 ? "" : "s"}` }),
+          /* @__PURE__ */ jsx("button", { onClick: () => setPreview(null), className: "text-xs uppercase tracking-wide text-neutral-500 px-3 py-1.5", children: "Cancel" })
+        ] })
+      ] })
+    ] });
+  }
   function MetalRowsTable({ rows, showGrams }) {
     const [sortKey, sortDir, handleSort] = useSortState("value");
     const totals = rows.reduce((s, r) => ({ invested: s.invested + (r.investmentNative || 0), value: s.value + (r.value || 0), grams: s.grams + (r.grams || 0) }), { invested: 0, value: 0, grams: 0 });
@@ -1239,6 +1373,7 @@
     const [holdings, setHoldings] = useState(SEED_HOLDINGS);
     const [loans, setLoans] = useState(SEED_LOANS);
     const [loanFacilities, setLoanFacilities] = useState(SEED_LOAN_FACILITIES);
+    const [certificates, setCertificates] = useState(SEED_CERTIFICATES);
     const [conversions, setConversions] = useState(SEED_CONVERSIONS);
     const [history, setHistory] = useState([]);
     const [loadState, setLoadState] = useState("loading");
@@ -1260,10 +1395,11 @@
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, lf, c, lr] = await Promise.all([
+        const [h, l, lf, cert, c, lr] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
           loadJson("loanFacilities", SEED_LOAN_FACILITIES),
+          loadJson("certificates", SEED_CERTIFICATES),
           loadJson("conversions", SEED_CONVERSIONS),
           loadJson("liveRates", null)
         ]);
@@ -1279,6 +1415,7 @@
           setHoldings(h);
           setLoans(l);
           setLoanFacilities(lf);
+          setCertificates(cert);
           setConversions(c);
           setHistory(dailyEntries);
           setLiveRates(lr);
@@ -1304,6 +1441,18 @@
       await saveJson("loans", nextLoans);
       setLoanFacilities(updatedFacilities);
       setLoans(nextLoans);
+      setSaving(false);
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1800);
+    };
+    const handleApplyCertificateStatement = async (updatedCertificates) => {
+      setSaving(true);
+      const total = updatedCertificates.reduce((s, c) => s + c.amount, 0);
+      const nextHoldings = holdings.map((h) => h.id === "certs" ? { ...h, investment: total } : h);
+      await saveJson("certificates", updatedCertificates);
+      await saveJson("holdings", nextHoldings);
+      setCertificates(updatedCertificates);
+      setHoldings(nextHoldings);
       setSaving(false);
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1800);
@@ -1506,7 +1655,7 @@ Save anyway?`);
         const amt = egp(officeDueAlert.amount);
         list.push({ id: `office-${officeDueAlert.date}`, severity: officeDueAlert.daysUntilDue < 0 ? "danger" : "warning", text: officeDueAlert.daysUntilDue < 0 ? `Office installment ${amt} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)}d ago` : officeDueAlert.daysUntilDue === 0 ? `Office installment ${amt} is due today` : `Office installment ${amt} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue}d` });
       }
-      CERTIFICATES.forEach((c, i) => {
+      certificates.forEach((c, i) => {
         const d = daysUntil(c.maturityDate);
         if (d === null || d > MATURITY_WARNING_DAYS) return;
         list.push({ id: `cert-${i}-${c.maturityDate}`, severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${c.label} matured ${fmtDate(c.maturityDate)}, ${Math.abs(d)}d ago` : `${c.label} matures ${fmtDate(c.maturityDate)}, in ${d}d` });
@@ -1517,7 +1666,7 @@ Save anyway?`);
         list.push({ id: `loan-${i}-${l.maturityDate}`, severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${l.label} matured ${fmtDate(l.maturityDate)}, ${Math.abs(d)}d ago` : `${l.label} matures ${fmtDate(l.maturityDate)}, in ${d}d` });
       });
       return list;
-    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, loanFacilities]);
+    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, loanFacilities, certificates]);
     useEffect(() => {
       if (typeof navigator === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
         setPushStatus("unsupported");
@@ -1643,7 +1792,7 @@ Save anyway?`);
         list.push({ severity: "good", text: `Monthly EGP cash flow is positive: ${signedEgp(egpNet)} surplus.` });
       }
       const upcoming = [
-        ...CERTIFICATES.map((c) => ({ label: c.label, amount: c.amount, maturityDate: c.maturityDate })),
+        ...certificates.map((c) => ({ label: c.label, amount: c.amount, maturityDate: c.maturityDate })),
         ...loanFacilities.map((f) => ({ label: f.label, amount: f.outstanding, maturityDate: f.maturityDate }))
       ].map((item) => ({ ...item, daysUntil: daysUntil(item.maturityDate) })).filter((item) => item.daysUntil !== null && item.daysUntil >= 0 && item.daysUntil <= 90);
       if (upcoming.length) {
@@ -1659,7 +1808,7 @@ Save anyway?`);
       }
       const severityRank = { notice: 0, info: 1, good: 2 };
       return list.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
-    }, [allocationRows, debtRatioPct, egpNet, loanFacilities, analysis, firstComputed]);
+    }, [allocationRows, debtRatioPct, egpNet, loanFacilities, certificates, analysis, firstComputed]);
     const handleExportBackup = useCallback(() => {
       const backup = {
         exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -1695,9 +1844,9 @@ Save anyway?`);
         const inst = l.currency === "USD" ? usd(l.installment) : egp(l.installment);
         return `<tr><td>${l.label}</td><td class="num mono">${amt}</td><td class="num mono">${inst}</td></tr>`;
       }).join("");
-      const certificateRowsHtml = CERTIFICATES.map((c) => `<tr><td>${c.label}</td><td class="num mono">${c.rate.toFixed(2)}%</td><td class="num mono">${egp(c.amount)}</td><td class="num mono">${egp(c.amount * c.rate / 100 / 12)}</td><td>${fmtDate(c.openDate)}</td><td>${fmtDate(c.maturityDate)}</td></tr>`).join("");
-      const certificateTotal = CERTIFICATES.reduce((s, c) => s + c.amount, 0);
-      const certificateMonthlyInterestTotal = CERTIFICATES.reduce((s, c) => s + c.amount * c.rate / 100 / 12, 0);
+      const certificateRowsHtml = certificates.map((c) => `<tr><td>${c.label}</td><td class="num mono">${c.rate.toFixed(2)}%</td><td class="num mono">${egp(c.amount)}</td><td class="num mono">${egp(c.amount * c.rate / 100 / 12)}</td><td>${fmtDate(c.openDate)}</td><td>${fmtDate(c.maturityDate)}</td></tr>`).join("");
+      const certificateTotal = certificates.reduce((s, c) => s + c.amount, 0);
+      const certificateMonthlyInterestTotal = certificates.reduce((s, c) => s + c.amount * c.rate / 100 / 12, 0);
       const loanFacilityRowsHtml = loanFacilities.map((f) => `<tr><td>${f.label}</td><td class="num mono">${f.rate.toFixed(1)}%</td><td class="num mono">${egp(f.amountFinanced)}</td><td class="num mono">${egp(f.outstanding)}</td><td class="num mono">${egp(f.installment)}</td><td>${fmtDate(f.openDate)}</td><td>${fmtDate(f.maturityDate)}</td></tr>`).join("");
       const loanFacilityTotals = loanFacilities.reduce((s, f) => ({ amountFinanced: s.amountFinanced + f.amountFinanced, outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { amountFinanced: 0, outstanding: 0, installment: 0 });
       const convRowsHtml = conversionsWithRunning.map((c) => `<tr><td>${c.date}</td><td style="text-transform:capitalize">${c.type}</td><td class="num mono">${usd(c.amountUsd)}</td><td class="num mono">${usd(c.running)}</td></tr>`).join("");
@@ -1760,8 +1909,8 @@ Save anyway?`);
 
   <h2>Holdings</h2>
   <table><tr><th>Holding</th><th>Purchase date</th><th class="num">Purchase amount</th><th class="num">Bought at</th><th class="num">Now</th><th class="num">Gain</th><th class="num">Value</th><th class="num">% of total</th></tr>${rowsHtml}</table>
-  <p class="note">The ${CERTIFICATES.length} EGP certificates & CDs, individually — these roll up into the single "EGP certificates & CDs" holding above.</p>
-  <table><tr><th>Certificate</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Monthly interest</th><th>Opened</th><th>Matures</th></tr>${certificateRowsHtml}<tr><td><b>Total (${CERTIFICATES.length})</b></td><td></td><td class="num mono"><b>${egp(certificateTotal)}</b></td><td class="num mono"><b>${egp(certificateMonthlyInterestTotal)}</b></td><td></td><td></td></tr></table>
+  <p class="note">The ${certificates.length} EGP certificates & CDs, individually — these roll up into the single "EGP certificates & CDs" holding above.</p>
+  <table><tr><th>Certificate</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Monthly interest</th><th>Opened</th><th>Matures</th></tr>${certificateRowsHtml}<tr><td><b>Total (${certificates.length})</b></td><td></td><td class="num mono"><b>${egp(certificateTotal)}</b></td><td class="num mono"><b>${egp(certificateMonthlyInterestTotal)}</b></td><td></td><td></td></tr></table>
   <p class="note">Total monthly interest across all certificates reconciles with the "EGP — certificate & fund income" line in the cash flow section below.</p>
 
   <h2>Variable investments (funds, gold, Beltone — excludes certificates)</h2>
@@ -1859,7 +2008,8 @@ Save anyway?`);
       metalFundRows,
       metalPhysicalRows,
       metalOverall,
-      loanFacilities
+      loanFacilities,
+      certificates
     ]);
     if (loadState === "loading") {
       return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
@@ -2004,9 +2154,10 @@ Save anyway?`);
           /* @__PURE__ */ jsx(SectionHeading, { index: "01", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
           /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${CERTIFICATES.length} EGP certificates & CDs, individually` }),
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${certificates.length} EGP certificates & CDs, individually` }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “EGP certificates & CDs” holding above. Monthly interest reconciles with the “EGP — certificate & fund income” line in section 08." }),
-            /* @__PURE__ */ jsx(CertificatesTable, { certificates: CERTIFICATES })
+            /* @__PURE__ */ jsx(CertificateStatementUpload, { certificates, onApply: handleApplyCertificateStatement, canEdit }),
+            /* @__PURE__ */ jsx(CertificatesTable, { certificates: certificates })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
