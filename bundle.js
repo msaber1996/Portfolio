@@ -796,7 +796,7 @@
     const add = () => onChange([...holdings, { id: uid(), type: "fund", label: "New fund", currency: "EGP", investment: 0, purchaseNav: 100, purchaseDate: "", navGroup: "new" + holdings.length, grams: 0 }]);
     const sorted = sortRows(holdings, sortKey, sortDir, (h, k) => k === "currentValue" ? currentValueById?.[h.id] ?? 0 : h[k]);
     return /* @__PURE__ */ jsx("div", { children: [
-      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx(SortTh, { label: "Type", sortKey: "type", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
           /* @__PURE__ */ jsx(SortTh, { label: "Label", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
@@ -833,7 +833,7 @@
     const add = () => onChange([...loans, { id: uid(), label: "New loan", currency: "EGP", amount: 0, rate: "", installment: 0 }]);
     const sorted = sortRows(loans, sortKey, sortDir, (l, k) => l[k]);
     return /* @__PURE__ */ jsx("div", { children: [
-      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx(SortTh, { label: "Label", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
           /* @__PURE__ */ jsx(SortTh, { label: "Currency", sortKey: "currency", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
@@ -862,7 +862,7 @@
       remaining: s.remaining + u.remaining
     }), { totalPrice: 0, advance: 0, remaining: 0 });
     const sorted = sortRows(units, sortKey, sortDir, (u, k) => u[k]);
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx(SortTh, { label: "Office", sortKey: "unit", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Size" }),
@@ -897,7 +897,7 @@
       installment: s.installment + f.installment
     }), { amountFinanced: 0, outstanding: 0, installment: 0 });
     const sorted = sortRows(facilities, sortKey, sortDir, (f, k) => f[k]);
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx(SortTh, { label: "Facility", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
         /* @__PURE__ */ jsx(SortTh, { label: "Rate %", sortKey: "rate", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
@@ -995,7 +995,7 @@
     const totalGain = totals.value - totals.invested;
     const totalGainPct = totals.invested ? totalGain / totals.invested * 100 : 0;
     const sorted = sortRows(rows, sortKey, sortDir, (r, k) => k === "investmentNative" ? r.investmentNative || 0 : k === "value" ? r.value || 0 : k === "gainPct" ? r.gainPct || 0 : r[k]);
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx(SortTh, { label: "Holding", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
         showGrams && /* @__PURE__ */ jsx(SortTh, { label: "Grams", sortKey: "grams", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
@@ -1048,7 +1048,7 @@
         maturedCount > 0 && `${maturedCount} certificate${maturedCount === 1 ? "" : "s"} already past maturity. `,
         maturingSoonCount > 0 && `${maturingSoonCount} maturing within ${MATURITY_WARNING_DAYS} days.`
       ] }),
-      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx(SortTh, { label: "Certificate", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
           /* @__PURE__ */ jsx(SortTh, { label: "Rate %", sortKey: "rate", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
@@ -1091,7 +1091,7 @@
       const abs = currency === "USD" ? usd(Math.abs(amount)) : egp(Math.abs(amount));
       return `${sign}${abs}`;
     };
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Rank" }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Holding" }),
@@ -1127,7 +1127,7 @@
     const remove = (id) => onChange(conversions.filter((c) => c.id !== id));
     const add = () => onChange([...conversions, { id: uid(), date: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), type: "in", amountUsd: 0, rate: "", note: "" }]);
     return /* @__PURE__ */ jsx("div", { children: [
-      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Date" }),
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Type" }),
@@ -1207,7 +1207,7 @@
       return /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-400", children: "Loading users…" });
     }
     const entries = Object.entries(roles).sort((a, b) => (a[1]?.email || "").localeCompare(b[1]?.email || ""));
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Email" }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Role" }),
