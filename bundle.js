@@ -1025,27 +1025,15 @@
       ] }) })
     ] }) });
   }
-  function AllocationTable({ rows, onTargetChange, canEdit }) {
+  function PortfolioInsights({ insights, allocationRows }) {
+    const severityStyle = {
+      notice: "border-amber-300 bg-amber-50 text-amber-900",
+      good: "border-emerald-300 bg-emerald-50 text-emerald-900",
+      info: "border-neutral-300 bg-neutral-50 text-neutral-700"
+    };
     return /* @__PURE__ */ jsx("div", { children: [
-      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
-        /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3 font-normal", children: "Category" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Current %" }),
-          /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3 font-normal", children: "Your target %" }),
-          /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3 font-normal", children: "Status" })
-        ] }) }),
-        /* @__PURE__ */ jsx("tbody", { children: rows.map((r) => {
-          const overweight = r.hasTarget && r.driftPt > 0.5;
-          const underweight = r.hasTarget && r.driftPt < -0.5;
-          return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: r.label }),
-            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: `${r.currentPct.toFixed(1)}%` }),
-            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: r.hasTarget ? r.targetPct : "", placeholder: `${r.currentPct.toFixed(1)}`, onChange: (v) => onTargetChange(r.key, v === "" ? "" : Number(v)), readOnly: !canEdit }) }),
-            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-xs", children: !r.hasTarget ? /* @__PURE__ */ jsx("span", { className: "text-neutral-400", children: "No target set" }) : overweight ? /* @__PURE__ */ jsx("span", { className: "text-amber-700", children: `${Math.abs(r.driftPt).toFixed(1)}pt over — consider trimming ~${egp(Math.abs(r.driftValue))}` }) : underweight ? /* @__PURE__ */ jsx("span", { className: "text-blue-700", children: `${Math.abs(r.driftPt).toFixed(1)}pt under — consider adding ~${egp(Math.abs(r.driftValue))}` }) : /* @__PURE__ */ jsx("span", { className: "text-emerald-700", children: "On target" }) })
-          ] }, r.key);
-        }) })
-      ] }) }),
-      /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mt-3", children: 'Type a target % for any category you want to watch — leave the rest blank. The site will flag it once you drift more than half a point off.' })
+      insights.length === 0 ? /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-500", children: "No notable observations right now — nothing here looks out of the ordinary." }) : /* @__PURE__ */ jsx("div", { className: "space-y-2 mb-6", children: insights.map((ins, i) => /* @__PURE__ */ jsx("div", { className: `text-sm border px-3 py-2 ${severityStyle[ins.severity]}`, children: ins.text }, i)) }),
+      /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-x-6 gap-y-1 text-xs text-neutral-500 pt-4 border-t border-neutral-200", children: allocationRows.map((r) => /* @__PURE__ */ jsx("span", { children: `${r.label}: ${r.currentPct.toFixed(1)}%` }, r.key)) })
     ] });
   }
   function CertificatesTable({ certificates }) {
@@ -1267,19 +1255,17 @@
     const [pushStatus, setPushStatus] = useState("idle");
     const [biometricBusy, setBiometricBusy] = useState(false);
     const [biometricError, setBiometricError] = useState("");
-    const [rebalanceTargets, setRebalanceTargets] = useState({});
     const showAdmin = isOwner && view === "admin";
     const saveTimers = useRef({});
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, lf, c, lr, rt] = await Promise.all([
+        const [h, l, lf, c, lr] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
           loadJson("loanFacilities", SEED_LOAN_FACILITIES),
           loadJson("conversions", SEED_CONVERSIONS),
-          loadJson("liveRates", null),
-          loadJson("rebalanceTargets", {})
+          loadJson("liveRates", null)
         ]);
         let dailyEntries = [];
         try {
@@ -1296,7 +1282,6 @@
           setConversions(c);
           setHistory(dailyEntries);
           setLiveRates(lr);
-          setRebalanceTargets(rt || {});
           setLoadState("ready");
         }
       })();
@@ -1324,7 +1309,6 @@
       setTimeout(() => setSavedFlash(false), 1800);
     };
     const handleConversionsChange = (next) => debouncedSave("conversions", next, setConversions);
-    const handleRebalanceTargetChange = (key, value) => debouncedSave("rebalanceTargets", { ...rebalanceTargets, [key]: value }, setRebalanceTargets);
     const navFields = useMemo(() => {
       const seen = /* @__PURE__ */ new Map();
       holdings.filter((h) => h.type === "fund" && h.navGroup).forEach((h) => {
@@ -1474,13 +1458,9 @@ Save anyway?`);
       return REBALANCE_CATEGORIES.map((c) => {
         const value = totals[c.key] || 0;
         const currentPct = totalAssets ? value / totalAssets * 100 : 0;
-        const hasTarget = rebalanceTargets[c.key] !== void 0 && rebalanceTargets[c.key] !== null && rebalanceTargets[c.key] !== "";
-        const targetPct = hasTarget ? Number(rebalanceTargets[c.key]) : currentPct;
-        const driftPt = currentPct - targetPct;
-        const driftValue = totalAssets * (driftPt / 100);
-        return { ...c, value, currentPct, targetPct, hasTarget, driftPt, driftValue };
+        return { ...c, value, currentPct };
       });
-    }, [ASSETS, holdings, totalAssets, rebalanceTargets]);
+    }, [ASSETS, holdings, totalAssets]);
     const totalLiabilities = useMemo(
       () => loans.reduce((s, l) => s + (l.currency === "USD" ? l.amount * (displayComputed?.rate || 0) : l.amount), 0),
       [loans, displayComputed]
@@ -1644,6 +1624,42 @@ Save anyway?`);
         mostDeclined
       };
     }, [computedHistory, firstComputed, latestComputed]);
+    const portfolioInsights = useMemo(() => {
+      const list = [];
+      const CONCENTRATION_THRESHOLD_PCT = 45;
+      allocationRows.filter((r) => r.currentPct >= CONCENTRATION_THRESHOLD_PCT).forEach((r) => {
+        list.push({ severity: "notice", text: `${r.label} is ${r.currentPct.toFixed(0)}% of the portfolio — a large concentration in one category. Spreading some of that into others would reduce how much a single asset class can move your total.` });
+      });
+      if (debtRatioPct > 25) {
+        list.push({ severity: "notice", text: `Leverage is ${debtRatioPct.toFixed(1)}% — on the higher side. Liabilities are a meaningful share of assets; paying down debt or growing assets would bring this down.` });
+      } else if (debtRatioPct < 10) {
+        list.push({ severity: "good", text: `Leverage is ${debtRatioPct.toFixed(1)}% — low and stable.` });
+      } else {
+        list.push({ severity: "info", text: `Leverage is ${debtRatioPct.toFixed(1)}% — moderate.` });
+      }
+      if (egpNet < 0) {
+        list.push({ severity: "notice", text: `Monthly EGP cash flow is negative (${signedEgp(egpNet)}) — loan installments currently outweigh EGP income.` });
+      } else if (egpNet > 0) {
+        list.push({ severity: "good", text: `Monthly EGP cash flow is positive: ${signedEgp(egpNet)} surplus.` });
+      }
+      const upcoming = [
+        ...CERTIFICATES.map((c) => ({ label: c.label, amount: c.amount, maturityDate: c.maturityDate })),
+        ...loanFacilities.map((f) => ({ label: f.label, amount: f.outstanding, maturityDate: f.maturityDate }))
+      ].map((item) => ({ ...item, daysUntil: daysUntil(item.maturityDate) })).filter((item) => item.daysUntil !== null && item.daysUntil >= 0 && item.daysUntil <= 90);
+      if (upcoming.length) {
+        const total = upcoming.reduce((s, item) => s + (item.amount || 0), 0);
+        list.push({ severity: "notice", text: `${upcoming.length} certificate${upcoming.length === 1 ? "" : "s"}/loan${upcoming.length === 1 ? "" : "s"} matures within 90 days, totaling ${egp(total)} — worth planning ahead for reinvestment or repayment.` });
+      }
+      if (analysis && analysis.days >= 5) {
+        if (analysis.changePct > 0) {
+          list.push({ severity: "good", text: `Marked-to-market value is up ${pctStr(analysis.changePct)} since ${firstComputed.date} (${analysis.days} days tracked).` });
+        } else if (analysis.changePct < 0) {
+          list.push({ severity: "notice", text: `Marked-to-market value is down ${pctStr(analysis.changePct)} since ${firstComputed.date} (${analysis.days} days tracked).` });
+        }
+      }
+      const severityRank = { notice: 0, info: 1, good: 2 };
+      return list.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
+    }, [allocationRows, debtRatioPct, egpNet, loanFacilities, analysis, firstComputed]);
     const handleExportBackup = useCallback(() => {
       const backup = {
         exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -2048,8 +2064,8 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Portfolio allocation vs targets", dek: "How much of the portfolio is gold, funds, or fixed income right now, compared to whatever mix you'd like to hold." }),
-          /* @__PURE__ */ jsx(AllocationTable, { rows: allocationRows, onTargetChange: handleRebalanceTargetChange, canEdit })
+          /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Portfolio insights", dek: "Automatic observations from the numbers already on this site — concentration, leverage, cash flow, and upcoming maturities. Nothing to fill in." }),
+          /* @__PURE__ */ jsx(PortfolioInsights, { insights: portfolioInsights, allocationRows })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "Investment, by currency", dek: "What is actually committed in each currency, at cost \u2014 drawn live from the holdings list below." }),
