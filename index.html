@@ -28,6 +28,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 
+<!-- SheetJS: reads uploaded .xlsx bank statements client-side (loan statement upload). -->
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <style>
   html, body { margin: 0; padding: 0; background: #fafaf9; }
   * { box-sizing: border-box; }
@@ -40,7 +43,7 @@
   </div>
 </div>
 <!-- bump ?v= on every bundle.js change, or Safari keeps serving the cached old copy -->
-<script src="bundle.js?v=72"></script>
+<script src="bundle.js?v=73"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {

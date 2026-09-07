@@ -211,7 +211,7 @@
     { id: "loan-egp", label: "Secured EGP loans (9 facilities)", currency: "EGP", amount: 88646115.24, rate: "", installment: 4031095.39 },
     { id: "loan-usd", label: "USD loan (CIB)", currency: "USD", amount: 72e4, rate: 7, installment: 22231.51 }
   ];
-  var LOAN_FACILITIES = [
+  var SEED_LOAN_FACILITIES = [
     { label: "Secured loan •7090", amountFinanced: 2499900, outstanding: 953434.38, installment: 97349.85, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
     { label: "Secured loan •8850", amountFinanced: 990000, outstanding: 377575.48, installment: 38552.12, rate: 23.5, openDate: "2024-08-18", maturityDate: "2027-07-28" },
     { label: "Secured loan •6620", amountFinanced: 50000000, outstanding: 47539977.26, installment: 1825262.29, rate: 19, openDate: "2026-07-19", maturityDate: "2029-07-03" },
@@ -418,6 +418,58 @@
     if (h.id === "offices") return "realEstate";
     return h.currency === "USD" ? "usdFixed" : "egpFixed";
   };
+  var parseLoanStatementDate = (v) => {
+    if (v instanceof Date && !isNaN(v)) {
+      return `${v.getUTCFullYear()}-${String(v.getUTCMonth() + 1).padStart(2, "0")}-${String(v.getUTCDate()).padStart(2, "0")}`;
+    }
+    if (typeof v === "string" && v) {
+      const d = new Date(v);
+      if (!isNaN(d)) return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    }
+    return null;
+  };
+  var LOAN_STATEMENT_FIELDS = [
+    { key: "amountFinanced", column: "Amount Financed", type: "number" },
+    { key: "outstanding", column: "Outstanding Balance", type: "number" },
+    { key: "installment", column: "Installment Amount", type: "number" },
+    { key: "rate", column: "Interest Rate", type: "number" },
+    { key: "openDate", column: "Open Date", type: "date" },
+    { key: "maturityDate", column: "Maturity Date", type: "date" }
+  ];
+  function matchLoanStatementRows(rows, facilities) {
+    const usedFacilityIndexes = /* @__PURE__ */ new Set();
+    const changes = [];
+    const unmatchedRows = [];
+    const updatedFacilities = facilities.map((f) => ({ ...f }));
+    rows.forEach((row) => {
+      const acctRaw = row["Account Number"];
+      const last4 = acctRaw != null && acctRaw !== "" ? String(acctRaw).slice(-4) : null;
+      if (!last4) return;
+      const idx = facilities.findIndex((f) => f.label.endsWith(`•${last4}`));
+      if (idx === -1) {
+        unmatchedRows.push(row);
+        return;
+      }
+      usedFacilityIndexes.add(idx);
+      const facility = updatedFacilities[idx];
+      const rowChanges = [];
+      LOAN_STATEMENT_FIELDS.forEach(({ key, column, type }) => {
+        const raw = row[column];
+        if (raw === void 0 || raw === null || raw === "") return;
+        const newVal = type === "date" ? parseLoanStatementDate(raw) : Number(raw);
+        if (newVal === null || type === "number" && Number.isNaN(newVal)) return;
+        const oldVal = facility[key];
+        const changed = type === "date" ? oldVal !== newVal : Math.abs((oldVal || 0) - newVal) > 5e-3;
+        if (changed) {
+          rowChanges.push({ key, label: column, oldVal, newVal });
+          facility[key] = newVal;
+        }
+      });
+      if (rowChanges.length) changes.push({ label: facility.label, fields: rowChanges });
+    });
+    const missingFacilities = facilities.filter((f, i) => !usedFacilityIndexes.has(i));
+    return { updatedFacilities, changes, unmatchedRows, missingFacilities };
+  }
   var MATURITY_WARNING_DAYS = 30;
   var daysUntil = (dateStr) => {
     if (!dateStr) return null;
@@ -871,6 +923,68 @@
       ] }) })
     ] }) });
   }
+  function LoanStatementUpload({ facilities, onApply, canEdit }) {
+    const [preview, setPreview] = useState(null);
+    const [error, setError] = useState("");
+    const [busy, setBusy] = useState(false);
+    const inputRef = useRef(null);
+    if (!canEdit) return null;
+    const handleFile = async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      setError("");
+      setPreview(null);
+      try {
+        if (!window.XLSX) throw new Error("Spreadsheet reader did not load — check your connection and try again.");
+        const buf = await file.arrayBuffer();
+        const wb = window.XLSX.read(buf, { type: "array", cellDates: true });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const grid = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+        const headerRowIdx = grid.findIndex((r) => r.some((cell) => String(cell || "").trim() === "Account Number"));
+        if (headerRowIdx === -1) throw new Error('Could not find a header row with "Account Number" in this file.');
+        const rows = window.XLSX.utils.sheet_to_json(sheet, { range: headerRowIdx, defval: null });
+        const result = matchLoanStatementRows(rows, facilities);
+        setPreview(result);
+      } catch (err) {
+        setError(err.message || "Could not read that file.");
+      } finally {
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    };
+    const handleApply = async () => {
+      if (!preview) return;
+      setBusy(true);
+      await onApply(preview.updatedFacilities);
+      setBusy(false);
+      setPreview(null);
+    };
+    const fmtVal = (key, v) => key === "openDate" || key === "maturityDate" ? fmtDate(v) : key === "rate" ? `${Number(v).toFixed(2)}%` : egp(v);
+    return /* @__PURE__ */ jsx("div", { className: "mb-6 border border-dashed border-neutral-300 p-4", children: [
+      /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between gap-4 flex-wrap", children: [
+        /* @__PURE__ */ jsx("div", { children: [
+          /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "Upload loan statement" }),
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 max-w-md", children: "An .xlsx export with Account Number, Outstanding Balance, Installment Amount columns — matches each row to a facility by the last 4 digits of its account number and shows what changed before saving anything." })
+        ] }),
+        /* @__PURE__ */ jsx("label", { className: "shrink-0 cursor-pointer text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors", children: [
+          "Choose file",
+          /* @__PURE__ */ jsx("input", { ref: inputRef, type: "file", accept: ".xlsx,.xls", onChange: handleFile, className: "hidden" })
+        ] })
+      ] }),
+      error && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-700 mt-3", children: error }),
+      preview && /* @__PURE__ */ jsx("div", { className: "mt-4", children: [
+        preview.changes.length === 0 ? /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500", children: "No differences found — every matched facility already matches this file." }) : /* @__PURE__ */ jsx("div", { className: "space-y-2", children: preview.changes.map((c) => /* @__PURE__ */ jsx("div", { className: "text-xs border-b border-neutral-100 pb-2", children: [
+          /* @__PURE__ */ jsx("div", { className: "font-mono text-neutral-900", children: c.label }),
+          ...c.fields.map((f) => /* @__PURE__ */ jsx("div", { className: "text-neutral-500 pl-3", children: `${f.label}: ${fmtVal(f.key, f.oldVal)} → ${fmtVal(f.key, f.newVal)}` }))
+        ] }, c.label)) }),
+        preview.unmatchedRows.length > 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-amber-700 mt-3", children: `${preview.unmatchedRows.length} row(s) in the file did not match any existing facility by account number — not added automatically.` }),
+        preview.missingFacilities.length > 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mt-1", children: `${preview.missingFacilities.length} existing facilit${preview.missingFacilities.length === 1 ? "y" : "ies"} not present in this file — left unchanged: ${preview.missingFacilities.map((f) => f.label).join(", ")}.` }),
+        /* @__PURE__ */ jsx("div", { className: "flex gap-2 mt-4", children: [
+          /* @__PURE__ */ jsx("button", { onClick: handleApply, disabled: busy || preview.changes.length === 0, className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none", children: busy ? "Saving…" : `Apply ${preview.changes.length} update${preview.changes.length === 1 ? "" : "s"}` }),
+          /* @__PURE__ */ jsx("button", { onClick: () => setPreview(null), className: "text-xs uppercase tracking-wide text-neutral-500 px-3 py-1.5", children: "Cancel" })
+        ] })
+      ] })
+    ] });
+  }
   function MetalRowsTable({ rows, showGrams }) {
     const [sortKey, sortDir, handleSort] = useSortState("value");
     const totals = rows.reduce((s, r) => ({ invested: s.invested + (r.investmentNative || 0), value: s.value + (r.value || 0), grams: s.grams + (r.grams || 0) }), { invested: 0, value: 0, grams: 0 });
@@ -1145,6 +1259,7 @@
     const [ccy, setCcy] = useState("egp");
     const [holdings, setHoldings] = useState(SEED_HOLDINGS);
     const [loans, setLoans] = useState(SEED_LOANS);
+    const [loanFacilities, setLoanFacilities] = useState(SEED_LOAN_FACILITIES);
     const [conversions, setConversions] = useState(SEED_CONVERSIONS);
     const [history, setHistory] = useState([]);
     const [loadState, setLoadState] = useState("loading");
@@ -1167,9 +1282,10 @@
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, c, lr, rt] = await Promise.all([
+        const [h, l, lf, c, lr, rt] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
+          loadJson("loanFacilities", SEED_LOAN_FACILITIES),
           loadJson("conversions", SEED_CONVERSIONS),
           loadJson("liveRates", null),
           loadJson("rebalanceTargets", {})
@@ -1185,6 +1301,7 @@
         if (!cancelled) {
           setHoldings(h);
           setLoans(l);
+          setLoanFacilities(lf);
           setConversions(c);
           setHistory(dailyEntries);
           setLiveRates(lr);
@@ -1203,6 +1320,18 @@
     }, []);
     const handleHoldingsChange = (next) => debouncedSave("holdings", next, setHoldings);
     const handleLoansChange = (next) => debouncedSave("loans", next, setLoans);
+    const handleApplyLoanStatement = async (updatedFacilities) => {
+      setSaving(true);
+      const totals = updatedFacilities.reduce((s, f) => ({ outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { outstanding: 0, installment: 0 });
+      const nextLoans = loans.map((l) => l.id === "loan-egp" ? { ...l, amount: totals.outstanding, installment: totals.installment } : l);
+      await saveJson("loanFacilities", updatedFacilities);
+      await saveJson("loans", nextLoans);
+      setLoanFacilities(updatedFacilities);
+      setLoans(nextLoans);
+      setSaving(false);
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1800);
+    };
     const handleConversionsChange = (next) => debouncedSave("conversions", next, setConversions);
     const handleRebalanceTargetChange = (key, value) => debouncedSave("rebalanceTargets", { ...rebalanceTargets, [key]: value }, setRebalanceTargets);
     const navFields = useMemo(() => {
@@ -1463,13 +1592,13 @@ Save anyway?`);
         if (d === null || d > MATURITY_WARNING_DAYS) return;
         list.push({ id: `cert-${i}-${c.maturityDate}`, severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${c.label} matured ${fmtDate(c.maturityDate)}, ${Math.abs(d)}d ago` : `${c.label} matures ${fmtDate(c.maturityDate)}, in ${d}d` });
       });
-      LOAN_FACILITIES.forEach((l, i) => {
+      loanFacilities.forEach((l, i) => {
         const d = daysUntil(l.maturityDate);
         if (d === null || d > MATURITY_WARNING_DAYS) return;
         list.push({ id: `loan-${i}-${l.maturityDate}`, severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${l.label} matured ${fmtDate(l.maturityDate)}, ${Math.abs(d)}d ago` : `${l.label} matures ${fmtDate(l.maturityDate)}, in ${d}d` });
       });
       return list;
-    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate]);
+    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, loanFacilities]);
     useEffect(() => {
       if (typeof navigator === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
         setPushStatus("unsupported");
@@ -1614,8 +1743,8 @@ Save anyway?`);
       const certificateRowsHtml = CERTIFICATES.map((c) => `<tr><td>${c.label}</td><td class="num mono">${c.rate.toFixed(2)}%</td><td class="num mono">${egp(c.amount)}</td><td class="num mono">${egp(c.amount * c.rate / 100 / 12)}</td><td>${fmtDate(c.openDate)}</td><td>${fmtDate(c.maturityDate)}</td></tr>`).join("");
       const certificateTotal = CERTIFICATES.reduce((s, c) => s + c.amount, 0);
       const certificateMonthlyInterestTotal = CERTIFICATES.reduce((s, c) => s + c.amount * c.rate / 100 / 12, 0);
-      const loanFacilityRowsHtml = LOAN_FACILITIES.map((f) => `<tr><td>${f.label}</td><td class="num mono">${f.rate.toFixed(1)}%</td><td class="num mono">${egp(f.amountFinanced)}</td><td class="num mono">${egp(f.outstanding)}</td><td class="num mono">${egp(f.installment)}</td><td>${fmtDate(f.openDate)}</td><td>${fmtDate(f.maturityDate)}</td></tr>`).join("");
-      const loanFacilityTotals = LOAN_FACILITIES.reduce((s, f) => ({ amountFinanced: s.amountFinanced + f.amountFinanced, outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { amountFinanced: 0, outstanding: 0, installment: 0 });
+      const loanFacilityRowsHtml = loanFacilities.map((f) => `<tr><td>${f.label}</td><td class="num mono">${f.rate.toFixed(1)}%</td><td class="num mono">${egp(f.amountFinanced)}</td><td class="num mono">${egp(f.outstanding)}</td><td class="num mono">${egp(f.installment)}</td><td>${fmtDate(f.openDate)}</td><td>${fmtDate(f.maturityDate)}</td></tr>`).join("");
+      const loanFacilityTotals = loanFacilities.reduce((s, f) => ({ amountFinanced: s.amountFinanced + f.amountFinanced, outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { amountFinanced: 0, outstanding: 0, installment: 0 });
       const convRowsHtml = conversionsWithRunning.map((c) => `<tr><td>${c.date}</td><td style="text-transform:capitalize">${c.type}</td><td class="num mono">${usd(c.amountUsd)}</td><td class="num mono">${usd(c.running)}</td></tr>`).join("");
       const officeUnitsRowsHtml = OFFICE_UNITS.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(u.advance)}</td><td class="num mono">${egp(u.remaining)}</td></tr>`).join("");
       const officeUnitsTotals = OFFICE_UNITS.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + u.advance, remaining: s.remaining + u.remaining }), { totalPrice: 0, advance: 0, remaining: 0 });
@@ -1709,8 +1838,8 @@ Save anyway?`);
 
   <h2>What is owed</h2>
   <table><tr><th>Facility</th><th class="num">Amount</th><th class="num">Monthly installment</th></tr>${loanRowsHtml}</table>
-  <p class="note">The ${LOAN_FACILITIES.length} secured EGP facilities, individually — these roll up into the single "Secured EGP loans" row above.</p>
-  <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding balance</th><th class="num">Monthly installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${LOAN_FACILITIES.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
+  <p class="note">The ${loanFacilities.length} secured EGP facilities, individually — these roll up into the single "Secured EGP loans" row above.</p>
+  <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding balance</th><th class="num">Monthly installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${loanFacilities.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
 
   <h2>Office units</h2>
   <p class="note">Still being paid off in installments per the payment schedule — only the 5% advance (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}.</p>
@@ -1774,7 +1903,8 @@ Save anyway?`);
       officeNextDueAmount,
       metalFundRows,
       metalPhysicalRows,
-      metalOverall
+      metalOverall,
+      loanFacilities
     ]);
     if (loadState === "loading") {
       return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
@@ -2008,9 +2138,10 @@ Save anyway?`);
           /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "What is owed", dek: `${loans.length} facilities, ${egp(totalLiabilities)} outstanding. Add or remove a loan freely.` }),
           /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange, canEdit }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${LOAN_FACILITIES.length} secured EGP facilities, individually` }),
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${loanFacilities.length} secured EGP facilities, individually` }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “Secured EGP loans” row above." }),
-            /* @__PURE__ */ jsx(LoanFacilitiesTable, { facilities: LOAN_FACILITIES })
+            /* @__PURE__ */ jsx(LoanStatementUpload, { facilities: loanFacilities, onApply: handleApplyLoanStatement, canEdit }),
+            /* @__PURE__ */ jsx(LoanFacilitiesTable, { facilities: loanFacilities })
           ] }),
           /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between pt-4 mt-4 border-t-2 border-neutral-900", children: [
             /* @__PURE__ */ jsx("span", { className: "text-sm font-serif italic text-neutral-700", children: "Net worth" }),
