@@ -419,12 +419,16 @@
     return h.currency === "USD" ? "usdFixed" : "egpFixed";
   };
   var parseLoanStatementDate = (v) => {
-    if (v instanceof Date && !isNaN(v)) {
-      return `${v.getUTCFullYear()}-${String(v.getUTCMonth() + 1).padStart(2, "0")}-${String(v.getUTCDate()).padStart(2, "0")}`;
+    if (typeof v === "number" && window.XLSX && window.XLSX.SSF) {
+      const d2 = window.XLSX.SSF.parse_date_code(v);
+      if (d2) return `${d2.y}-${String(d2.m).padStart(2, "0")}-${String(d2.d).padStart(2, "0")}`;
     }
     if (typeof v === "string" && v) {
-      const d = new Date(v);
-      if (!isNaN(d)) return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+      const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    }
+    if (v instanceof Date && !isNaN(v)) {
+      return `${v.getUTCFullYear()}-${String(v.getUTCMonth() + 1).padStart(2, "0")}-${String(v.getUTCDate()).padStart(2, "0")}`;
     }
     return null;
   };
@@ -937,7 +941,7 @@
       try {
         if (!window.XLSX) throw new Error("Spreadsheet reader did not load — check your connection and try again.");
         const buf = await file.arrayBuffer();
-        const wb = window.XLSX.read(buf, { type: "array", cellDates: true });
+        const wb = window.XLSX.read(buf, { type: "array" });
         const sheet = wb.Sheets[wb.SheetNames[0]];
         const grid = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
         const headerRowIdx = grid.findIndex((r) => r.some((cell) => String(cell || "").trim() === "Account Number"));
