@@ -411,7 +411,7 @@
     nbe5: [/fund\s*0?5\b/i, /lottery/i, /fifth (mutual )?fund/i],
     cib: [/ist[ei]thmar/i],
     azopp: [/فرص/, /opportunit/i],
-    azgold: [/جولد/, /\bgold\b/i],
+    azgold: [/جولد/, /\bgold\b/i, /precious metals/i],
     beltone: [/beltonefiusd/i, /beltone fixed income/i]
   };
   function parseNavPasteText(text, navFields) {
@@ -446,7 +446,12 @@
     const findNumber = (triggerIdx) => {
       const onTrigger = pickFromLine(lines[triggerIdx], { allowBare: false });
       if (onTrigger !== null) return onTrigger;
-      for (let i = triggerIdx + 1; i < Math.min(triggerIdx + 6, lines.length); i++) {
+      const windowEnd = Math.min(triggerIdx + 6, lines.length);
+      for (let i = triggerIdx + 1; i < windowEnd; i++) {
+        const val = pickFromLine(lines[i], { allowBare: false });
+        if (val !== null) return val;
+      }
+      for (let i = triggerIdx + 1; i < windowEnd; i++) {
         const val = pickFromLine(lines[i], { allowBare: true });
         if (val !== null) return val;
       }
@@ -1353,6 +1358,9 @@
     const [text, setText] = useState("");
     const [results, setResults] = useState(null);
     const [included, setIncluded] = useState({});
+    const [ocrBusy, setOcrBusy] = useState(false);
+    const [ocrError, setOcrError] = useState("");
+    const imageInputRef = useRef(null);
     const handleParse = () => {
       const found = parseNavPasteText(text, navFields);
       setResults(found);
@@ -1367,16 +1375,47 @@
       setText("");
       setResults(null);
     };
+    const handleImages = async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      setOcrError("");
+      setOcrBusy(true);
+      try {
+        if (!window.Tesseract) throw new Error("Screenshot reader did not load — check your connection and try again.");
+        const worker = await window.Tesseract.createWorker("eng+ara");
+        await worker.setParameters({ tessedit_pageseg_mode: "4" });
+        let combined = "";
+        try {
+          for (const file of files) {
+            const { data } = await worker.recognize(file);
+            combined += (data?.text || "") + "\n";
+          }
+        } finally {
+          await worker.terminate();
+        }
+        setText((t) => (t ? `${t}\n${combined}` : combined));
+      } catch (err) {
+        setOcrError(err.message || "Could not read that image.");
+      } finally {
+        setOcrBusy(false);
+        if (imageInputRef.current) imageInputRef.current.value = "";
+      }
+    };
     if (!open) {
-      return /* @__PURE__ */ jsx("div", { className: "px-4 pt-3", children: /* @__PURE__ */ jsx("button", { onClick: () => setOpen(true), className: "text-xs uppercase tracking-wide text-neutral-500 underline", children: "Paste to fill fund prices" }) });
+      return /* @__PURE__ */ jsx("div", { className: "px-4 pt-3", children: /* @__PURE__ */ jsx("button", { onClick: () => setOpen(true), className: "text-xs uppercase tracking-wide text-neutral-500 underline", children: "Paste or upload to fill fund prices" }) });
     }
     return /* @__PURE__ */ jsx("div", { className: "mx-4 mt-3 border border-dashed border-neutral-300 p-3", children: [
-      /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-2", children: "Copy the price screen from each fund's app (NBE, AZ, Beltone, CIB…) and paste it below — one at a time or all together. This is a best-effort match, always review the detected numbers before filling the form." }),
+      /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-2", children: "Copy the price screen from each fund's app (NBE, AZ, Beltone, CIB…) and paste it below, or upload a screenshot directly — one at a time or all together. This is a best-effort match, always review the detected numbers before filling the form." }),
       /* @__PURE__ */ jsx("textarea", { value: text, onChange: (e) => setText(e.target.value), rows: 4, className: "w-full text-xs font-mono border border-neutral-300 p-2 focus:outline-none focus:border-neutral-800", placeholder: "Paste screenshot text here…" }),
-      /* @__PURE__ */ jsx("div", { className: "flex gap-2 mt-2", children: [
+      /* @__PURE__ */ jsx("div", { className: "flex gap-2 mt-2 flex-wrap items-center", children: [
         /* @__PURE__ */ jsx("button", { onClick: handleParse, disabled: !text.trim(), className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none", children: "Detect prices" }),
-        /* @__PURE__ */ jsx("button", { onClick: () => { setOpen(false); setText(""); setResults(null); }, className: "text-xs uppercase tracking-wide text-neutral-500 px-3 py-1.5", children: "Close" })
+        /* @__PURE__ */ jsx("label", { className: `text-xs uppercase tracking-wide border border-neutral-300 px-3 py-1.5 cursor-pointer hover:border-neutral-900 transition-colors ${ocrBusy ? "opacity-40 pointer-events-none" : ""}`, children: [
+          ocrBusy ? /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-1.5", children: [/* @__PURE__ */ jsx(Loader2, { size: 12, className: "animate-spin" }), "Reading screenshot…"] }) : "Upload screenshot",
+          /* @__PURE__ */ jsx("input", { ref: imageInputRef, type: "file", accept: "image/*", multiple: true, onChange: handleImages, disabled: ocrBusy, className: "hidden" })
+        ] }),
+        /* @__PURE__ */ jsx("button", { onClick: () => { setOpen(false); setText(""); setResults(null); setOcrError(""); }, className: "text-xs uppercase tracking-wide text-neutral-500 px-3 py-1.5", children: "Close" })
       ] }),
+      ocrError && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-700 mt-2", children: ocrError }),
       results && (results.length === 0 ? /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mt-3", children: "No known funds recognized in that text." }) : /* @__PURE__ */ jsx("div", { className: "mt-3 space-y-1.5", children: [
         results.map((r) => /* @__PURE__ */ jsx("label", { className: "flex items-center gap-2 text-xs", children: [
           /* @__PURE__ */ jsx("input", { type: "checkbox", checked: !!included[r.key], onChange: (e) => setIncluded((inc) => ({ ...inc, [r.key]: e.target.checked })) }),

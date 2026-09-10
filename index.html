@@ -31,6 +31,9 @@
 <!-- SheetJS: reads uploaded .xlsx bank statements client-side (loan statement upload). -->
 <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+<!-- Tesseract.js: reads text out of uploaded fund-price screenshots client-side (OCR), no server. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/7.0.0/tesseract.min.js"></script>
+
 <style>
   html, body { margin: 0; padding: 0; background: #fafaf9; }
   * { box-sizing: border-box; }
@@ -43,7 +46,7 @@
   </div>
 </div>
 <!-- bump ?v= on every bundle.js change, or Safari keeps serving the cached old copy -->
-<script src="bundle.js?v=81"></script>
+<script src="bundle.js?v=82"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
