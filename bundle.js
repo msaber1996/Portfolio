@@ -1837,6 +1837,14 @@ Save anyway?`);
       });
     }, [conversionsSorted]);
     const conversionRunningBalance = conversionsWithRunning.length ? conversionsWithRunning[conversionsWithRunning.length - 1].running : 0;
+    const conversionSummary = useMemo(() => {
+      const totalOpeningUsd = conversions.filter((c) => c.type === "opening").reduce((s, c) => s + (Number(c.amountUsd) || 0), 0);
+      const converted = conversions.filter((c) => c.type === "convert");
+      const totalConvertedUsd = converted.reduce((s, c) => s + (Number(c.amountUsd) || 0), 0);
+      const totalConvertedEgp = converted.reduce((s, c) => s + (Number(c.amountUsd) || 0) * (Number(c.rate) || 0), 0);
+      const weightedRate = totalConvertedUsd ? totalConvertedEgp / totalConvertedUsd : 0;
+      return { totalOpeningUsd, totalConvertedUsd, totalConvertedEgp, weightedRate };
+    }, [conversions]);
     const fundsAndGoldValue = ASSETS.filter((a) => {
       const h = holdings.find((hh) => hh.id === a.id);
       return h && (h.type === "fund" || h.type === "gold");
@@ -2065,6 +2073,12 @@ Save anyway?`);
   </table>
 
   <h2>Currency conversion history</h2>
+  <table>
+    <tr><td>Received from outside (transfers in)</td><td class="num mono">${usd(totalIncomingUsd)}</td></tr>
+    <tr><td>Surrendered to EGP, USD</td><td class="num mono">${usd(conversionSummary.totalConvertedUsd)}</td></tr>
+    <tr><td>Surrendered to EGP, EGP</td><td class="num mono">${egp(conversionSummary.totalConvertedEgp)}</td></tr>
+    <tr><td>Weighted average rate</td><td class="num mono">${conversionSummary.weightedRate ? fmt(conversionSummary.weightedRate, 2) : "—"}</td></tr>
+  </table>
   <table><tr><th>Date</th><th>Type</th><th class="num">Amount, USD</th><th class="num">Running balance</th></tr>${convRowsHtml}</table>
 
   <h2>Performance ranking, strongest to weakest</h2>
@@ -2115,7 +2129,8 @@ Save anyway?`);
       metalPhysicalRows,
       metalOverall,
       loanFacilities,
-      certificates
+      certificates,
+      conversionSummary
     ]);
     if (loadState === "loading") {
       return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
@@ -2386,6 +2401,25 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
+          /* @__PURE__ */ jsx("div", { className: "mb-8 grid grid-cols-2 sm:grid-cols-4 gap-6 border border-neutral-200 p-5", children: [
+            /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Received from outside" }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg mt-1 text-neutral-900", children: usd(totalIncomingUsd) }),
+              /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-400 mt-1", children: "Transfers in, excludes opening balance" })
+            ] }),
+            /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Surrendered to EGP, USD" }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg mt-1 text-neutral-900", children: usd(conversionSummary.totalConvertedUsd) })
+            ] }),
+            /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Surrendered to EGP, EGP" }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg mt-1 text-neutral-900", children: egp(conversionSummary.totalConvertedEgp) })
+            ] }),
+            /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Weighted avg. rate" }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg mt-1 text-neutral-900", children: conversionSummary.weightedRate ? fmt(conversionSummary.weightedRate, 2) : "—" })
+            ] })
+          ] }),
           /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange, canEdit })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
