@@ -405,18 +405,19 @@
     });
   };
   var NAV_PASTE_PATTERNS = {
-    nbe1: [/fund\s*0?1\b/i],
-    nbe2: [/fund\s*0?2\b/i],
+    nbe1: [/fund\s*0?1\b/i, /first mutual fund/i],
+    nbe2: [/fund\s*0?2\b/i, /second mutual fund/i],
     nbe4: [/fund\s*0?4\b/i, /daily income fund/i],
-    nbe5: [/fund\s*0?5\b/i],
-    cib: [/istethmar/i],
+    nbe5: [/fund\s*0?5\b/i, /lottery/i, /fifth (mutual )?fund/i],
+    cib: [/ist[ei]thmar/i],
     azopp: [/فرص/, /opportunit/i],
     azgold: [/جولد/, /\bgold\b/i],
     beltone: [/beltonefiusd/i, /beltone fixed income/i]
   };
   function parseNavPasteText(text, navFields) {
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-    const DATE_SPAN_RE = /\d{1,2}[-/]\d{1,2}[-/]20\d{2}|20\d{2}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s*20\d{2}/gi;
+    const DATE_SPAN_RE = /\d{1,2}[-/]\d{1,2}[-/](?:19|20)\d{2}|(?:19|20)\d{2}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s*(?:19|20)\d{2}/gi;
+    const NEGATIVE_CONTEXT_RE = /initial|launch|inception|since|capital at|minimum/i;
     const dateSpans = (line) => {
       const spans = [];
       let m;
@@ -430,9 +431,11 @@
       return matches.filter((m) => !spans.some(([s, e]) => m.index >= s && m.index < e)).map((m) => ({ raw: m[0], value: Number(m[0].replace(/,/g, "")), index: m.index, after: line.slice(m.index + m[0].length, m.index + m[0].length + 12) }));
     };
     const pickFromLine = (line, { allowBare }) => {
+      if (NEGATIVE_CONTEXT_RE.test(line)) return null;
       const candidates = numberCandidates(line).filter((c) => {
         if (/^\s*(year|day|days|%)/i.test(c.after)) return false;
         if (c.value < 0.5 || c.value > 5e6) return false;
+        if (!c.raw.includes(".") && /^(19|20)\d{2}$/.test(c.raw)) return false;
         return true;
       });
       if (!candidates.length) return null;
