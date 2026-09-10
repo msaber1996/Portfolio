@@ -44,13 +44,19 @@ jobs:
           # yet) instead of aborting the whole script under set -e — the
           # leverage/FX/office/maturity checks below don't depend on it.
           MARKET_HISTORY=$(curl -sf "${DB}/marketHistory.json?auth=${ID_TOKEN}" || echo "null")
+          # certificates/loanFacilities live in Firebase now (the site's upload
+          # features write there directly), not hardcoded here — read them fresh
+          # each run so a statement upload is reflected in maturity alerts
+          # immediately, with no separate file to keep in sync by hand.
+          CERTS=$(curl -sf "${DB}/certificates.json?auth=${ID_TOKEN}" || echo "null")
+          LOAN_FACS=$(curl -sf "${DB}/loanFacilities.json?auth=${ID_TOKEN}" || echo "null")
 
           # Mirrors the on-site banners (bundle.js: dailyAlert / officeDueAlert)
           # and the certificate-maturity highlighting (CertificatesTable) so the
           # site and this email stay in sync. Office installment schedule is the
-          # real payment plan (office_deal_amr.xlsx); certificate/loan lists are
-          # snapshots of bundle.js's CERTIFICATES / LOAN_FACILITIES — keep all of
-          # these in sync with bundle.js and weekly-digest.yml if they change.
+          # real payment plan (office_deal_amr.xlsx), which has no upload feature
+          # yet so it stays hardcoded here — keep it in sync with bundle.js and
+          # weekly-digest.yml if that schedule ever changes.
           RESULT=$(node -e '
             const daily = JSON.parse(process.argv[1]) || {};
             const loans = JSON.parse(process.argv[2]) || {};
@@ -59,6 +65,8 @@ jobs:
             const alertedMaturities = JSON.parse(process.argv[5] || "null") || {};
             const liveRates = JSON.parse(process.argv[6] || "null") || {};
             const marketHistory = JSON.parse(process.argv[7] || "null") || {};
+            const CERTIFICATES = JSON.parse(process.argv[8] || "null") || [];
+            const LOAN_FACILITIES = JSON.parse(process.argv[9] || "null") || [];
             const days = Object.values(daily).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
 
             const triggers = [];
@@ -210,34 +218,6 @@ jobs:
               }
             }
 
-            const CERTIFICATES = [
-              { label: "Platinum monthly CD (Alexandria)", amount: 1100000, maturityDate: "2027-08-18" },
-              { label: "Platinum monthly CD (Alexandria)", amount: 30000, maturityDate: "2027-08-18" },
-              { label: "Variable-yield monthly platinum CD (Sea Shell)", amount: 106000000, maturityDate: "2029-07-13" },
-              { label: "Variable-yield monthly platinum CD (Sea Shell)", amount: 114000000, maturityDate: "2029-07-01" },
-              { label: "Tiered-yield platinum CD (Sea Shell)", amount: 1000000, maturityDate: "2028-08-25" },
-              { label: "Tiered-yield platinum CD (Sea Shell)", amount: 1000000, maturityDate: "2028-08-25" },
-              { label: "Variable-yield monthly platinum CD (Sea Shell)", amount: 50000000, maturityDate: "2029-08-04" },
-              { label: "Platinum monthly CD (Agami)", amount: 9100000, maturityDate: "2028-04-13" },
-              { label: "Platinum monthly CD (Alexandria)", amount: 10250000, maturityDate: "2028-04-09" },
-              { label: "Platinum monthly CD (Sea Shell)", amount: 100000000, maturityDate: "2029-01-28" },
-              { label: "Platinum monthly CD (Alexandria)", amount: 7000000, maturityDate: "2027-04-05" },
-              { label: "Platinum monthly CD (Alexandria)", amount: 2300000, maturityDate: "2027-04-18" },
-              { label: "Platinum monthly CD (Alexandria)", amount: 5000000, maturityDate: "2027-06-23" },
-              { label: "Tiered-yield platinum CD (Sea Shell)", amount: 1000000, maturityDate: "2028-08-25" },
-              { label: "CIB certificate", amount: 50000000, maturityDate: null }
-            ];
-            const LOAN_FACILITIES = [
-              { label: "Secured loan •7090", outstanding: 953434.38, maturityDate: "2027-07-28" },
-              { label: "Secured loan •8850", outstanding: 377575.48, maturityDate: "2027-07-28" },
-              { label: "Secured loan •6620", outstanding: 47539977.26, maturityDate: "2029-07-03" },
-              { label: "Secured loan •7070", outstanding: 2402749.93, maturityDate: "2027-07-28" },
-              { label: "Secured loan •8860", outstanding: 8427.21, maturityDate: "2027-07-28" },
-              { label: "Secured loan •7080", outstanding: 681922.46, maturityDate: "2027-07-28" },
-              { label: "Secured loan •4470", outstanding: 30355180.76, maturityDate: "2029-02-03" },
-              { label: "Secured loan •3800", outstanding: 5617577.52, maturityDate: "2028-04-03" },
-              { label: "Secured loan •5500", outstanding: 709270.24, maturityDate: "2027-06-28" }
-            ];
             const MATURITY_WARNING_DAYS = 30;
             const daysUntilDate = (d) => d ? Math.round((new Date(d + "T00:00:00") - today) / 864e5) : null;
             const newMaturityAlerts = {};
@@ -261,7 +241,7 @@ jobs:
             checkMaturities(LOAN_FACILITIES, "loan");
 
             console.log(JSON.stringify({ trigger: triggers.length > 0, triggers, date: days.length ? days[days.length - 1].date : (nextRow ? nextRow.date : todayStr), officeDueDate, newMaturityAlerts }));
-          ' "$DAILY" "$LOANS" "$HOLDINGS" "$LAST_OFFICE_ALERT" "$LAST_MATURITY_ALERTS" "$LIVE_RATES" "$MARKET_HISTORY")
+          ' "$DAILY" "$LOANS" "$HOLDINGS" "$LAST_OFFICE_ALERT" "$LAST_MATURITY_ALERTS" "$LIVE_RATES" "$MARKET_HISTORY" "$CERTS" "$LOAN_FACS")
 
           echo "$RESULT"
           TRIGGER=$(echo "$RESULT" | jq -r '.trigger')
