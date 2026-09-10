@@ -1375,6 +1375,9 @@
       setText("");
       setResults(null);
     };
+    const handleEditValue = (key, newValue) => {
+      setResults((rs) => rs.map((r) => r.key === key ? { ...r, value: newValue } : r));
+    };
     const handleImages = async (e) => {
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
@@ -1420,7 +1423,7 @@
         results.map((r) => /* @__PURE__ */ jsx("label", { className: "flex items-center gap-2 text-xs", children: [
           /* @__PURE__ */ jsx("input", { type: "checkbox", checked: !!included[r.key], onChange: (e) => setIncluded((inc) => ({ ...inc, [r.key]: e.target.checked })) }),
           /* @__PURE__ */ jsx("span", { className: "text-neutral-700 w-32 shrink-0", children: r.label }),
-          /* @__PURE__ */ jsx("span", { className: "font-mono text-neutral-900", children: r.value }),
+          /* @__PURE__ */ jsx("input", { type: "number", step: "0.0001", value: r.value, onChange: (e) => handleEditValue(r.key, e.target.value), className: "font-mono text-neutral-900 w-24 border-b border-neutral-300 focus:border-neutral-800 focus:outline-none bg-transparent" }),
           /* @__PURE__ */ jsx("span", { className: "text-neutral-400 truncate", children: `— "${r.matchedLine}"` })
         ] }, r.key)),
         /* @__PURE__ */ jsx("button", { onClick: handleFill, className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors mt-2", children: "Fill form with checked values" })
