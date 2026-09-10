@@ -404,6 +404,67 @@
       }
     });
   };
+  var NAV_PASTE_PATTERNS = {
+    nbe1: [/fund\s*0?1\b/i],
+    nbe2: [/fund\s*0?2\b/i],
+    nbe4: [/fund\s*0?4\b/i, /daily income fund/i],
+    nbe5: [/fund\s*0?5\b/i],
+    cib: [/istethmar/i],
+    azopp: [/فرص/, /opportunit/i],
+    azgold: [/جولد/, /\bgold\b/i],
+    beltone: [/beltonefiusd/i, /beltone fixed income/i]
+  };
+  function parseNavPasteText(text, navFields) {
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const DATE_SPAN_RE = /\d{1,2}[-/]\d{1,2}[-/]20\d{2}|20\d{2}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s*20\d{2}/gi;
+    const dateSpans = (line) => {
+      const spans = [];
+      let m;
+      DATE_SPAN_RE.lastIndex = 0;
+      while (m = DATE_SPAN_RE.exec(line)) spans.push([m.index, m.index + m[0].length]);
+      return spans;
+    };
+    const numberCandidates = (line) => {
+      const spans = dateSpans(line);
+      const matches = [...line.matchAll(/\d+(?:,\d{3})*(?:\.\d+)?/g)];
+      return matches.filter((m) => !spans.some(([s, e]) => m.index >= s && m.index < e)).map((m) => ({ raw: m[0], value: Number(m[0].replace(/,/g, "")), index: m.index, after: line.slice(m.index + m[0].length, m.index + m[0].length + 12) }));
+    };
+    const pickFromLine = (line, { allowBare }) => {
+      const candidates = numberCandidates(line).filter((c) => {
+        if (/^\s*(year|day|days|%)/i.test(c.after)) return false;
+        if (c.value < 0.5 || c.value > 5e6) return false;
+        return true;
+      });
+      if (!candidates.length) return null;
+      const strong = candidates.find((c) => /^\s*(egp|usd)\b/i.test(c.after) || c.raw.includes("."));
+      if (strong) return strong.value;
+      return allowBare ? candidates[0].value : null;
+    };
+    const findNumber = (triggerIdx) => {
+      const onTrigger = pickFromLine(lines[triggerIdx], { allowBare: false });
+      if (onTrigger !== null) return onTrigger;
+      for (let i = triggerIdx + 1; i < Math.min(triggerIdx + 6, lines.length); i++) {
+        const val = pickFromLine(lines[i], { allowBare: true });
+        if (val !== null) return val;
+      }
+      return null;
+    };
+    const results = [];
+    navFields.forEach((f) => {
+      const patterns = NAV_PASTE_PATTERNS[f.key];
+      if (!patterns) return;
+      for (let i = 0; i < lines.length; i++) {
+        if (patterns.some((p) => p.test(lines[i]))) {
+          const value = findNumber(i);
+          if (value !== null) {
+            results.push({ key: f.key, label: f.label, value, matchedLine: lines[i] });
+          }
+          break;
+        }
+      }
+    });
+    return results;
+  }
   var REBALANCE_CATEGORIES = [
     { key: "gold", label: "Gold (funds + physical)" },
     { key: "egpFunds", label: "EGP funds" },
@@ -1284,16 +1345,58 @@
       canEdit && /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add conversion" })
     ] });
   }
+  function NavPasteFill({ navFields, onFill }) {
+    const [open, setOpen] = useState(false);
+    const [text, setText] = useState("");
+    const [results, setResults] = useState(null);
+    const [included, setIncluded] = useState({});
+    const handleParse = () => {
+      const found = parseNavPasteText(text, navFields);
+      setResults(found);
+      setIncluded(Object.fromEntries(found.map((r) => [r.key, true])));
+    };
+    const handleFill = () => {
+      const values = {};
+      (results || []).forEach((r) => {
+        if (included[r.key]) values[r.key] = r.value;
+      });
+      onFill(values);
+      setText("");
+      setResults(null);
+    };
+    if (!open) {
+      return /* @__PURE__ */ jsx("div", { className: "px-4 pt-3", children: /* @__PURE__ */ jsx("button", { onClick: () => setOpen(true), className: "text-xs uppercase tracking-wide text-neutral-500 underline", children: "Paste to fill fund prices" }) });
+    }
+    return /* @__PURE__ */ jsx("div", { className: "mx-4 mt-3 border border-dashed border-neutral-300 p-3", children: [
+      /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-2", children: "Copy the price screen from each fund's app (NBE, AZ, Beltone, CIB…) and paste it below — one at a time or all together. This is a best-effort match, always review the detected numbers before filling the form." }),
+      /* @__PURE__ */ jsx("textarea", { value: text, onChange: (e) => setText(e.target.value), rows: 4, className: "w-full text-xs font-mono border border-neutral-300 p-2 focus:outline-none focus:border-neutral-800", placeholder: "Paste screenshot text here…" }),
+      /* @__PURE__ */ jsx("div", { className: "flex gap-2 mt-2", children: [
+        /* @__PURE__ */ jsx("button", { onClick: handleParse, disabled: !text.trim(), className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none", children: "Detect prices" }),
+        /* @__PURE__ */ jsx("button", { onClick: () => { setOpen(false); setText(""); setResults(null); }, className: "text-xs uppercase tracking-wide text-neutral-500 px-3 py-1.5", children: "Close" })
+      ] }),
+      results && (results.length === 0 ? /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mt-3", children: "No known funds recognized in that text." }) : /* @__PURE__ */ jsx("div", { className: "mt-3 space-y-1.5", children: [
+        results.map((r) => /* @__PURE__ */ jsx("label", { className: "flex items-center gap-2 text-xs", children: [
+          /* @__PURE__ */ jsx("input", { type: "checkbox", checked: !!included[r.key], onChange: (e) => setIncluded((inc) => ({ ...inc, [r.key]: e.target.checked })) }),
+          /* @__PURE__ */ jsx("span", { className: "text-neutral-700 w-32 shrink-0", children: r.label }),
+          /* @__PURE__ */ jsx("span", { className: "font-mono text-neutral-900", children: r.value }),
+          /* @__PURE__ */ jsx("span", { className: "text-neutral-400 truncate", children: `— "${r.matchedLine}"` })
+        ] }, r.key)),
+        /* @__PURE__ */ jsx("button", { onClick: handleFill, className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors mt-2", children: "Fill form with checked values" })
+      ] }))
+    ] });
+  }
   function DailyPricingForm({ onSave, saving, defaults, navFields, liveRates, canEdit = true, isEditing = false }) {
     const [form, setForm] = useState(defaults);
     useEffect(() => setForm(defaults), [defaults]);
     const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+    const handlePasteFill = (values) => setForm((f) => ({ ...f, ...values }));
     return /* @__PURE__ */ jsx("div", { className: "border border-neutral-300", children: [
       /* @__PURE__ */ jsx("div", { className: "bg-neutral-900 text-white px-4 py-2 flex items-center justify-between", children: [
         /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide", children: isEditing ? "Editing entry" : "Today's update" }),
         /* @__PURE__ */ jsx("input", { type: "date", value: form.date, onChange: set("date"), disabled: !canEdit, className: "bg-neutral-900 text-white font-mono text-xs border border-neutral-600 px-2 py-1 disabled:opacity-60" })
       ] }),
       liveRates?.updatedAt && /* @__PURE__ */ jsx("div", { className: "px-4 pt-3 text-xs text-neutral-400", children: `Rate and gold pre-filled from live market data, last refreshed ${new Date(liveRates.updatedAt).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} — you can still edit them below.` }),
+      canEdit && navFields.length > 0 && /* @__PURE__ */ jsx(NavPasteFill, { navFields, onFill: handlePasteFill }),
       /* @__PURE__ */ jsx("div", { className: "p-4 grid grid-cols-2 sm:grid-cols-4 gap-3", children: [
         /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "USD / EGP rate" }),
