@@ -2471,6 +2471,7 @@ Save anyway?`);
             /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["USD/EGP", "FX_IDC:USDEGP|1D"]], height: 400 }),
             /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Oil (WTI)", "TVC:USOIL|1D"]], height: 400 }),
             /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["EGX 30", "EGX:EGX30|1D"]], height: 400 }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["EGX 70", "EGX:EGX70EWI|1D"]], height: 400 }),
             /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["S&P 500", "FOREXCOM:SPXUSD|1D"], ["Nasdaq", "FOREXCOM:NSXUSD|1D"], ["Dow Jones", "FOREXCOM:DJI|1D"]], height: 300 })
           ] })
         ] }),

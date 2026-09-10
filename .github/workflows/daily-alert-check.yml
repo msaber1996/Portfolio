@@ -147,7 +147,8 @@ jobs:
               { key: "sp500", label: "S&P 500" },
               { key: "nasdaq", label: "Nasdaq" },
               { key: "dow", label: "Dow Jones" },
-              { key: "egx30", label: "EGX30" }
+              { key: "egx30", label: "EGX30" },
+              { key: "egx70", label: "EGX70" }
             ];
             const marketDays = Object.values(marketHistory).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
             if (marketDays.length >= 2) {

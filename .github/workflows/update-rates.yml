@@ -40,7 +40,8 @@ jobs:
           NASDAQ=$(fetch_yahoo "%5EIXIC" || echo "")
           DOW=$(fetch_yahoo "%5EDJI" || echo "")
           EGX30=$(fetch_yahoo "%5ECASE30" || echo "")
-          echo "Oil: ${OIL:-n/a}, S&P500: ${SP500:-n/a}, Nasdaq: ${NASDAQ:-n/a}, Dow: ${DOW:-n/a}, EGX30: ${EGX30:-n/a}"
+          EGX70=$(fetch_yahoo "%5EEGX70EWI.CA" || echo "")
+          echo "Oil: ${OIL:-n/a}, S&P500: ${SP500:-n/a}, Nasdaq: ${NASDAQ:-n/a}, Dow: ${DOW:-n/a}, EGX30: ${EGX30:-n/a}, EGX70: ${EGX70:-n/a}"
 
           FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
           # Dedicated low-privilege account (role: "service" in /roles), scoped by
@@ -68,9 +69,10 @@ jobs:
             --argjson nasdaq "${NASDAQ:-null}" \
             --argjson dow "${DOW:-null}" \
             --argjson egx30 "${EGX30:-null}" \
+            --argjson egx70 "${EGX70:-null}" \
             --arg date "$TODAY" \
             --arg updatedAt "$TS" \
-            '{date: $date, oil: $oil, sp500: $sp500, nasdaq: $nasdaq, dow: $dow, egx30: $egx30, updatedAt: $updatedAt}')
+            '{date: $date, oil: $oil, sp500: $sp500, nasdaq: $nasdaq, dow: $dow, egx30: $egx30, egx70: $egx70, updatedAt: $updatedAt}')
           # Non-fatal: liveRates (the important write) already succeeded above,
           # so don't let a marketHistory failure (e.g. rules not republished
           # yet) mark the whole run red.
