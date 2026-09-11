@@ -122,6 +122,12 @@
       /* @__PURE__ */ jsx("path", { d: "m15 5 4 4" })
     ] });
   }
+  function Search(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: [
+      /* @__PURE__ */ jsx("circle", { cx: "11", cy: "11", r: "8" }),
+      /* @__PURE__ */ jsx("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })
+    ] });
+  }
   function Bell(props) {
     return /* @__PURE__ */ jsx(Base, { ...props, children: [
       /* @__PURE__ */ jsx("path", { d: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" }),
@@ -859,6 +865,47 @@
       points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
     ] });
   }
+  function ComparisonChart({ series, labelFn }) {
+    const normalized = series.map((s) => {
+      const first = s.points[0]?.value;
+      if (!first) return { ...s, pct: s.points.map(() => 0) };
+      return { ...s, pct: s.points.map((p) => (p.value / first - 1) * 100) };
+    });
+    if (!normalized.length || normalized[0].points.length < 2) {
+      return /* @__PURE__ */ jsx("div", { className: "text-sm text-neutral-400 py-12 text-center border border-dashed border-neutral-300", children: "Add a second day to compare trends." });
+    }
+    const points = normalized[0].points;
+    const w = 720, h = 220, padL = 48, padR = 16, padT = 16, padB = 28;
+    const allPct = normalized.flatMap((s) => s.pct);
+    const min = Math.min(0, ...allPct), max = Math.max(0, ...allPct);
+    const range = max - min || 1;
+    const x = (i) => padL + i / (points.length - 1) * (w - padL - padR);
+    const y = (v) => padT + (1 - (v - min) / range) * (h - padT - padB);
+    const gridLines = 4;
+    return /* @__PURE__ */ jsx("div", { children: [
+      /* @__PURE__ */ jsx("svg", { viewBox: `0 0 ${w} ${h}`, className: "w-full h-auto", children: [
+        Array.from({ length: gridLines + 1 }, (_, i) => {
+          const gy = padT + i / gridLines * (h - padT - padB);
+          const val = max - i / gridLines * range;
+          return /* @__PURE__ */ jsx("g", { children: [
+            /* @__PURE__ */ jsx("line", { x1: padL, y1: gy, x2: w - padR, y2: gy, stroke: "#E5E5E5", strokeWidth: "1" }),
+            /* @__PURE__ */ jsx("text", { x: padL - 6, y: gy + 3, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", fontFamily: "ui-monospace, monospace", children: `${val.toFixed(0)}%` })
+          ] }, i);
+        }),
+        normalized.map((s) => {
+          const path = s.pct.map((v, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(v)}`).join(" ");
+          return /* @__PURE__ */ jsx("path", { d: path, fill: "none", stroke: s.color, strokeWidth: "2" }, s.key);
+        }),
+        normalized.map((s) => /* @__PURE__ */ jsx("circle", { cx: x(s.pct.length - 1), cy: y(s.pct[s.pct.length - 1]), r: 3.5, fill: s.color }, `dot-${s.key}`)),
+        points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
+      ] }),
+      /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-x-5 gap-y-1.5 mt-3", children: normalized.map((s) => /* @__PURE__ */ jsx("div", { className: "flex items-center gap-1.5 text-xs text-neutral-600", children: [
+        /* @__PURE__ */ jsx("span", { className: "inline-block w-2.5 h-2.5 rounded-full", style: { backgroundColor: s.color } }),
+        s.label,
+        /* @__PURE__ */ jsx("span", { className: `font-mono tabular-nums ${s.pct[s.pct.length - 1] >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(s.pct[s.pct.length - 1]) })
+      ] }, s.key)) })
+    ] });
+  }
   function TradingViewWidget({ symbols, height = 400 }) {
     const containerRef = useRef(null);
     useEffect(() => {
@@ -900,6 +947,12 @@
     }, [JSON.stringify(symbols), height]);
     return /* @__PURE__ */ jsx("div", { className: "tradingview-widget-container", ref: containerRef, style: { minHeight: `${height}px` } });
   }
+  function TableSearch({ value, onChange, placeholder = "Filter…" }) {
+    return /* @__PURE__ */ jsx("div", { className: "relative mb-3 max-w-xs", children: [
+      /* @__PURE__ */ jsx(Search, { size: 14, className: "absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" }),
+      /* @__PURE__ */ jsx("input", { type: "text", value, onChange: (e) => onChange(e.target.value), placeholder, className: "w-full pl-8 pr-3 py-1.5 text-sm border border-neutral-300 focus:border-neutral-800 focus:outline-none bg-transparent" })
+    ] });
+  }
   function Cell({ value, onChange, type = "text", align = "left", width = "w-full", placeholder, readOnly = false }) {
     return /* @__PURE__ */ jsx(
       "input",
@@ -931,11 +984,15 @@
   }
   function HoldingsTable({ holdings, onChange, currentValueById, currentValueCurrencyById, canEdit = true }) {
     const [sortKey, sortDir, handleSort] = useSortState(null);
+    const [query, setQuery] = useState("");
     const update = (id, patch) => onChange(holdings.map((h) => h.id === id ? { ...h, ...patch } : h));
     const remove = (id) => onChange(holdings.filter((h) => h.id !== id));
     const add = () => onChange([...holdings, { id: uid(), type: "fund", label: "New fund", currency: "EGP", investment: 0, purchaseNav: 100, purchaseDate: "", navGroup: "new" + holdings.length, grams: 0 }]);
-    const sorted = sortRows(holdings, sortKey, sortDir, (h, k) => k === "currentValue" ? currentValueById?.[h.id] ?? 0 : h[k]);
+    const sortedAll = sortRows(holdings, sortKey, sortDir, (h, k) => k === "currentValue" ? currentValueById?.[h.id] ?? 0 : h[k]);
+    const sorted = query.trim() ? sortedAll.filter((h) => h.label.toLowerCase().includes(query.trim().toLowerCase())) : sortedAll;
     return /* @__PURE__ */ jsx("div", { children: [
+      holdings.length > 5 && /* @__PURE__ */ jsx(TableSearch, { value: query, onChange: setQuery, placeholder: "Filter holdings…" }),
+      query.trim() && sorted.length === 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mb-3", children: "No holdings match that filter." }),
       /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx(SortTh, { label: "Type", sortKey: "type", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
@@ -1031,13 +1088,18 @@
   }
   function LoanFacilitiesTable({ facilities }) {
     const [sortKey, sortDir, handleSort] = useSortState("outstanding");
+    const [query, setQuery] = useState("");
     const totals = facilities.reduce((s, f) => ({
       amountFinanced: s.amountFinanced + f.amountFinanced,
       outstanding: s.outstanding + f.outstanding,
       installment: s.installment + f.installment
     }), { amountFinanced: 0, outstanding: 0, installment: 0 });
-    const sorted = sortRows(facilities, sortKey, sortDir, (f, k) => f[k]);
-    return /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
+    const sortedAll = sortRows(facilities, sortKey, sortDir, (f, k) => f[k]);
+    const sorted = query.trim() ? sortedAll.filter((f) => f.label.toLowerCase().includes(query.trim().toLowerCase())) : sortedAll;
+    return /* @__PURE__ */ jsx("div", { children: [
+      facilities.length > 5 && /* @__PURE__ */ jsx(TableSearch, { value: query, onChange: setQuery, placeholder: "Filter facilities…" }),
+      query.trim() && sorted.length === 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mb-3", children: "No facilities match that filter." }),
+      /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx(SortTh, { label: "Facility", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
         /* @__PURE__ */ jsx(SortTh, { label: "Rate %", sortKey: "rate", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
@@ -1065,7 +1127,8 @@
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" })
       ] }) })
-    ] }) });
+      ] }) })
+    ] });
   }
   function LoanStatementUpload({ facilities, onApply, canEdit }) {
     const [preview, setPreview] = useState(null);
@@ -1241,16 +1304,20 @@
   }
   function CertificatesTable({ certificates }) {
     const [sortKey, sortDir, handleSort] = useSortState("amount");
+    const [query, setQuery] = useState("");
     const total = certificates.reduce((s, c) => s + c.amount, 0);
     const totalMonthlyInterest = certificates.reduce((s, c) => s + c.amount * c.rate / 100 / 12, 0);
     const maturedCount = certificates.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d < 0; }).length;
     const maturingSoonCount = certificates.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d >= 0 && d <= MATURITY_WARNING_DAYS; }).length;
-    const sorted = sortRows(certificates, sortKey, sortDir, (c, k) => k === "monthlyInterest" ? c.amount * c.rate / 100 / 12 : c[k]);
+    const sortedAll = sortRows(certificates, sortKey, sortDir, (c, k) => k === "monthlyInterest" ? c.amount * c.rate / 100 / 12 : c[k]);
+    const sorted = query.trim() ? sortedAll.filter((c) => c.label.toLowerCase().includes(query.trim().toLowerCase())) : sortedAll;
     return /* @__PURE__ */ jsx("div", { children: [
       (maturedCount > 0 || maturingSoonCount > 0) && /* @__PURE__ */ jsx("div", { className: "mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-300 px-3 py-2", children: [
         maturedCount > 0 && `${maturedCount} certificate${maturedCount === 1 ? "" : "s"} already past maturity. `,
         maturingSoonCount > 0 && `${maturingSoonCount} maturing within ${MATURITY_WARNING_DAYS} days.`
       ] }),
+      certificates.length > 5 && /* @__PURE__ */ jsx(TableSearch, { value: query, onChange: setQuery, placeholder: "Filter certificates…" }),
+      query.trim() && sorted.length === 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mb-3", children: "No certificates match that filter." }),
       /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx(SortTh, { label: "Certificate", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
@@ -1961,10 +2028,21 @@ Save anyway?`);
         } else if (analysis.changePct < 0) {
           list.push({ severity: "notice", text: `Marked-to-market value is down ${pctStr(analysis.changePct)} since ${firstComputed.date} (${analysis.days} days tracked).` });
         }
+        if (firstComputed.gold) {
+          const goldChangePct = (latestComputed.gold / firstComputed.gold - 1) * 100;
+          const gap = analysis.changePct - goldChangePct;
+          if (Math.abs(gap) >= 2) {
+            list.push({ severity: "info", text: `Since ${firstComputed.date}, the portfolio has ${gap >= 0 ? "outpaced" : "trailed"} gold by ${Math.abs(gap).toFixed(1)}pt (portfolio ${pctStr(analysis.changePct)} vs. gold ${pctStr(goldChangePct)}).` });
+          }
+        }
+      }
+      const usdSharePct = (allocationRows.find((r) => r.key === "usdFunds")?.currentPct || 0) + (allocationRows.find((r) => r.key === "usdFixed")?.currentPct || 0);
+      if (usdSharePct > 0 && usdSharePct < 10) {
+        list.push({ severity: "info", text: `Only ${usdSharePct.toFixed(0)}% of the portfolio is USD-denominated — most of it would move together with any EGP depreciation.` });
       }
       const severityRank = { notice: 0, info: 1, good: 2 };
       return list.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
-    }, [allocationRows, debtRatioPct, egpNet, loanFacilities, certificates, analysis, firstComputed]);
+    }, [allocationRows, debtRatioPct, egpNet, loanFacilities, certificates, analysis, firstComputed, latestComputed]);
     const handleExportBackup = useCallback(() => {
       const backup = {
         exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -2498,6 +2576,17 @@ Save anyway?`);
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "12", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
+          computedHistory.length >= 2 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Net worth vs. gold vs. USD/EGP, since ${firstComputed.date}` }),
+            /* @__PURE__ */ jsx(ComparisonChart, {
+              series: [
+                { key: "networth", label: "Net worth (marked-to-market)", color: "#171717", points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })) },
+                { key: "gold", label: "Gold, EGP/g", color: "#B45309", points: computedHistory.map((d) => ({ date: d.date, value: d.gold })) },
+                { key: "usd", label: "USD/EGP", color: "#0369A1", points: computedHistory.map((d) => ({ date: d.date, value: d.rate })) }
+              ],
+              labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
+            })
+          ] }),
           fundSeries.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: "Return by fund, since purchase" }),
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4", children: fundSeries.map((f) => {
