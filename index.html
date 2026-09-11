@@ -37,6 +37,47 @@
 <style>
   html, body { margin: 0; padding: 0; background: #fafaf9; }
   * { box-sizing: border-box; }
+
+  /* Below the sm breakpoint (640px), tables in .rtable render as a
+     stacked list of cards (one per row) instead of a wide table you have
+     to scroll sideways to read — each cell's data-label attribute becomes
+     its on-card caption. */
+  @media (max-width: 639px) {
+    .rtable table { width: 100%; }
+    .rtable thead { display: none; }
+    .rtable tbody, .rtable tfoot, .rtable tr, .rtable td { display: block; width: 100%; }
+    .rtable tfoot tr { border: 1px solid #e5e5e5; border-top: 2px solid #171717; border-radius: 8px; padding: 6px 10px; margin-top: 4px; }
+    .rtable tr {
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 6px 10px;
+      margin-bottom: 10px;
+    }
+    .rtable td {
+      border-bottom: 1px solid #f5f5f5;
+      padding: 7px 0;
+      text-align: right;
+      position: relative;
+      min-height: 1.5em;
+      width: auto !important;
+    }
+    .rtable td:last-child { border-bottom: none; }
+    .rtable td[data-label] { padding-left: 45%; }
+    .rtable td[data-label]::before {
+      content: attr(data-label);
+      position: absolute;
+      left: 0;
+      top: 7px;
+      width: 42%;
+      padding-right: 8px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: #a3a3a3;
+      white-space: normal;
+    }
+  }
 </style>
 </head>
 <body>
@@ -46,7 +87,7 @@
   </div>
 </div>
 <!-- bump ?v= on every bundle.js change, or Safari keeps serving the cached old copy -->
-<script src="bundle.js?v=84"></script>
+<script src="bundle.js?v=85"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {

@@ -936,7 +936,7 @@
     const add = () => onChange([...holdings, { id: uid(), type: "fund", label: "New fund", currency: "EGP", investment: 0, purchaseNav: 100, purchaseDate: "", navGroup: "new" + holdings.length, grams: 0 }]);
     const sorted = sortRows(holdings, sortKey, sortDir, (h, k) => k === "currentValue" ? currentValueById?.[h.id] ?? 0 : h[k]);
     return /* @__PURE__ */ jsx("div", { children: [
-      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx(SortTh, { label: "Type", sortKey: "type", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
           /* @__PURE__ */ jsx(SortTh, { label: "Label", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
@@ -950,15 +950,15 @@
           canEdit && /* @__PURE__ */ jsx("th", { className: "py-2" })
         ] }) }),
         /* @__PURE__ */ jsx("tbody", { children: sorted.map((h) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: /* @__PURE__ */ jsx(Select, { value: h.type, onChange: (v) => update(h.id, { type: v }), options: ["fund", "gold", "fixed"], readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-40", children: /* @__PURE__ */ jsx(Cell, { value: h.label, onChange: (v) => update(h.id, { label: v }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: h.currency, onChange: (v) => update(h.id, { currency: v }), options: ["EGP", "USD"], readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "date", value: h.purchaseDate || "", onChange: (v) => update(h.id, { purchaseDate: v }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.investment, onChange: (v) => update(h.id, { investment: Number(v) || 0 }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: h.type !== "fixed" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.purchaseNav, onChange: (v) => update(h.id, { purchaseNav: Number(v) || 0 }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: h.type === "gold" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.grams, onChange: (v) => update(h.id, { grams: Number(v) || 0 }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-24", children: h.type === "fund" ? /* @__PURE__ */ jsx(Cell, { value: h.navGroup, onChange: (v) => update(h.id, { navGroup: v }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32 text-right font-mono tabular-nums text-neutral-700", children: currentValueById?.[h.id] != null ? currentValueCurrencyById?.[h.id] === "USD" ? usd(currentValueById[h.id]) : egp(currentValueById[h.id]) : "\u2014" }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Type", className: "py-1.5 pr-3 w-28", children: /* @__PURE__ */ jsx(Select, { value: h.type, onChange: (v) => update(h.id, { type: v }), options: ["fund", "gold", "fixed"], readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Label", className: "py-1.5 pr-3 min-w-40", children: /* @__PURE__ */ jsx(Cell, { value: h.label, onChange: (v) => update(h.id, { label: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Currency", className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: h.currency, onChange: (v) => update(h.id, { currency: v }), options: ["EGP", "USD"], readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Purchase date", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "date", value: h.purchaseDate || "", onChange: (v) => update(h.id, { purchaseDate: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Investment", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.investment, onChange: (v) => update(h.id, { investment: Number(v) || 0 }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Purchase NAV / price", className: "py-1.5 pr-3 w-28", children: h.type !== "fixed" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.purchaseNav, onChange: (v) => update(h.id, { purchaseNav: Number(v) || 0 }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Grams", className: "py-1.5 pr-3 w-20", children: h.type === "gold" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: h.grams, onChange: (v) => update(h.id, { grams: Number(v) || 0 }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "NAV group", className: "py-1.5 pr-3 w-24", children: h.type === "fund" ? /* @__PURE__ */ jsx(Cell, { value: h.navGroup, onChange: (v) => update(h.id, { navGroup: v }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Current value", className: "py-1.5 pr-3 w-32 text-right font-mono tabular-nums text-neutral-700", children: currentValueById?.[h.id] != null ? currentValueCurrencyById?.[h.id] === "USD" ? usd(currentValueById[h.id]) : egp(currentValueById[h.id]) : "\u2014" }),
           canEdit && /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(h.id) }) })
         ] }, h.id)) })
       ] }) }),
@@ -973,7 +973,7 @@
     const add = () => onChange([...loans, { id: uid(), label: "New loan", currency: "EGP", amount: 0, rate: "", installment: 0 }]);
     const sorted = sortRows(loans, sortKey, sortDir, (l, k) => l[k]);
     return /* @__PURE__ */ jsx("div", { children: [
-      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx(SortTh, { label: "Label", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
           /* @__PURE__ */ jsx(SortTh, { label: "Currency", sortKey: "currency", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
@@ -983,11 +983,11 @@
           canEdit && /* @__PURE__ */ jsx("th", { className: "py-2" })
         ] }) }),
         /* @__PURE__ */ jsx("tbody", { children: sorted.map((l) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-48", children: /* @__PURE__ */ jsx(Cell, { value: l.label, onChange: (v) => update(l.id, { label: v }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: l.currency, onChange: (v) => update(l.id, { currency: v }), options: ["EGP", "USD"], readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.amount, onChange: (v) => update(l.id, { amount: Number(v) || 0 }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.rate, onChange: (v) => update(l.id, { rate: v }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.installment, onChange: (v) => update(l.id, { installment: Number(v) || 0 }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Label", className: "py-1.5 pr-3 min-w-48", children: /* @__PURE__ */ jsx(Cell, { value: l.label, onChange: (v) => update(l.id, { label: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Currency", className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Select, { value: l.currency, onChange: (v) => update(l.id, { currency: v }), options: ["EGP", "USD"], readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Amount", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.amount, onChange: (v) => update(l.id, { amount: Number(v) || 0 }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Rate %", className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.rate, onChange: (v) => update(l.id, { rate: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Monthly installment", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: l.installment, onChange: (v) => update(l.id, { installment: Number(v) || 0 }), readOnly: !canEdit }) }),
           canEdit && /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(l.id) }) })
         ] }, l.id)) })
       ] }) }),
@@ -1002,7 +1002,7 @@
       remaining: s.remaining + u.remaining
     }), { totalPrice: 0, advance: 0, remaining: 0 });
     const sorted = sortRows(units, sortKey, sortDir, (u, k) => u[k]);
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+    return /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx(SortTh, { label: "Office", sortKey: "unit", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Size" }),
@@ -1012,20 +1012,20 @@
         /* @__PURE__ */ jsx(SortTh, { label: "Remaining installments", sortKey: "remaining", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" })
       ] }) }),
       /* @__PURE__ */ jsx("tbody", { children: sorted.map((u) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: u.unit }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: u.size }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: u.parking }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(u.totalPrice) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(u.advance) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(u.remaining) })
+        /* @__PURE__ */ jsx("td", { "data-label": "Office", className: "py-1.5 pr-3 font-mono text-xs", children: u.unit }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Size", className: "py-1.5 pr-3", children: u.size }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Parking", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: u.parking }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Total price", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(u.totalPrice) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Advance paid (5%)", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(u.advance) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Remaining installments", className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(u.remaining) })
       ] }, u.unit)) }),
       /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: `Total (${units.length})` }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.totalPrice) }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.advance) }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(totals.remaining) })
+        /* @__PURE__ */ jsx("td", { "data-label": "Total price", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.totalPrice) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Advance paid (5%)", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.advance) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Remaining installments", className: "py-2 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(totals.remaining) })
       ] }) })
     ] }) });
   }
@@ -1037,7 +1037,7 @@
       installment: s.installment + f.installment
     }), { amountFinanced: 0, outstanding: 0, installment: 0 });
     const sorted = sortRows(facilities, sortKey, sortDir, (f, k) => f[k]);
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+    return /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx(SortTh, { label: "Facility", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
         /* @__PURE__ */ jsx(SortTh, { label: "Rate %", sortKey: "rate", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
@@ -1048,20 +1048,20 @@
         /* @__PURE__ */ jsx(SortTh, { label: "Matures", sortKey: "maturityDate", activeKey: sortKey, dir: sortDir, onSort: handleSort })
       ] }) }),
       /* @__PURE__ */ jsx("tbody", { children: sorted.map((f) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: f.label }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: f.rate.toFixed(1) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(f.amountFinanced) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(f.outstanding) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(f.installment) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(f.openDate) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(f.maturityDate) })
+        /* @__PURE__ */ jsx("td", { "data-label": "Facility", className: "py-1.5 pr-3 font-mono text-xs", children: f.label }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Rate %", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: f.rate.toFixed(1) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Amount financed", className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(f.amountFinanced) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Outstanding balance", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(f.outstanding) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Monthly installment", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(f.installment) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Opened", className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(f.openDate) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Matures", className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(f.maturityDate) })
       ] }, f.label)) }),
       /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: `Total (${facilities.length})` }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(totals.amountFinanced) }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.outstanding) }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.installment) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Amount financed", className: "py-2 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(totals.amountFinanced) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Outstanding balance", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.outstanding) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Monthly installment", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.installment) }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" })
       ] }) })
@@ -1198,7 +1198,7 @@
     const totalGain = totals.value - totals.invested;
     const totalGainPct = totals.invested ? totalGain / totals.invested * 100 : 0;
     const sorted = sortRows(rows, sortKey, sortDir, (r, k) => k === "investmentNative" ? r.investmentNative || 0 : k === "value" ? r.value || 0 : k === "gainPct" ? r.gainPct || 0 : r[k]);
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+    return /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx(SortTh, { label: "Holding", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
         showGrams && /* @__PURE__ */ jsx(SortTh, { label: "Grams", sortKey: "grams", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
@@ -1208,19 +1208,19 @@
         /* @__PURE__ */ jsx(SortTh, { label: "Purchased", sortKey: "purchaseDate", activeKey: sortKey, dir: sortDir, onSort: handleSort })
       ] }) }),
       /* @__PURE__ */ jsx("tbody", { children: sorted.map((r) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: r.label }),
-        showGrams && /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: (r.grams || 0).toLocaleString() }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(r.investmentNative || 0) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(r.value || 0) }),
-        /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 text-right font-mono tabular-nums ${(r.gainPct || 0) >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(r.gainPct || 0) }),
-        /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(r.purchaseDate) })
+        /* @__PURE__ */ jsx("td", { "data-label": "Holding", className: "py-1.5 pr-3", children: r.label }),
+        showGrams && /* @__PURE__ */ jsx("td", { "data-label": "Grams", className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: (r.grams || 0).toLocaleString() }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Invested", className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(r.investmentNative || 0) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Current value", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(r.value || 0) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Gain / loss", className: `py-1.5 pr-3 text-right font-mono tabular-nums ${(r.gainPct || 0) >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(r.gainPct || 0) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Purchased", className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(r.purchaseDate) })
       ] }, r.id)) }),
       /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
         /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: `Total (${rows.length})` }),
-        showGrams && /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: totals.grams.toLocaleString() }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(totals.invested) }),
-        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.value) }),
-        /* @__PURE__ */ jsx("td", { className: `py-2 pr-3 text-right font-mono tabular-nums ${totalGain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: [
+        showGrams && /* @__PURE__ */ jsx("td", { "data-label": "Grams", className: "py-2 pr-3 text-right font-mono tabular-nums", children: totals.grams.toLocaleString() }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Invested", className: "py-2 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(totals.invested) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Current value", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.value) }),
+        /* @__PURE__ */ jsx("td", { "data-label": "Gain / loss", className: `py-2 pr-3 text-right font-mono tabular-nums ${totalGain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: [
           signedEgp(totalGain),
           /* @__PURE__ */ jsx("span", { className: "block text-xs font-normal", children: pctStr(totalGainPct) })
         ] }),
@@ -1251,7 +1251,7 @@
         maturedCount > 0 && `${maturedCount} certificate${maturedCount === 1 ? "" : "s"} already past maturity. `,
         maturingSoonCount > 0 && `${maturingSoonCount} maturing within ${MATURITY_WARNING_DAYS} days.`
       ] }),
-      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx(SortTh, { label: "Certificate", sortKey: "label", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
           /* @__PURE__ */ jsx(SortTh, { label: "Rate %", sortKey: "rate", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
@@ -1265,12 +1265,12 @@
           const matured = days !== null && days < 0;
           const maturingSoon = days !== null && days >= 0 && days <= MATURITY_WARNING_DAYS;
           return /* @__PURE__ */ jsx("tr", { className: `border-b border-neutral-100 ${matured ? "bg-red-50" : maturingSoon ? "bg-amber-50" : ""}`, children: [
-            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: c.label }),
-            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: c.rate.toFixed(2) }),
-            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(c.amount) }),
-            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(c.amount * c.rate / 100 / 12) }),
-            /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(c.openDate) }),
-            /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 ${matured ? "text-red-700" : maturingSoon ? "text-amber-700" : "text-neutral-500"}`, children: [
+            /* @__PURE__ */ jsx("td", { "data-label": "Certificate", className: "py-1.5 pr-3 font-mono text-xs", children: c.label }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Rate %", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: c.rate.toFixed(2) }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Amount", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(c.amount) }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Monthly interest", className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(c.amount * c.rate / 100 / 12) }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Opened", className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(c.openDate) }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Matures", className: `py-1.5 pr-3 ${matured ? "text-red-700" : maturingSoon ? "text-amber-700" : "text-neutral-500"}`, children: [
               fmtDate(c.maturityDate),
               matured && ` — matured ${Math.abs(days)}d ago`,
               maturingSoon && ` — in ${days}d`
@@ -1280,8 +1280,8 @@
         /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
           /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: `Total (${certificates.length})` }),
           /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
-          /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(total) }),
-          /* @__PURE__ */ jsx("td", { className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totalMonthlyInterest) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Amount", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(total) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Monthly interest", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totalMonthlyInterest) }),
           /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
           /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" })
         ] }) })
@@ -1294,7 +1294,7 @@
       const abs = currency === "USD" ? usd(Math.abs(amount)) : egp(Math.abs(amount));
       return `${sign}${abs}`;
     };
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+    return /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Rank" }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Holding" }),
@@ -1307,13 +1307,13 @@
       /* @__PURE__ */ jsx("tbody", { children: rows.map((r, i) => {
         const netGain = r.currentNative - r.investmentNative;
         return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs text-neutral-400", children: i + 1 }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3", children: r.label }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(r.purchaseDate) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: r.currency === "USD" ? usd(r.investmentNative) : egp(r.investmentNative) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-700", children: r.currency === "USD" ? usd(r.currentNative) : egp(r.value) }),
-          /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 text-right font-mono tabular-nums ${netGain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: signedNative(netGain, r.currency) }),
-          /* @__PURE__ */ jsx("td", { className: `py-1.5 pr-3 text-right font-mono tabular-nums ${r.gainPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(r.gainPct) })
+          /* @__PURE__ */ jsx("td", { "data-label": "Rank", className: "py-1.5 pr-3 font-mono text-xs text-neutral-400", children: i + 1 }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Holding", className: "py-1.5 pr-3", children: r.label }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Purchase date", className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(r.purchaseDate) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Purchase value", className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: r.currency === "USD" ? usd(r.investmentNative) : egp(r.investmentNative) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Current value", className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-700", children: r.currency === "USD" ? usd(r.currentNative) : egp(r.value) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Net gain / loss", className: `py-1.5 pr-3 text-right font-mono tabular-nums ${netGain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: signedNative(netGain, r.currency) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Gain since purchase", className: `py-1.5 pr-3 text-right font-mono tabular-nums ${r.gainPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(r.gainPct) })
         ] }, r.id);
       }) })
     ] }) });
@@ -1330,7 +1330,7 @@
     const remove = (id) => onChange(conversions.filter((c) => c.id !== id));
     const add = () => onChange([...conversions, { id: uid(), date: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), type: "in", amountUsd: 0, rate: "", note: "" }]);
     return /* @__PURE__ */ jsx("div", { children: [
-      /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+      /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Date" }),
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Type" }),
@@ -1341,12 +1341,12 @@
           canEdit && /* @__PURE__ */ jsx("th", { className: "py-2" })
         ] }) }),
         /* @__PURE__ */ jsx("tbody", { children: withRunning.map((c) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "date", value: c.date, onChange: (v) => update(c.id, { date: v }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-28", children: /* @__PURE__ */ jsx(Select, { value: c.type, onChange: (v) => update(c.id, { type: v }), options: ["opening", "in", "convert"], readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: c.amountUsd, onChange: (v) => update(c.id, { amountUsd: Number(v) || 0 }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-20", children: c.type === "convert" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: c.rate, onChange: (v) => update(c.id, { rate: v }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 min-w-40", children: /* @__PURE__ */ jsx(Cell, { value: c.note, onChange: (v) => update(c.id, { note: v }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32 text-right font-mono tabular-nums text-neutral-700", children: usd(c.running) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Date", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "date", value: c.date, onChange: (v) => update(c.id, { date: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Type", className: "py-1.5 pr-3 w-28", children: /* @__PURE__ */ jsx(Select, { value: c.type, onChange: (v) => update(c.id, { type: v }), options: ["opening", "in", "convert"], readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Amount, USD", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: c.amountUsd, onChange: (v) => update(c.id, { amountUsd: Number(v) || 0 }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Rate", className: "py-1.5 pr-3 w-20", children: c.type === "convert" ? /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: c.rate, onChange: (v) => update(c.id, { rate: v }), readOnly: !canEdit }) : /* @__PURE__ */ jsx("span", { className: "text-neutral-300 text-xs", children: "\u2014" }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Note", className: "py-1.5 pr-3 min-w-40", children: /* @__PURE__ */ jsx(Cell, { value: c.note, onChange: (v) => update(c.id, { note: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Running USD balance", className: "py-1.5 pr-3 w-32 text-right font-mono tabular-nums text-neutral-700", children: usd(c.running) }),
           canEdit && /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(c.id) }) })
         ] }, c.id)) })
       ] }) }),
@@ -1489,7 +1489,7 @@
       return /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-400", children: "Loading users…" });
     }
     const entries = Object.entries(roles).sort((a, b) => (a[1]?.email || "").localeCompare(b[1]?.email || ""));
-    return /* @__PURE__ */ jsx("div", { className: "overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [mask-repeat:no-repeat] sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+    return /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Email" }),
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Role" }),
@@ -1500,9 +1500,9 @@
         const isOwnerOrService = r?.role === "owner" || r?.role === "service";
         const isPendingOrRejected = r?.role === "pending" || r?.role === "rejected";
         return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 font-mono text-xs", children: r?.email || entryUid }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 w-32", children: isOwnerOrService ? /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500", children: r.role }) : isPendingOrRejected ? /* @__PURE__ */ jsx("span", { className: `text-xs uppercase tracking-wide ${r.role === "pending" ? "text-amber-600" : "text-red-600"}`, children: r.role }) : /* @__PURE__ */ jsx(Select, { value: r?.role || "viewer", onChange: (v) => changeRole(entryUid, v), options: ["viewer", "editor"] }) }),
-          /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-xs text-neutral-500", children: formatLastSeen(r?.lastSeenAt) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Email", className: "py-1.5 pr-3 font-mono text-xs", children: r?.email || entryUid }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Role", className: "py-1.5 pr-3 w-32", children: isOwnerOrService ? /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500", children: r.role }) : isPendingOrRejected ? /* @__PURE__ */ jsx("span", { className: `text-xs uppercase tracking-wide ${r.role === "pending" ? "text-amber-600" : "text-red-600"}`, children: r.role }) : /* @__PURE__ */ jsx(Select, { value: r?.role || "viewer", onChange: (v) => changeRole(entryUid, v), options: ["viewer", "editor"] }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Last seen", className: "py-1.5 pr-3 text-xs text-neutral-500", children: formatLastSeen(r?.lastSeenAt) }),
           /* @__PURE__ */ jsx("td", { className: "py-1.5 pr-3 text-right", children: isOwnerOrService ? null : updating === entryUid ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Saving…" }) : isPendingOrRejected ? /* @__PURE__ */ jsx("div", { className: "flex gap-2 justify-end", children: [
             /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "viewer"), className: "text-xs border border-neutral-300 px-2 py-1 hover:border-neutral-600", children: "Accept as viewer" }),
             /* @__PURE__ */ jsx("button", { onClick: () => changeRole(entryUid, "editor"), className: "text-xs border border-neutral-300 px-2 py-1 hover:border-neutral-600", children: "Accept as editor" }),
@@ -2588,7 +2588,7 @@ Save anyway?`);
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm min-w-max", children: [
+          /* @__PURE__ */ jsx("div", { className: "rtable border border-neutral-200 overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
             /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
               /* @__PURE__ */ jsx("th", { className: "text-left py-2 px-3", children: "Date" }),
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Rate" }),
@@ -2598,11 +2598,11 @@ Save anyway?`);
               canEdit && /* @__PURE__ */ jsx("th", { className: "py-2 px-3" })
             ] }) }),
             /* @__PURE__ */ jsx("tbody", { children: [...computedHistory].reverse().map((d) => /* @__PURE__ */ jsx("tr", { className: `border-b border-neutral-100 ${d.date === editingDate ? "bg-neutral-50" : ""}`, children: [
-              /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-neutral-700", children: d.date }),
-              /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-right text-neutral-700", children: fmt(d.rate, 2) }),
-              /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-right text-neutral-700", children: fmt(d.gold) }),
-              /* @__PURE__ */ jsx("td", { className: "py-2 px-3 font-mono text-right text-neutral-900", children: egp(d.markedToMarket) }),
-              /* @__PURE__ */ jsx("td", { className: `py-2 px-3 font-mono text-right ${d.gain >= 0 ? "text-neutral-900" : "text-neutral-500"}`, children: signedEgp(d.gain) }),
+              /* @__PURE__ */ jsx("td", { "data-label": "Date", className: "py-2 px-3 font-mono text-neutral-700", children: d.date }),
+              /* @__PURE__ */ jsx("td", { "data-label": "Rate", className: "py-2 px-3 font-mono text-right text-neutral-700", children: fmt(d.rate, 2) }),
+              /* @__PURE__ */ jsx("td", { "data-label": "Gold", className: "py-2 px-3 font-mono text-right text-neutral-700", children: fmt(d.gold) }),
+              /* @__PURE__ */ jsx("td", { "data-label": "Marked-to-market", className: "py-2 px-3 font-mono text-right text-neutral-900", children: egp(d.markedToMarket) }),
+              /* @__PURE__ */ jsx("td", { "data-label": "Gain / loss", className: `py-2 px-3 font-mono text-right ${d.gain >= 0 ? "text-neutral-900" : "text-neutral-500"}`, children: signedEgp(d.gain) }),
               canEdit && /* @__PURE__ */ jsx("td", { className: "py-2 px-3 text-right whitespace-nowrap", children: [
                 /* @__PURE__ */ jsx(RowEditButton, { onClick: () => {
                   setEditingDate(d.date);
