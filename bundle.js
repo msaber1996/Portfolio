@@ -884,8 +884,8 @@
           /* @__PURE__ */ jsx("text", { className: "chart-grid-label", x: padL - 8, y: gy + 3, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", fontFamily: "ui-monospace, monospace", children: fmt(val) })
         ] }, i);
       }),
-      /* @__PURE__ */ jsx("path", { className: "chart-ink", d: path, fill: "none", stroke: "#171717", strokeWidth: "2" }),
-      points.map((p, i) => /* @__PURE__ */ jsx("circle", { className: "chart-ink", cx: x(i), cy: y(p.value), r: i === points.length - 1 ? 4 : 2.5, fill: "#171717" }, i)),
+      /* @__PURE__ */ jsx("path", { className: "chart-line", d: path, fill: "none", stroke: "#171717", strokeWidth: "2" }),
+      points.map((p, i) => /* @__PURE__ */ jsx("circle", { className: "chart-dot", cx: x(i), cy: y(p.value), r: i === points.length - 1 ? 4 : 2.5, fill: "#171717" }, i)),
       points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { className: "chart-axis-label", x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
     ] });
   }
