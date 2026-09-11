@@ -128,6 +128,22 @@
       /* @__PURE__ */ jsx("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })
     ] });
   }
+  function Moon(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: /* @__PURE__ */ jsx("path", { d: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" }) });
+  }
+  function Sun(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: [
+      /* @__PURE__ */ jsx("circle", { cx: "12", cy: "12", r: "4" }),
+      /* @__PURE__ */ jsx("line", { x1: "12", y1: "2", x2: "12", y2: "4" }),
+      /* @__PURE__ */ jsx("line", { x1: "12", y1: "20", x2: "12", y2: "22" }),
+      /* @__PURE__ */ jsx("line", { x1: "4.93", y1: "4.93", x2: "6.34", y2: "6.34" }),
+      /* @__PURE__ */ jsx("line", { x1: "17.66", y1: "17.66", x2: "19.07", y2: "19.07" }),
+      /* @__PURE__ */ jsx("line", { x1: "2", y1: "12", x2: "4", y2: "12" }),
+      /* @__PURE__ */ jsx("line", { x1: "20", y1: "12", x2: "22", y2: "12" }),
+      /* @__PURE__ */ jsx("line", { x1: "4.93", y1: "19.07", x2: "6.34", y2: "17.66" }),
+      /* @__PURE__ */ jsx("line", { x1: "17.66", y1: "6.34", x2: "19.07", y2: "4.93" })
+    ] });
+  }
   function Bell(props) {
     return /* @__PURE__ */ jsx(Base, { ...props, children: [
       /* @__PURE__ */ jsx("path", { d: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" }),
@@ -814,18 +830,18 @@
     const needleY = cy - r * Math.sin(rad(angle));
     const ticks = Array.from({ length: 11 }, (_, i) => i * 10);
     return /* @__PURE__ */ jsx("svg", { viewBox: "0 0 200 118", className: "w-full max-w-xs", children: [
-      /* @__PURE__ */ jsx("path", { d: `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`, fill: "none", stroke: "#D4D4D4", strokeWidth: "1" }),
+      /* @__PURE__ */ jsx("path", { className: "dial-track", d: `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`, fill: "none", stroke: "#D4D4D4", strokeWidth: "1" }),
       ticks.map((t) => {
         const a = rad(t / 100 * 180);
         const x1 = cx - (r - 6) * Math.cos(a), y1 = cy - (r - 6) * Math.sin(a);
         const x2 = cx - (r + 2) * Math.cos(a), y2 = cy - (r + 2) * Math.sin(a);
-        return /* @__PURE__ */ jsx("line", { x1, y1, x2, y2, stroke: "#A3A3A3", strokeWidth: "1" }, t);
+        return /* @__PURE__ */ jsx("line", { className: "dial-tick", x1, y1, x2, y2, stroke: "#A3A3A3", strokeWidth: "1" }, t);
       }),
-      /* @__PURE__ */ jsx("path", { d: `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${needleX} ${needleY}`, fill: "none", stroke: "#262626", strokeWidth: "3" }),
-      /* @__PURE__ */ jsx("line", { x1: cx, y1: cy, x2: needleX, y2: needleY, stroke: "#262626", strokeWidth: "1", strokeDasharray: "1 3" }),
-      /* @__PURE__ */ jsx("circle", { cx, cy, r: "3", fill: "#262626" }),
-      /* @__PURE__ */ jsx("text", { x: cx, y: cy - 14, textAnchor: "middle", fontFamily: "ui-monospace, monospace", fontSize: "26", fill: "#171717", children: Math.round(displayScore) }),
-      /* @__PURE__ */ jsx("text", { x: cx, y: cy + 2, textAnchor: "middle", fontSize: "9", letterSpacing: "1", fill: "#737373", children: "OUT OF 100" })
+      /* @__PURE__ */ jsx("path", { className: "dial-needle", d: `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${needleX} ${needleY}`, fill: "none", stroke: "#262626", strokeWidth: "3" }),
+      /* @__PURE__ */ jsx("line", { className: "dial-needle", x1: cx, y1: cy, x2: needleX, y2: needleY, stroke: "#262626", strokeWidth: "1", strokeDasharray: "1 3" }),
+      /* @__PURE__ */ jsx("circle", { className: "dial-needle", cx, cy, r: "3", fill: "#262626" }),
+      /* @__PURE__ */ jsx("text", { className: "dial-score", x: cx, y: cy - 14, textAnchor: "middle", fontFamily: "ui-monospace, monospace", fontSize: "26", fill: "#171717", children: Math.round(displayScore) }),
+      /* @__PURE__ */ jsx("text", { className: "dial-caption", x: cx, y: cy + 2, textAnchor: "middle", fontSize: "9", letterSpacing: "1", fill: "#737373", children: "OUT OF 100" })
     ] });
   }
   function Toggle({ options, value, onChange }) {
@@ -856,13 +872,13 @@
         const gy = padT + i / gridLines * (h - padT - padB);
         const val = max - i / gridLines * range;
         return /* @__PURE__ */ jsx("g", { children: [
-          /* @__PURE__ */ jsx("line", { x1: padL, y1: gy, x2: w - padR, y2: gy, stroke: "#E5E5E5", strokeWidth: "1" }),
-          /* @__PURE__ */ jsx("text", { x: padL - 8, y: gy + 3, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", fontFamily: "ui-monospace, monospace", children: fmt(val) })
+          /* @__PURE__ */ jsx("line", { className: "chart-grid-line", x1: padL, y1: gy, x2: w - padR, y2: gy, stroke: "#E5E5E5", strokeWidth: "1" }),
+          /* @__PURE__ */ jsx("text", { className: "chart-grid-label", x: padL - 8, y: gy + 3, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", fontFamily: "ui-monospace, monospace", children: fmt(val) })
         ] }, i);
       }),
-      /* @__PURE__ */ jsx("path", { d: path, fill: "none", stroke: "#171717", strokeWidth: "2" }),
-      points.map((p, i) => /* @__PURE__ */ jsx("circle", { cx: x(i), cy: y(p.value), r: i === points.length - 1 ? 4 : 2.5, fill: "#171717" }, i)),
-      points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
+      /* @__PURE__ */ jsx("path", { className: "chart-ink", d: path, fill: "none", stroke: "#171717", strokeWidth: "2" }),
+      points.map((p, i) => /* @__PURE__ */ jsx("circle", { className: "chart-ink", cx: x(i), cy: y(p.value), r: i === points.length - 1 ? 4 : 2.5, fill: "#171717" }, i)),
+      points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { className: "chart-axis-label", x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
     ] });
   }
   function ComparisonChart({ series, labelFn }) {
@@ -888,8 +904,8 @@
           const gy = padT + i / gridLines * (h - padT - padB);
           const val = max - i / gridLines * range;
           return /* @__PURE__ */ jsx("g", { children: [
-            /* @__PURE__ */ jsx("line", { x1: padL, y1: gy, x2: w - padR, y2: gy, stroke: "#E5E5E5", strokeWidth: "1" }),
-            /* @__PURE__ */ jsx("text", { x: padL - 6, y: gy + 3, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", fontFamily: "ui-monospace, monospace", children: `${val.toFixed(0)}%` })
+            /* @__PURE__ */ jsx("line", { className: "chart-grid-line", x1: padL, y1: gy, x2: w - padR, y2: gy, stroke: "#E5E5E5", strokeWidth: "1" }),
+            /* @__PURE__ */ jsx("text", { className: "chart-grid-label", x: padL - 6, y: gy + 3, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", fontFamily: "ui-monospace, monospace", children: `${val.toFixed(0)}%` })
           ] }, i);
         }),
         normalized.map((s) => {
@@ -897,7 +913,7 @@
           return /* @__PURE__ */ jsx("path", { d: path, fill: "none", stroke: s.color, strokeWidth: "2" }, s.key);
         }),
         normalized.map((s) => /* @__PURE__ */ jsx("circle", { cx: x(s.pct.length - 1), cy: y(s.pct[s.pct.length - 1]), r: 3.5, fill: s.color }, `dot-${s.key}`)),
-        points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
+        points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { className: "chart-axis-label", x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
       ] }),
       /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-x-5 gap-y-1.5 mt-3", children: normalized.map((s) => /* @__PURE__ */ jsx("div", { className: "flex items-center gap-1.5 text-xs text-neutral-600", children: [
         /* @__PURE__ */ jsx("span", { className: "inline-block w-2.5 h-2.5 rounded-full", style: { backgroundColor: s.color } }),
@@ -906,7 +922,7 @@
       ] }, s.key)) })
     ] });
   }
-  function TradingViewWidget({ symbols, height = 400 }) {
+  function TradingViewWidget({ symbols, height = 400, dark = false }) {
     const containerRef = useRef(null);
     useEffect(() => {
       const el = containerRef.current;
@@ -922,7 +938,7 @@
         width: "100%",
         height,
         locale: "en",
-        colorTheme: "light",
+        colorTheme: dark ? "dark" : "light",
         autosize: false,
         showVolume: false,
         showMA: false,
@@ -937,14 +953,14 @@
         valuesTracking: "1",
         changeMode: "price-and-percent",
         chartType: "area",
-        gridLineColor: "rgba(240, 243, 250, 0)",
+        gridLineColor: dark ? "rgba(38, 38, 38, 0)" : "rgba(240, 243, 250, 0)",
         lineWidth: 2
       });
       el.appendChild(script);
       return () => {
         el.innerHTML = "";
       };
-    }, [JSON.stringify(symbols), height]);
+    }, [JSON.stringify(symbols), height, dark]);
     return /* @__PURE__ */ jsx("div", { className: "tradingview-widget-container", ref: containerRef, style: { minHeight: `${height}px` } });
   }
   function TableSearch({ value, onChange, placeholder = "Filter…" }) {
@@ -1580,7 +1596,7 @@
       }) })
     ] }) });
   }
-  function PortfolioReadinessApp({ onSignOut, role, uid, biometricSupported, biometricEnabled, onEnableBiometricLock, onDisableBiometricLock }) {
+  function PortfolioReadinessApp({ onSignOut, role, uid, biometricSupported, biometricEnabled, onEnableBiometricLock, onDisableBiometricLock, dark, onToggleDark }) {
     const canEdit = role === "owner" || role === "editor";
     const isOwner = role === "owner";
     const [openAsset, setOpenAsset] = useState(null);
@@ -2341,6 +2357,10 @@ Save anyway?`);
                   /* @__PURE__ */ jsx(Users, { size: 14 }),
                   " Manage access"
                 ] }),
+                onToggleDark && /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); onToggleDark(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
+                  /* @__PURE__ */ jsx(dark ? Sun : Moon, { size: 14 }),
+                  dark ? " Light mode" : " Dark mode"
+                ] }),
                 onSignOut && /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); onSignOut(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-500 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: "Log out" })
               ] })
             ] })
@@ -2545,12 +2565,12 @@ Save anyway?`);
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "Live markets", dek: "Gold, USD/EGP, oil, and the major indices — the leverage/FX alert (site banner, email, push) watches gold and USD/EGP; a separate 1% move alert watches the rest." }),
           /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Gold", "OANDA:XAUUSD|1D"]], height: 400 }),
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["USD/EGP", "FX_IDC:USDEGP|1D"]], height: 400 }),
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Oil (WTI)", "TVC:USOIL|1D"]], height: 400 }),
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["EGX 30", "EGX:EGX30|1D"]], height: 400 }),
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["EGX 70", "EGX:EGX70EWI|1D"]], height: 400 }),
-            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["S&P 500", "FOREXCOM:SPXUSD|1D"], ["Nasdaq", "FOREXCOM:NSXUSD|1D"], ["Dow Jones", "FOREXCOM:DJI|1D"]], height: 300 })
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Gold", "OANDA:XAUUSD|1D"]], height: 400, dark }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["USD/EGP", "FX_IDC:USDEGP|1D"]], height: 400, dark }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Oil (WTI)", "TVC:USOIL|1D"]], height: 400, dark }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["EGX 30", "EGX:EGX30|1D"]], height: 400, dark }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["EGX 70", "EGX:EGX70EWI|1D"]], height: 400, dark }),
+            /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["S&P 500", "FOREXCOM:SPXUSD|1D"], ["Nasdaq", "FOREXCOM:NSXUSD|1D"], ["Dow Jones", "FOREXCOM:DJI|1D"]], height: 300, dark })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "daily-pricing-form", className: "py-10 border-t border-neutral-200", children: [
@@ -2580,9 +2600,9 @@ Save anyway?`);
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Net worth vs. gold vs. USD/EGP, since ${firstComputed.date}` }),
             /* @__PURE__ */ jsx(ComparisonChart, {
               series: [
-                { key: "networth", label: "Net worth (marked-to-market)", color: "#171717", points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })) },
-                { key: "gold", label: "Gold, EGP/g", color: "#B45309", points: computedHistory.map((d) => ({ date: d.date, value: d.gold })) },
-                { key: "usd", label: "USD/EGP", color: "#0369A1", points: computedHistory.map((d) => ({ date: d.date, value: d.rate })) }
+                { key: "networth", label: "Net worth (marked-to-market)", color: dark ? "#e5e5e5" : "#171717", points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })) },
+                { key: "gold", label: "Gold, EGP/g", color: dark ? "#fbbf24" : "#B45309", points: computedHistory.map((d) => ({ date: d.date, value: d.gold })) },
+                { key: "usd", label: "USD/EGP", color: dark ? "#38bdf8" : "#0369A1", points: computedHistory.map((d) => ({ date: d.date, value: d.rate })) }
               ],
               labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
             })
@@ -2828,6 +2848,26 @@ Save anyway?`);
     ] }) });
   }
   function PortfolioReadiness() {
+    const [dark, setDark] = useState(() => {
+      try {
+        const stored = window.localStorage.getItem("theme");
+        if (stored === "dark") return true;
+        if (stored === "light") return false;
+        return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      } catch {
+        return false;
+      }
+    });
+    useEffect(() => {
+      document.documentElement.classList.toggle("dark", dark);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", dark ? "#0a0a0a" : "#171717");
+      try {
+        window.localStorage.setItem("theme", dark ? "dark" : "light");
+      } catch {
+      }
+    }, [dark]);
+    const toggleDark = () => setDark((d) => !d);
     const [user, setUser] = useState(null);
     const [authChecked, setAuthChecked] = useState(false);
     const [signInError, setSignInError] = useState("");
@@ -2974,7 +3014,7 @@ Save anyway?`);
     if (role !== "owner" && role !== "editor" && role !== "viewer" && role !== "service") {
       return /* @__PURE__ */ jsx(PendingApprovalScreen, { role, onSignOut: handleSignOut });
     }
-    return /* @__PURE__ */ jsx(ReportErrorBoundary, { children: /* @__PURE__ */ jsx(PortfolioReadinessApp, { onSignOut: handleSignOut, role, uid: user.uid, biometricSupported, biometricEnabled, onEnableBiometricLock: handleEnableBiometricLock, onDisableBiometricLock: handleDisableBiometricLock }) });
+    return /* @__PURE__ */ jsx(ReportErrorBoundary, { children: /* @__PURE__ */ jsx(PortfolioReadinessApp, { onSignOut: handleSignOut, role, uid: user.uid, biometricSupported, biometricEnabled, onEnableBiometricLock: handleEnableBiometricLock, onDisableBiometricLock: handleDisableBiometricLock, dark, onToggleDark: toggleDark }) });
   }
 
   // entry.jsx

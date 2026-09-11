@@ -35,7 +35,21 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/7.0.0/tesseract.min.js"></script>
 
 <style>
+  :root {
+    --rt-border: #e5e5e5;
+    --rt-border-soft: #f5f5f5;
+    --rt-ink: #171717;
+    --rt-label: #a3a3a3;
+  }
+  html.dark {
+    --rt-border: #333333;
+    --rt-border-soft: #262626;
+    --rt-ink: #fafafa;
+    --rt-label: #737373;
+    color-scheme: dark;
+  }
   html, body { margin: 0; padding: 0; background: #fafaf9; }
+  html.dark body { background: #0a0a0a; }
   * { box-sizing: border-box; }
 
   /* Below the sm breakpoint (640px), tables in .rtable render as a
@@ -46,15 +60,15 @@
     .rtable table { width: 100%; }
     .rtable thead { display: none; }
     .rtable tbody, .rtable tfoot, .rtable tr, .rtable td { display: block; width: 100%; }
-    .rtable tfoot tr { border: 1px solid #e5e5e5; border-top: 2px solid #171717; border-radius: 8px; padding: 6px 10px; margin-top: 4px; }
+    .rtable tfoot tr { border: 1px solid var(--rt-border); border-top: 2px solid var(--rt-ink); border-radius: 8px; padding: 6px 10px; margin-top: 4px; }
     .rtable tr {
-      border: 1px solid #e5e5e5;
+      border: 1px solid var(--rt-border);
       border-radius: 8px;
       padding: 6px 10px;
       margin-bottom: 10px;
     }
     .rtable td {
-      border-bottom: 1px solid #f5f5f5;
+      border-bottom: 1px solid var(--rt-border-soft);
       padding: 7px 0;
       text-align: right;
       position: relative;
@@ -74,10 +88,99 @@
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.02em;
-      color: #a3a3a3;
+      color: var(--rt-label);
       white-space: normal;
     }
   }
+
+  /* Dark mode: a mirrored shade-inversion over every Tailwind color
+     utility class actually used in bundle.js (e.g. neutral-900, the
+     darkest "ink" shade in light mode, becomes the lightest in dark
+     mode, and vice versa) — so the same class names keep working with
+     no changes to the component markup itself. Toggled by adding/
+     removing the "dark" class on <html> (see bundle.js). */
+  html.dark .bg-neutral-50  { background-color: #171717; }
+  html.dark .bg-neutral-100 { background-color: #232323; }
+  html.dark .bg-neutral-600 { background-color: #c2c2c2; }
+  html.dark .bg-neutral-700 { background-color: #dcdcdc; }
+  html.dark .bg-neutral-800 { background-color: #ececec; }
+  html.dark .bg-neutral-900 { background-color: #fafafa; }
+  html.dark .bg-white { background-color: #141414; }
+
+  html.dark .border-neutral-100 { border-color: #202020; }
+  html.dark .border-neutral-200 { border-color: #2a2a2a; }
+  html.dark .border-neutral-300 { border-color: #404040; }
+  html.dark .border-neutral-400 { border-color: #666666; }
+  html.dark .border-neutral-500 { border-color: #8a8a8a; }
+  html.dark .border-neutral-600 { border-color: #c2c2c2; }
+  html.dark .border-neutral-800 { border-color: #ececec; }
+  html.dark .border-neutral-900 { border-color: #fafafa; }
+
+  html.dark .text-neutral-300 { color: #4d4d4d; }
+  html.dark .text-neutral-400 { color: #6e6e6e; }
+  html.dark .text-neutral-500 { color: #9a9a9a; }
+  html.dark .text-neutral-600 { color: #c2c2c2; }
+  html.dark .text-neutral-700 { color: #dcdcdc; }
+  html.dark .text-neutral-800 { color: #ececec; }
+  html.dark .text-neutral-900 { color: #fafafa; }
+
+  html.dark .hover\:bg-neutral-100:hover { background-color: #232323; }
+  html.dark .hover\:bg-neutral-700:hover { background-color: #dcdcdc; }
+  html.dark .hover\:bg-neutral-900:hover { background-color: #fafafa; }
+  html.dark .hover\:border-neutral-500:hover { border-color: #8a8a8a; }
+  html.dark .hover\:border-neutral-600:hover { border-color: #c2c2c2; }
+  html.dark .hover\:border-neutral-900:hover { border-color: #fafafa; }
+  html.dark .hover\:text-neutral-700:hover { color: #dcdcdc; }
+  html.dark .hover\:text-neutral-800:hover { color: #ececec; }
+  html.dark .focus\:border-neutral-800:focus { border-color: #ececec; }
+  html.dark .disabled\:text-neutral-500:disabled { color: #9a9a9a; }
+  html.dark .group:hover .group-hover\:bg-neutral-600 { background-color: #c2c2c2; }
+
+  /* text-white is also used on the red notification badge (bg-red-600),
+     which should stay white-on-red — only flip it where it is paired
+     with one of the "ink" backgrounds above, whose own background just
+     flipped from dark to light. */
+  html.dark .bg-neutral-800.text-white { color: #0a0a0a; }
+  html.dark .bg-neutral-900.text-white { color: #0a0a0a; }
+  html.dark .hover\:bg-neutral-900.hover\:text-white:hover { color: #0a0a0a; }
+
+  html.dark .bg-emerald-50  { background-color: #062e1f; }
+  html.dark .border-emerald-300 { border-color: #34d399; }
+  html.dark .text-emerald-700 { color: #34d399; }
+  html.dark .text-emerald-900 { color: #a7f3d0; }
+
+  html.dark .bg-red-50  { background-color: #2a1212; }
+  html.dark .border-red-300 { border-color: #f87171; }
+  html.dark .border-red-400 { border-color: #f87171; }
+  html.dark .hover\:border-red-600:hover { border-color: #f87171; }
+  html.dark .text-red-600 { color: #f87171; }
+  html.dark .text-red-700 { color: #f87171; }
+  html.dark .text-red-800 { color: #fca5a5; }
+  html.dark .text-red-900 { color: #fecaca; }
+  html.dark .hover\:text-red-600:hover { color: #f87171; }
+
+  html.dark .bg-amber-50  { background-color: #2a1f0a; }
+  html.dark .border-amber-300 { border-color: #fbbf24; }
+  html.dark .border-amber-400 { border-color: #fbbf24; }
+  html.dark .text-amber-500 { color: #fbbf24; }
+  html.dark .text-amber-600 { color: #fbbf24; }
+  html.dark .text-amber-700 { color: #fcd34d; }
+  html.dark .text-amber-800 { color: #fde68a; }
+  html.dark .text-amber-900 { color: #fef3c7; }
+
+  /* Hand-drawn SVG charts (ReadinessDial, TrendChart, ComparisonChart)
+     use fixed hex colors as fill/stroke attributes rather than Tailwind
+     classes — any CSS rule targeting the same element overrides an SVG
+     presentation attribute, so these classes need no !important. */
+  html.dark .dial-track { stroke: #333333; }
+  html.dark .dial-tick { stroke: #5a5a5a; }
+  html.dark .dial-needle { stroke: #e5e5e5; fill: #e5e5e5; }
+  html.dark .dial-score { fill: #fafafa; }
+  html.dark .dial-caption { fill: #8a8a8a; }
+  html.dark .chart-grid-line { stroke: #2a2a2a; }
+  html.dark .chart-grid-label { fill: #8a8a8a; }
+  html.dark .chart-ink { stroke: #e5e5e5; fill: #e5e5e5; }
+  html.dark .chart-axis-label { fill: #8a8a8a; }
 </style>
 </head>
 <body>
@@ -87,7 +190,7 @@
   </div>
 </div>
 <!-- bump ?v= on every bundle.js change, or Safari keeps serving the cached old copy -->
-<script src="bundle.js?v=86"></script>
+<script src="bundle.js?v=87"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
