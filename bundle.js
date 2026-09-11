@@ -728,6 +728,14 @@
       }
     );
   }
+  function LoadingSkeleton() {
+    return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 font-sans", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-10", children: [
+      /* @__PURE__ */ jsx("div", { className: "skeleton-block", style: { height: 40, width: 260, marginBottom: 14 } }),
+      /* @__PURE__ */ jsx("div", { className: "skeleton-block", style: { height: 16, width: "60%", marginBottom: 36 } }),
+      /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-4 mb-8", children: [1, 2, 3].map((i) => /* @__PURE__ */ jsx("div", { className: "skeleton-block", style: { height: 90, flex: "1 1 160px" } }, i)) }),
+      /* @__PURE__ */ jsx("div", { className: "skeleton-block", style: { height: 240, width: "100%" } })
+    ] }) });
+  }
   function SectionHeading({ index, title, dek }) {
     return /* @__PURE__ */ jsx("div", { className: "mb-8 flex items-start gap-4 border-b border-neutral-200 pb-4", children: [
       /* @__PURE__ */ jsx("span", { className: "font-mono text-xs text-neutral-400 pt-1 tabular-nums", children: index }),
@@ -2269,12 +2277,9 @@ Save anyway?`);
       conversionSummary
     ]);
     if (loadState === "loading") {
-      return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
-        /* @__PURE__ */ jsx(Loader2, { className: "animate-spin mr-2", size: 16 }),
-        " Loading saved data\u2026"
-      ] });
+      return /* @__PURE__ */ jsx(LoadingSkeleton, {});
     }
-    return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 text-neutral-900 font-sans", children: [
+    return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 text-neutral-900 font-sans animate-fadein", key: view, children: [
       !showAdmin && dailyAlert && dailyAlert.date !== dismissedAlertDate && /* @__PURE__ */ jsx("div", { className: "bg-amber-50 border-b-2 border-amber-400", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
         /* @__PURE__ */ jsx("div", { className: "text-sm text-amber-900 leading-relaxed", children: [
           /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Notable move today — " }),
@@ -2991,10 +2996,7 @@ Save anyway?`);
     };
     const handleSignOut = () => window.firebase.auth(firebaseApp).signOut();
     if (!authChecked) {
-      return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
-        /* @__PURE__ */ jsx(Loader2, { className: "animate-spin mr-2", size: 16 }),
-        " Loading…"
-      ] });
+      return /* @__PURE__ */ jsx(LoadingSkeleton, {});
     }
     if (!user) {
       if (isSignupMode) {
@@ -3006,10 +3008,7 @@ Save anyway?`);
       return /* @__PURE__ */ jsx(LockScreen, { onUnlock: handleUnlock, onSignOut: handleSignOut, error: lockError, unlocking });
     }
     if (role === null) {
-      return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 flex items-center justify-center text-neutral-500 font-sans", children: [
-        /* @__PURE__ */ jsx(Loader2, { className: "animate-spin mr-2", size: 16 }),
-        " Loading…"
-      ] });
+      return /* @__PURE__ */ jsx(LoadingSkeleton, {});
     }
     if (role !== "owner" && role !== "editor" && role !== "viewer" && role !== "service") {
       return /* @__PURE__ */ jsx(PendingApprovalScreen, { role, onSignOut: handleSignOut });

@@ -14,6 +14,19 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Portfolio" />
 
+<!-- Set the dark/light class before first paint, from the same "theme"
+     key bundle.js reads/writes — avoids a flash of the wrong theme
+     while the bundle is still loading. -->
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("theme");
+      var dark = stored ? stored === "dark" : !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+    } catch (e) {}
+  })();
+</script>
+
 <!-- React, loaded as plain global scripts so the bundle below doesn't need to include it -->
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -181,16 +194,30 @@
   html.dark .chart-grid-label { fill: #8a8a8a; }
   html.dark .chart-ink { stroke: #e5e5e5; fill: #e5e5e5; }
   html.dark .chart-axis-label { fill: #8a8a8a; }
+
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  .animate-fadein { animation: fadein 0.4s ease both; }
+
+  @keyframes pulse-bg { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .skeleton-block { animation: pulse-bg 1.6s ease-in-out infinite; background: #e5e5e5; border-radius: 4px; }
+  html.dark .skeleton-block { background: #232323; }
 </style>
 </head>
 <body>
 <div id="root">
-  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#737373;">
-    Loading…
+  <div style="min-height:100vh;font-family:-apple-system,sans-serif;padding:24px;max-width:960px;margin:0 auto;">
+    <div class="skeleton-block" style="height:32px;width:220px;margin-bottom:12px;"></div>
+    <div class="skeleton-block" style="height:14px;width:70%;margin-bottom:32px;"></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;">
+      <div class="skeleton-block" style="height:80px;flex:1;min-width:140px;"></div>
+      <div class="skeleton-block" style="height:80px;flex:1;min-width:140px;"></div>
+      <div class="skeleton-block" style="height:80px;flex:1;min-width:140px;"></div>
+    </div>
+    <div class="skeleton-block" style="height:220px;width:100%;"></div>
   </div>
 </div>
 <!-- bump ?v= on every bundle.js change, or Safari keeps serving the cached old copy -->
-<script src="bundle.js?v=87"></script>
+<script src="bundle.js?v=88"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
