@@ -301,6 +301,28 @@
   } catch {
     db = null;
   }
+  var LAZY_SCRIPT_PROMISES = {};
+  function loadScriptOnce(src) {
+    if (!LAZY_SCRIPT_PROMISES[src]) {
+      LAZY_SCRIPT_PROMISES[src] = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Could not load ${src} — check your connection and try again.`));
+        document.head.appendChild(script);
+      });
+    }
+    return LAZY_SCRIPT_PROMISES[src];
+  }
+  var XLSX_CDN_URL = "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js";
+  var TESSERACT_CDN_URL = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/7.0.0/tesseract.min.js";
+  function ensureXLSX() {
+    return window.XLSX ? Promise.resolve() : loadScriptOnce(XLSX_CDN_URL);
+  }
+  function ensureTesseract() {
+    return window.Tesseract ? Promise.resolve() : loadScriptOnce(TESSERACT_CDN_URL);
+  }
   async function loadJson(key, fallback) {
     try {
       if (db) {
@@ -1166,6 +1188,7 @@
       setError("");
       setPreview(null);
       try {
+        await ensureXLSX();
         if (!window.XLSX) throw new Error("Spreadsheet reader did not load — check your connection and try again.");
         const buf = await file.arrayBuffer();
         const wb = window.XLSX.read(buf, { type: "array" });
@@ -1228,6 +1251,7 @@
       setError("");
       setPreview(null);
       try {
+        await ensureXLSX();
         if (!window.XLSX) throw new Error("Spreadsheet reader did not load — check your connection and try again.");
         const buf = await file.arrayBuffer();
         const wb = window.XLSX.read(buf, { type: "array" });
@@ -1475,6 +1499,7 @@
       setOcrError("");
       setOcrBusy(true);
       try {
+        await ensureTesseract();
         if (!window.Tesseract) throw new Error("Screenshot reader did not load — check your connection and try again.");
         const worker = await window.Tesseract.createWorker("eng+ara");
         await worker.setParameters({ tessedit_pageseg_mode: "4" });
