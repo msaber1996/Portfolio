@@ -47,6 +47,7 @@ jobs:
           # separate file to keep in sync by hand.
           CERTS=$(curl -sf "${DB}/certificates.json?auth=${ID_TOKEN}" || echo "null")
           LOAN_FACS=$(curl -sf "${DB}/loanFacilities.json?auth=${ID_TOKEN}" || echo "null")
+          OFFICE_INSTALLMENTS=$(curl -sf "${DB}/officeInstallments.json?auth=${ID_TOKEN}" || echo "null")
 
           # Valuation math mirrors computeDay/dailyAlert in bundle.js. The
           # office installment schedule below has no upload feature yet so it
@@ -59,6 +60,7 @@ jobs:
             const marketHistory = JSON.parse(process.argv[4]) || {};
             const CERTIFICATES = JSON.parse(process.argv[5] || "null") || [];
             const LOAN_FACILITIES = JSON.parse(process.argv[6] || "null") || [];
+            const OFFICE_INSTALLMENT_SCHEDULE = JSON.parse(process.argv[7] || "null") || [];
             const days = Object.values(daily).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
             const latest = days[days.length - 1];
             if (!latest) { console.log("No daily entries recorded yet — nothing to report."); process.exit(0); }
@@ -168,40 +170,6 @@ jobs:
               lines.push(`Loans maturing within 30 days (${loansSoon.length}):`);
               loansSoon.forEach((l) => lines.push(`  - ${l.label}, ${fmt(l.outstanding)} EGP outstanding, matures ${l.maturityDate}`));
             }
-            const OFFICE_INSTALLMENT_SCHEDULE = [
-              { date: "2026-09-16", amount: 17029500 },
-              { date: "2026-12-16", amount: 9093753 },
-              { date: "2027-03-16", amount: 9093753 },
-              { date: "2027-06-16", amount: 9093753 },
-              { date: "2027-09-16", amount: 9093753 },
-              { date: "2027-12-16", amount: 9093753 },
-              { date: "2028-03-16", amount: 9093753 },
-              { date: "2028-06-16", amount: 9093753 },
-              { date: "2028-09-16", amount: 9093753 },
-              { date: "2028-12-16", amount: 9093753 },
-              { date: "2029-03-16", amount: 9093753 },
-              { date: "2029-06-16", amount: 9093753 },
-              { date: "2029-09-16", amount: 9093753 },
-              { date: "2029-12-16", amount: 9093753 },
-              { date: "2030-03-16", amount: 9093753 },
-              { date: "2030-06-16", amount: 34059000 },
-              { date: "2030-09-16", amount: 9093753 },
-              { date: "2030-12-16", amount: 9093753 },
-              { date: "2031-03-16", amount: 9093753 },
-              { date: "2031-06-16", amount: 26123253 },
-              { date: "2031-09-16", amount: 9093753 },
-              { date: "2031-12-16", amount: 9093753 },
-              { date: "2032-03-16", amount: 9093753 },
-              { date: "2032-06-16", amount: 9093753 },
-              { date: "2032-09-16", amount: 9093753 },
-              { date: "2032-12-16", amount: 9093753 },
-              { date: "2033-03-16", amount: 9093753 },
-              { date: "2033-06-16", amount: 9093753 },
-              { date: "2033-09-16", amount: 9093753 },
-              { date: "2033-12-16", amount: 9093753 },
-              { date: "2034-03-16", amount: 9093753 },
-              { date: "2034-06-16", amount: 8753163 }
-            ];
             const todayStr = today.toISOString().slice(0, 10);
             const nextOfficeRow = OFFICE_INSTALLMENT_SCHEDULE.find((row) => row.date >= todayStr);
             if (nextOfficeRow) {
@@ -210,7 +178,7 @@ jobs:
               lines.push(`Next office installment: ${fmt(nextOfficeRow.amount)} EGP due ${nextOfficeRow.date} (in ${officeDaysUntil}d)`);
             }
             console.log(lines.join("\n"));
-          ' "$DAILY" "$LOANS" "$HOLDINGS" "$MARKET_HISTORY" "$CERTS" "$LOAN_FACS")
+          ' "$DAILY" "$LOANS" "$HOLDINGS" "$MARKET_HISTORY" "$CERTS" "$LOAN_FACS" "$OFFICE_INSTALLMENTS")
 
           echo "$BODY"
 

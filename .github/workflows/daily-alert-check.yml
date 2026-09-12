@@ -50,6 +50,7 @@ jobs:
           # immediately, with no separate file to keep in sync by hand.
           CERTS=$(curl -sf "${DB}/certificates.json?auth=${ID_TOKEN}" || echo "null")
           LOAN_FACS=$(curl -sf "${DB}/loanFacilities.json?auth=${ID_TOKEN}" || echo "null")
+          OFFICE_INSTALLMENTS=$(curl -sf "${DB}/officeInstallments.json?auth=${ID_TOKEN}" || echo "null")
 
           # Mirrors the on-site banners (bundle.js: dailyAlert / officeDueAlert)
           # and the certificate-maturity highlighting (CertificatesTable) so the
@@ -67,6 +68,7 @@ jobs:
             const marketHistory = JSON.parse(process.argv[7] || "null") || {};
             const CERTIFICATES = JSON.parse(process.argv[8] || "null") || [];
             const LOAN_FACILITIES = JSON.parse(process.argv[9] || "null") || [];
+            const OFFICE_INSTALLMENT_SCHEDULE = JSON.parse(process.argv[10] || "null") || [];
             const days = Object.values(daily).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
 
             const triggers = [];
@@ -165,40 +167,6 @@ jobs:
               });
             }
 
-            const OFFICE_INSTALLMENT_SCHEDULE = [
-              { date: "2026-09-16", amount: 17029500 },
-              { date: "2026-12-16", amount: 9093753 },
-              { date: "2027-03-16", amount: 9093753 },
-              { date: "2027-06-16", amount: 9093753 },
-              { date: "2027-09-16", amount: 9093753 },
-              { date: "2027-12-16", amount: 9093753 },
-              { date: "2028-03-16", amount: 9093753 },
-              { date: "2028-06-16", amount: 9093753 },
-              { date: "2028-09-16", amount: 9093753 },
-              { date: "2028-12-16", amount: 9093753 },
-              { date: "2029-03-16", amount: 9093753 },
-              { date: "2029-06-16", amount: 9093753 },
-              { date: "2029-09-16", amount: 9093753 },
-              { date: "2029-12-16", amount: 9093753 },
-              { date: "2030-03-16", amount: 9093753 },
-              { date: "2030-06-16", amount: 34059000 },
-              { date: "2030-09-16", amount: 9093753 },
-              { date: "2030-12-16", amount: 9093753 },
-              { date: "2031-03-16", amount: 9093753 },
-              { date: "2031-06-16", amount: 26123253 },
-              { date: "2031-09-16", amount: 9093753 },
-              { date: "2031-12-16", amount: 9093753 },
-              { date: "2032-03-16", amount: 9093753 },
-              { date: "2032-06-16", amount: 9093753 },
-              { date: "2032-09-16", amount: 9093753 },
-              { date: "2032-12-16", amount: 9093753 },
-              { date: "2033-03-16", amount: 9093753 },
-              { date: "2033-06-16", amount: 9093753 },
-              { date: "2033-09-16", amount: 9093753 },
-              { date: "2033-12-16", amount: 9093753 },
-              { date: "2034-03-16", amount: 9093753 },
-              { date: "2034-06-16", amount: 8753163 }
-            ];
             const OFFICE_DUE_WARNING_DAYS = 14;
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -242,7 +210,7 @@ jobs:
             checkMaturities(LOAN_FACILITIES, "loan");
 
             console.log(JSON.stringify({ trigger: triggers.length > 0, triggers, date: days.length ? days[days.length - 1].date : (nextRow ? nextRow.date : todayStr), officeDueDate, newMaturityAlerts }));
-          ' "$DAILY" "$LOANS" "$HOLDINGS" "$LAST_OFFICE_ALERT" "$LAST_MATURITY_ALERTS" "$LIVE_RATES" "$MARKET_HISTORY" "$CERTS" "$LOAN_FACS")
+          ' "$DAILY" "$LOANS" "$HOLDINGS" "$LAST_OFFICE_ALERT" "$LAST_MATURITY_ALERTS" "$LIVE_RATES" "$MARKET_HISTORY" "$CERTS" "$LOAN_FACS" "$OFFICE_INSTALLMENTS")
 
           echo "$RESULT"
           TRIGGER=$(echo "$RESULT" | jq -r '.trigger')
