@@ -1,4 +1,7 @@
 name: Weekly database backup
+# To restore one of these snapshots back into Firebase, see backups/restore.sh
+# (a manual script, not wired to any workflow — run "restore.sh <file> --dry-run"
+# first to see what it would do with no credentials and no network calls).
 
 on:
   schedule:
@@ -36,6 +39,11 @@ jobs:
           LOANS=$(curl -sf "${DB}/loans.json?auth=${ID_TOKEN}")
           CONVERSIONS=$(curl -sf "${DB}/conversions.json?auth=${ID_TOKEN}")
           DAILY=$(curl -sf "${DB}/daily.json?auth=${ID_TOKEN}")
+          # loanFacilities/certificates live in Firebase now (the site's
+          # statement-upload features write there directly) — back them up
+          # too, or a restore would silently drop both.
+          LOAN_FACILITIES=$(curl -sf "${DB}/loanFacilities.json?auth=${ID_TOKEN}")
+          CERTIFICATES=$(curl -sf "${DB}/certificates.json?auth=${ID_TOKEN}")
 
           mkdir -p backups
           STAMP=$(date -u +%Y-%m-%d)
@@ -44,8 +52,10 @@ jobs:
             --argjson loans "$LOANS" \
             --argjson conversions "$CONVERSIONS" \
             --argjson daily "$DAILY" \
+            --argjson loanFacilities "$LOAN_FACILITIES" \
+            --argjson certificates "$CERTIFICATES" \
             --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{generatedAt: $generatedAt, holdings: $holdings, loans: $loans, conversions: $conversions, daily: $daily}' \
+            '{generatedAt: $generatedAt, holdings: $holdings, loans: $loans, conversions: $conversions, daily: $daily, loanFacilities: $loanFacilities, certificates: $certificates}' \
             > "backups/backup-${STAMP}.json"
 
           echo "Wrote backups/backup-${STAMP}.json"
