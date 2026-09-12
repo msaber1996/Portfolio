@@ -399,7 +399,7 @@
     if (days < 30) return `${days}d ago`;
     return new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
   };
-  var VAPID_PUBLIC_KEY = "BDsFBOfGQe43ogEGBoN28q6sBO9LG8VlIxKUiOmjaibntTDwxa2eCR1vb7XpPplYelCgSGiP3Uwsiel03x63SNE";
+  var VAPID_PUBLIC_KEY = "BFhwCTvu6g58scgtSpAJxBtUMDj5Vt8UqjNlrNsdZ3mz1OA2wGHCWCx1MnU9S2YHlfQUMqFtOsrOBDpeQ76Wh6M";
   var urlBase64ToUint8Array = (base64String) => {
     const padding = "=".repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
