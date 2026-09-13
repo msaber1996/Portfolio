@@ -2231,6 +2231,10 @@ Save anyway?`);
   <p class="note">Physical gold</p>
   <table><tr><th>Holding</th><th class="num">Grams</th><th class="num">Invested</th><th class="num">Current value</th><th class="num">Gain</th><th>Purchased</th></tr>${metalPhysicalRowsHtml}</table>
 
+  <h2>Portfolio insights</h2>
+  <p class="note">Automatic observations from the numbers above — concentration, leverage, cash flow, and upcoming maturities.</p>
+  ${portfolioInsights.length === 0 ? '<p class="note">No notable observations right now — nothing here looks out of the ordinary.</p>' : `<ul style="margin:0 0 12px;padding-left:18px;">${portfolioInsights.map((ins) => `<li class="note" style="margin:0 0 6px;"><b>${ins.severity === "notice" ? "Notice" : ins.severity === "good" ? "Good" : "Note"}:</b> ${ins.text}</li>`).join("")}</ul>`}
+
   <h2>Investment, by currency</h2>
   <table>
     <tr><td>Total invested in EGP</td><td class="num mono">${egp(totalEgpInvestment)}</td></tr>
@@ -2316,7 +2320,8 @@ Save anyway?`);
       loanFacilities,
       certificates,
       officeUnits,
-      conversionSummary
+      conversionSummary,
+      portfolioInsights
     ]);
     if (loadState === "loading") {
       return /* @__PURE__ */ jsx(LoadingSkeleton, {});
