@@ -798,9 +798,15 @@
       }
       usedIndexes.add(idx);
       const inst = updatedInstallments[idx];
+      const fields = [];
       if (Math.abs((Number(inst.amount) || 0) - row.amount) > 0.5) {
-        changes.push({ label: row.date, fields: [{ key: "amount", label: "Amount", oldVal: inst.amount, newVal: row.amount }] });
+        fields.push({ key: "amount", label: "Amount", oldVal: inst.amount, newVal: row.amount });
       }
+      const hasNewByUnit = row.byUnit && Object.keys(row.byUnit).length && JSON.stringify(inst.byUnit || null) !== JSON.stringify(row.byUnit);
+      if (hasNewByUnit) {
+        fields.push({ key: "byUnit", label: "Per-unit breakdown", oldVal: inst.byUnit ? "set" : "not set", newVal: "updated" });
+      }
+      if (fields.length) changes.push({ label: row.date, fields });
       inst.amount = row.amount;
       if (row.byUnit && Object.keys(row.byUnit).length) inst.byUnit = row.byUnit;
     });
