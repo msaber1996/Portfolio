@@ -47,6 +47,9 @@
   function ChevronDown(props) {
     return /* @__PURE__ */ jsx(Base, { ...props, children: /* @__PURE__ */ jsx("polyline", { points: "6 9 12 15 18 9" }) });
   }
+  function ChevronUp(props) {
+    return /* @__PURE__ */ jsx(Base, { ...props, children: /* @__PURE__ */ jsx("polyline", { points: "18 15 12 9 6 15" }) });
+  }
   function ArrowUpRight(props) {
     return /* @__PURE__ */ jsx(Base, { ...props, children: [
       /* @__PURE__ */ jsx("line", { x1: "7", y1: "17", x2: "17", y2: "7" }),
@@ -747,6 +750,24 @@
           label,
           active && /* @__PURE__ */ jsx("span", { className: "ml-1 text-neutral-400", children: dir === "asc" ? "▲" : "▼" })
         ]
+      }
+    );
+  }
+  function ScrollToTopButton() {
+    const [visible, setVisible] = useState(false);
+    useEffect(() => {
+      const onScroll = () => setVisible(window.scrollY > 480);
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+      return () => window.removeEventListener("scroll", onScroll);
+    }, []);
+    return /* @__PURE__ */ jsx(
+      "button",
+      {
+        onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
+        "aria-label": "Back to top",
+        className: `fixed bottom-6 right-6 z-30 w-11 h-11 rounded-full bg-neutral-900 text-white shadow-lg flex items-center justify-center transition-opacity duration-200 ${visible ? "opacity-100" : "opacity-0 pointer-events-none"}`,
+        children: /* @__PURE__ */ jsx(ChevronUp, { size: 20 })
       }
     );
   }
@@ -1663,6 +1684,7 @@
     const [editingDate, setEditingDate] = useState(null);
     const [notifPermission, setNotifPermission] = useState(() => typeof window !== "undefined" && "Notification" in window ? window.Notification.permission : "unsupported");
     const [pushStatus, setPushStatus] = useState("idle");
+    const [pendingSignups, setPendingSignups] = useState([]);
     const [biometricBusy, setBiometricBusy] = useState(false);
     const [biometricError, setBiometricError] = useState("");
     const showAdmin = isOwner && view === "admin";
@@ -1705,6 +1727,18 @@
         cancelled = true;
       };
     }, []);
+    useEffect(() => {
+      if (!isOwner || !db) return;
+      const ref = db.ref("roles");
+      const onValueChange = (snap) => {
+        const roles = snap.val() || {};
+        setPendingSignups(
+          Object.entries(roles).filter(([, r]) => r?.role === "pending").map(([uid, r]) => ({ uid, email: r.email }))
+        );
+      };
+      ref.on("value", onValueChange);
+      return () => ref.off("value", onValueChange);
+    }, [isOwner]);
     const debouncedSave = useCallback((key, value, setter) => {
       setter(value);
       clearTimeout(saveTimers.current[key]);
@@ -2341,6 +2375,14 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("button", { onClick: () => setDismissedOfficeDueDate(officeDueAlert.date), className: `text-xs underline shrink-0 whitespace-nowrap ${officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700"}`, children: "Dismiss" })
       ] }) }),
+      !showAdmin && isOwner && pendingSignups.length > 0 && /* @__PURE__ */ jsx("div", { className: "bg-emerald-50 border-b-2 border-emerald-300", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-sm text-emerald-900 leading-relaxed", children: [
+          /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "New sign-up request — " }),
+          pendingSignups.length === 1 ? pendingSignups[0].email || "one account" : `${pendingSignups.length} accounts waiting for review`
+        ] }),
+        /* @__PURE__ */ jsx("button", { onClick: () => setView("admin"), className: "text-xs text-emerald-700 underline shrink-0 whitespace-nowrap", children: "Review" })
+      ] }) }),
+      /* @__PURE__ */ jsx(ScrollToTopButton, {}),
       /* @__PURE__ */ jsx("header", { className: "border-b-2 border-neutral-900 bg-neutral-50", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 pt-8 pb-6", children: [
         /* @__PURE__ */ jsx("div", { className: "flex items-baseline justify-between font-mono text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx("span", { children: "Portfolio Review \u2014 No. 006" }),

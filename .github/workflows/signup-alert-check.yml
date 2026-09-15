@@ -1,0 +1,130 @@
+name: New sign-up request alert
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for new pending sign-ups, email/push if found
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_APP_PASSWORD: ${{ secrets.MAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          # Same low-privilege "service" account used by the other alert
+          # workflows — read-only here, which the database rules already
+          # grant to any account with role "service".
+          ID_TOKEN=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
+            | jq -r '.idToken')
+
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to get a Firebase auth token, aborting."
+            exit 1
+          fi
+
+          DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
+          ROLES=$(curl -sf "${DB}/roles.json?auth=${ID_TOKEN}" || echo "null")
+          ALREADY_ALERTED=$(curl -sf "${DB}/serviceState/alertedSignups.json?auth=${ID_TOKEN}" || echo "null")
+
+          NEW_PENDING=$(jq -n --argjson roles "$ROLES" --argjson alerted "$ALREADY_ALERTED" '
+            ($roles // {}) as $r
+            | ($alerted // {}) as $a
+            | [$r | to_entries[] | select(.value.role == "pending") | select($a[.key] == null) | {uid: .key, email: (.value.email // .key)}]
+          ')
+
+          COUNT=$(echo "$NEW_PENDING" | jq 'length')
+          echo "New pending sign-ups since last check: $COUNT"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "Nothing new, exiting."
+            exit 0
+          fi
+
+          EMAILS=$(echo "$NEW_PENDING" | jq -r '[.[] | .email] | join(", ")')
+          echo "New sign-ups: $EMAILS"
+
+          if [ -n "${MAIL_USERNAME:-}" ] && [ -n "${MAIL_APP_PASSWORD:-}" ] && [ -n "${MAIL_TO:-}" ]; then
+            SUBJECT="Portfolio: new sign-up request ($COUNT)"
+            BODY="Waiting for review: ${EMAILS}
+
+          Open the site, Menu > Manage access, to accept or reject."
+            printf 'From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s\r\n' "$MAIL_USERNAME" "$MAIL_TO" "$SUBJECT" "$BODY" > /tmp/mail.txt
+            curl -sf --url 'smtps://smtp.gmail.com:465' \
+              --ssl-reqd \
+              --mail-from "$MAIL_USERNAME" \
+              --mail-rcpt "$MAIL_TO" \
+              --user "${MAIL_USERNAME}:${MAIL_APP_PASSWORD}" \
+              --upload-file /tmp/mail.txt
+            echo "Alert email sent."
+          else
+            echo "MAIL_USERNAME/MAIL_APP_PASSWORD/MAIL_TO secrets aren't set — skipping email."
+          fi
+
+          # --- Push notification, same trigger as the email above ---
+          # Isolated and non-fatal, same as daily-alert-check.yml: a bad
+          # VAPID key or push-service error here must never fail this job
+          # or block the alertedSignups bookkeeping below.
+          if [ -n "${VAPID_PRIVATE_KEY:-}" ]; then
+            VAPID_PUBLIC_KEY="BFhwCTvu6g58scgtSpAJxBtUMDj5Vt8UqjNlrNsdZ3mz1OA2wGHCWCx1MnU9S2YHlfQUMqFtOsrOBDpeQ76Wh6M"
+            SUBSCRIPTIONS=$(curl -sf "${DB}/pushSubscriptions.json?auth=${ID_TOKEN}" || echo "null")
+            if [ "$SUBSCRIPTIONS" != "null" ] && [ -n "$SUBSCRIPTIONS" ]; then
+              npm install --no-save --silent web-push > /dev/null 2>&1
+              PUSH_BODY="New sign-up request: ${EMAILS}"
+              set +e
+              node -e '
+                const webpush = require("web-push");
+                const subs = JSON.parse(process.argv[1]) || {};
+                const body = process.argv[2];
+                try {
+                  webpush.setVapidDetails("mailto:msaber1996@gmail.com", process.argv[3], process.argv[4]);
+                } catch (e) {
+                  console.error("Invalid VAPID key pair:", e.message);
+                  process.exit(1);
+                }
+                const payload = JSON.stringify({ title: "New sign-up request", body, url: "https://msaber1996.github.io/Portfolio/" });
+                (async () => {
+                  for (const [uid, sub] of Object.entries(subs)) {
+                    try {
+                      await webpush.sendNotification(sub, payload);
+                    } catch (e) {
+                      if (e.statusCode === 404 || e.statusCode === 410 || e.statusCode === 401 || e.statusCode === 403) console.log(`STALE_SUB:${uid}`);
+                      else console.error(`Push failed for ${uid}:`, e.statusCode || e.message);
+                    }
+                  }
+                })();
+              ' "$SUBSCRIPTIONS" "$PUSH_BODY" "$VAPID_PUBLIC_KEY" "$VAPID_PRIVATE_KEY" > /tmp/push_result.txt 2>&1
+              NODE_EXIT=$?
+              set -e
+              cat /tmp/push_result.txt
+              if [ "$NODE_EXIT" -ne 0 ]; then
+                echo "Push notification script exited with code $NODE_EXIT — see output above. Not failing the job over this."
+              fi
+              grep '^STALE_SUB:' /tmp/push_result.txt | sed 's/^STALE_SUB://' | while read -r stale_uid; do
+                curl -sf -X DELETE "${DB}/pushSubscriptions/${stale_uid}.json?auth=${ID_TOKEN}" > /dev/null || true
+                echo "Removed stale push subscription for ${stale_uid}."
+              done
+              echo "Push notification attempted."
+            else
+              echo "No push subscriptions to notify."
+            fi
+          else
+            echo "VAPID_PRIVATE_KEY not set — skipping push notification."
+          fi
+
+          MERGED_ALERTED=$(jq -n --argjson prev "$ALREADY_ALERTED" --argjson new "$NEW_PENDING" '
+            (($prev // {})) as $p
+            | (reduce $new[] as $item ($p; . + {($item.uid): true}))
+          ')
+          curl -sf -X PUT -d "$MERGED_ALERTED" \
+            "${DB}/serviceState/alertedSignups.json?auth=${ID_TOKEN}" > /dev/null
+          echo "Recorded $COUNT sign-up(s) as alerted."
