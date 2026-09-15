@@ -1187,6 +1187,19 @@
     }, [JSON.stringify(symbols), height, dark]);
     return /* @__PURE__ */ jsx("div", { className: "tradingview-widget-container", ref: containerRef, style: { minHeight: `${height}px` } });
   }
+  function CollapsibleSection({ label, summary, children, defaultExpanded = false, className }) {
+    const [expanded, setExpanded] = useState(defaultExpanded);
+    return /* @__PURE__ */ jsx("div", { className, children: [
+      /* @__PURE__ */ jsx("button", { onClick: () => setExpanded(!expanded), "aria-expanded": expanded, className: "w-full flex items-center justify-between gap-3 text-xs uppercase tracking-wide border border-neutral-300 px-3 py-2 hover:border-neutral-600 transition-colors", children: [
+        /* @__PURE__ */ jsx("span", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsx(ChevronDown, { size: 14, strokeWidth: 1.5, className: `shrink-0 text-neutral-400 transition-transform duration-200 ${expanded ? "rotate-180" : ""}` }),
+          expanded ? `Hide ${label}` : `Show ${label}`
+        ] }),
+        summary ? /* @__PURE__ */ jsx("span", { className: "text-neutral-500 normal-case tracking-normal", children: summary }) : null
+      ] }),
+      expanded && /* @__PURE__ */ jsx("div", { className: "mt-4", children })
+    ] });
+  }
   function TableSearch({ value, onChange, placeholder = "Filter…" }) {
     return /* @__PURE__ */ jsx("div", { className: "relative mb-3 max-w-xs", children: [
       /* @__PURE__ */ jsx(Search, { size: 14, className: "absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" }),
@@ -2857,12 +2870,12 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "01", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
-          /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit }),
+          /* @__PURE__ */ jsx(CollapsibleSection, { label: "holdings", summary: `${holdings.length} holdings, ${egp(totalAssets)}`, children: /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit }) }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${certificates.length} EGP certificates & CDs, individually` }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “EGP certificates & CDs” holding above. Monthly interest reconciles with the “EGP — certificate & fund income” line in section 08." }),
             /* @__PURE__ */ jsx(CertificateStatementUpload, { certificates, onApply: handleApplyCertificateStatement, canEdit }),
-            /* @__PURE__ */ jsx(CertificatesTable, { certificates: certificates })
+            /* @__PURE__ */ jsx(CollapsibleSection, { label: "certificates", summary: `${certificates.length} certificates`, children: /* @__PURE__ */ jsx(CertificatesTable, { certificates: certificates }) })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
@@ -2912,11 +2925,11 @@ Save anyway?`);
           ] }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: "Metal funds (paper gold)" }),
-            /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalFundRows, showGrams: false })
+            /* @__PURE__ */ jsx(CollapsibleSection, { label: "metal funds", summary: `${metalFundRows.length} funds`, children: /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalFundRows, showGrams: false }) })
           ] }),
           /* @__PURE__ */ jsx("div", { children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: "Physical gold" }),
-            /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalPhysicalRows, showGrams: true })
+            /* @__PURE__ */ jsx(CollapsibleSection, { label: "physical gold", summary: `${metalPhysicalRows.length} holdings`, children: /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalPhysicalRows, showGrams: true }) })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
@@ -2947,12 +2960,12 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "What is owed", dek: `${loans.length} facilities, ${egp(totalLiabilities)} outstanding. Add or remove a loan freely.` }),
-          /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange, canEdit }),
+          /* @__PURE__ */ jsx(CollapsibleSection, { label: "loans", summary: `${loans.length} loan lines, ${egp(totalLiabilities)}`, children: /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange, canEdit }) }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${loanFacilities.length} secured EGP facilities, individually` }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “Secured EGP loans” row above." }),
             /* @__PURE__ */ jsx(LoanStatementUpload, { facilities: loanFacilities, onApply: handleApplyLoanStatement, canEdit }),
-            /* @__PURE__ */ jsx(LoanFacilitiesTable, { facilities: loanFacilities })
+            /* @__PURE__ */ jsx(CollapsibleSection, { label: "facilities", summary: `${loanFacilities.length} facilities`, children: /* @__PURE__ */ jsx(LoanFacilitiesTable, { facilities: loanFacilities }) })
           ] }),
           /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between pt-4 mt-4 border-t-2 border-neutral-900", children: [
             /* @__PURE__ */ jsx("span", { className: "text-sm font-serif italic text-neutral-700", children: "Net worth" }),
@@ -2963,7 +2976,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Office units", dek: `${officeUnits.length} units, ${egp(officeUnits.reduce((s, u) => s + u.totalPrice, 0))} full contract price — only the advance paid counts toward Total Assets above.` }),
           /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "These are still being paid off in quarterly installments, so they aren't fully owned yet — only the 5% advance is counted as an asset. The full price and what's still owed are shown here for reference." }),
           /* @__PURE__ */ jsx(OfficeDealUpload, { units: officeUnits, installments: officeInstallments, onApplyUnits: handleOfficeUnitsChange, onApplyInstallments: handleOfficeInstallmentsChange, canEdit }),
-          /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits, onChange: handleOfficeUnitsChange, canEdit, installments: officeInstallments, payments: officeInstallmentPayments }),
+          /* @__PURE__ */ jsx(CollapsibleSection, { label: "office units", summary: `${officeUnits.length} units`, children: /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits, onChange: handleOfficeUnitsChange, canEdit, installments: officeInstallments, payments: officeInstallmentPayments }) }),
           /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per the installment schedule, through ~2034. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Installment schedule, per unit" }),
@@ -3010,7 +3023,7 @@ Save anyway?`);
               /* @__PURE__ */ jsx("div", { className: "font-mono text-lg mt-1 text-neutral-900", children: conversionSummary.weightedRate ? fmt(conversionSummary.weightedRate, 2) : "—" })
             ] })
           ] }),
-          /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange, canEdit })
+          /* @__PURE__ */ jsx(CollapsibleSection, { label: "conversion history", summary: `${conversions.length} transfers`, children: /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange, canEdit }) })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "Live markets", dek: "Gold, USD/EGP, oil, and the major indices — the leverage/FX alert (site banner, email, push) watches gold and USD/EGP; a separate 1% move alert watches the rest." }),
@@ -3073,7 +3086,7 @@ Save anyway?`);
           performanceRanking.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-1", children: "Performance ranking, strongest to weakest" }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mb-3", children: `As of ${asOfLabel} — updates automatically the moment a new day's entry is saved.` }),
-            /* @__PURE__ */ jsx(PerformanceRankingTable, { rows: performanceRanking })
+            /* @__PURE__ */ jsx(CollapsibleSection, { label: "performance ranking", summary: `${performanceRanking.length} ranked`, children: /* @__PURE__ */ jsx(PerformanceRankingTable, { rows: performanceRanking }) })
           ] }),
           analysis && /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-8 mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4", children: [
@@ -3147,7 +3160,7 @@ Save anyway?`);
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ jsx("div", { className: "rtable border border-neutral-200 overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
+          /* @__PURE__ */ jsx(CollapsibleSection, { label: "daily history", summary: `${computedHistory.length} days`, children: /* @__PURE__ */ jsx("div", { className: "rtable border border-neutral-200 overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
             /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
               /* @__PURE__ */ jsx("th", { className: "text-left py-2 px-3", children: "Date" }),
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Rate" }),
@@ -3170,7 +3183,7 @@ Save anyway?`);
                 /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => handleDeleteDay(d.date) })
               ] })
             ] }, d.date)) })
-          ] }) })
+          ] }) }) })
         ] }),
         /* @__PURE__ */ jsx("footer", { className: "py-10 border-t-2 border-neutral-900 text-xs text-neutral-500 flex justify-between", children: [
           /* @__PURE__ */ jsx("span", { children: "Figures as tracked in the working file. For internal review, not financial advice." }),
