@@ -44,6 +44,12 @@ jobs:
           # too, or a restore would silently drop both.
           LOAN_FACILITIES=$(curl -sf "${DB}/loanFacilities.json?auth=${ID_TOKEN}")
           CERTIFICATES=$(curl -sf "${DB}/certificates.json?auth=${ID_TOKEN}")
+          # officeUnits/officeInstallments/officeInstallmentPayments also live
+          # in Firebase — the office-deal upload and the per-unit paid toggle
+          # write there directly.
+          OFFICE_UNITS=$(curl -sf "${DB}/officeUnits.json?auth=${ID_TOKEN}")
+          OFFICE_INSTALLMENTS=$(curl -sf "${DB}/officeInstallments.json?auth=${ID_TOKEN}")
+          OFFICE_INSTALLMENT_PAYMENTS=$(curl -sf "${DB}/officeInstallmentPayments.json?auth=${ID_TOKEN}")
 
           mkdir -p backups
           STAMP=$(date -u +%Y-%m-%d)
@@ -54,8 +60,11 @@ jobs:
             --argjson daily "$DAILY" \
             --argjson loanFacilities "$LOAN_FACILITIES" \
             --argjson certificates "$CERTIFICATES" \
+            --argjson officeUnits "$OFFICE_UNITS" \
+            --argjson officeInstallments "$OFFICE_INSTALLMENTS" \
+            --argjson officeInstallmentPayments "$OFFICE_INSTALLMENT_PAYMENTS" \
             --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{generatedAt: $generatedAt, holdings: $holdings, loans: $loans, conversions: $conversions, daily: $daily, loanFacilities: $loanFacilities, certificates: $certificates}' \
+            '{generatedAt: $generatedAt, holdings: $holdings, loans: $loans, conversions: $conversions, daily: $daily, loanFacilities: $loanFacilities, certificates: $certificates, officeUnits: $officeUnits, officeInstallments: $officeInstallments, officeInstallmentPayments: $officeInstallmentPayments}' \
             > "backups/backup-${STAMP}.json"
 
           echo "Wrote backups/backup-${STAMP}.json"

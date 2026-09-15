@@ -192,39 +192,40 @@
     { unit: "2A-D2-G01", size: "529.5m\xB2", parking: 4, totalPrice: 93700000, advance: 4685000, remaining: 89015000 },
     { unit: "2A-D2-G02", size: "529.5m\xB2", parking: 4, totalPrice: 93260000, advance: 4663000, remaining: 88597000 }
   ];
+  var OFFICE_INSTALLMENT_BY_UNIT_STANDARD = { "2A-D2-202": 1353690, "2A-D2-302": 1438863, "2A-D2-402": 1309368, "2A-D2-G01": 2501790, "2A-D2-G02": 2490042 };
   var SEED_OFFICE_INSTALLMENTS = [
-    { date: "2026-09-16", amount: 17029500 },
-    { date: "2026-12-16", amount: 9093753 },
-    { date: "2027-03-16", amount: 9093753 },
-    { date: "2027-06-16", amount: 9093753 },
-    { date: "2027-09-16", amount: 9093753 },
-    { date: "2027-12-16", amount: 9093753 },
-    { date: "2028-03-16", amount: 9093753 },
-    { date: "2028-06-16", amount: 9093753 },
-    { date: "2028-09-16", amount: 9093753 },
-    { date: "2028-12-16", amount: 9093753 },
-    { date: "2029-03-16", amount: 9093753 },
-    { date: "2029-06-16", amount: 9093753 },
-    { date: "2029-09-16", amount: 9093753 },
-    { date: "2029-12-16", amount: 9093753 },
-    { date: "2030-03-16", amount: 9093753 },
-    { date: "2030-06-16", amount: 34059000 },
-    { date: "2030-09-16", amount: 9093753 },
-    { date: "2030-12-16", amount: 9093753 },
-    { date: "2031-03-16", amount: 9093753 },
-    { date: "2031-06-16", amount: 26123253 },
-    { date: "2031-09-16", amount: 9093753 },
-    { date: "2031-12-16", amount: 9093753 },
-    { date: "2032-03-16", amount: 9093753 },
-    { date: "2032-06-16", amount: 9093753 },
-    { date: "2032-09-16", amount: 9093753 },
-    { date: "2032-12-16", amount: 9093753 },
-    { date: "2033-03-16", amount: 9093753 },
-    { date: "2033-06-16", amount: 9093753 },
-    { date: "2033-09-16", amount: 9093753 },
-    { date: "2033-12-16", amount: 9093753 },
-    { date: "2034-03-16", amount: 9093753 },
-    { date: "2034-06-16", amount: 8753163 }
+    { date: "2026-09-16", amount: 17029500, byUnit: { "2A-D2-202": 2535000, "2A-D2-302": 2694500, "2A-D2-402": 2452000, "2A-D2-G01": 4685000, "2A-D2-G02": 4663000 } },
+    { date: "2026-12-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2027-03-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2027-06-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2027-09-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2027-12-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2028-03-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2028-06-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2028-09-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2028-12-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2029-03-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2029-06-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2029-09-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2029-12-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2030-03-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2030-06-16", amount: 34059000, byUnit: { "2A-D2-202": 5070000, "2A-D2-302": 5389000, "2A-D2-402": 4904000, "2A-D2-G01": 9370000, "2A-D2-G02": 9326000 } },
+    { date: "2030-09-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2030-12-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2031-03-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2031-06-16", amount: 26123253, byUnit: { "2A-D2-202": 3888690, "2A-D2-302": 4133363, "2A-D2-402": 3761368, "2A-D2-G01": 7186790, "2A-D2-G02": 7153042 } },
+    { date: "2031-09-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2031-12-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2032-03-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2032-06-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2032-09-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2032-12-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2033-03-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2033-06-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2033-09-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2033-12-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2034-03-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
+    { date: "2034-06-16", amount: 8753163, byUnit: { "2A-D2-202": 1302990, "2A-D2-302": 1384973, "2A-D2-402": 1260328, "2A-D2-G01": 2408090, "2A-D2-G02": 2396782 } }
   ];
   var nextOfficeInstallment = (schedule) => {
     const today = /* @__PURE__ */ new Date();
@@ -325,6 +326,9 @@
   }
   function ensureTesseract() {
     return window.Tesseract ? Promise.resolve() : loadScriptOnce(TESSERACT_CDN_URL);
+  }
+  function sanitizeFbKey(s) {
+    return String(s).replace(/[.#$\[\]/]/g, "_");
   }
   async function loadJson(key, fallback) {
     try {
@@ -726,7 +730,22 @@
     const missingUnits = units.filter((u, i) => !usedIndexes.has(i));
     return { updatedUnits, changes, unmatchedRows, missingUnits };
   }
-  function parseOfficeInstallmentsSheet(grid) {
+  function findOfficeUnitColumns(grid, unitLabels) {
+    const trimmedLabels = new Set((unitLabels || []).map((u) => String(u).trim()));
+    if (!trimmedLabels.size) return null;
+    let bestCount = 0, bestMap = null;
+    grid.forEach((row) => {
+      const map = {};
+      let count = 0;
+      row.forEach((cell, c) => {
+        const v = String(cell || "").trim();
+        if (trimmedLabels.has(v)) { map[c] = v; count++; }
+      });
+      if (count > bestCount) { bestCount = count; bestMap = map; }
+    });
+    return bestCount > 0 ? bestMap : null;
+  }
+  function parseOfficeInstallmentsSheet(grid, unitLabels) {
     let dateCol = -1, noCol = -1, totalCol = -1;
     grid.forEach((row) => {
       row.forEach((cell, c) => {
@@ -737,6 +756,7 @@
       });
     });
     if (dateCol === -1 || totalCol === -1) return null;
+    const unitCols = findOfficeUnitColumns(grid, unitLabels);
     const byDate = {};
     grid.forEach((row) => {
       const noVal = noCol !== -1 ? row[noCol] : null;
@@ -747,9 +767,22 @@
       const dateStr = parseLoanStatementDate(dateRaw);
       const amount = Number(amountRaw);
       if (!dateStr || !Number.isFinite(amount)) return;
-      byDate[dateStr] = (byDate[dateStr] || 0) + amount;
+      if (!byDate[dateStr]) byDate[dateStr] = { amount: 0, byUnit: {} };
+      byDate[dateStr].amount += amount;
+      if (unitCols) {
+        Object.entries(unitCols).forEach(([colIdx, unitLabel]) => {
+          const v = Number(row[colIdx]);
+          if (Number.isFinite(v)) {
+            byDate[dateStr].byUnit[unitLabel] = (byDate[dateStr].byUnit[unitLabel] || 0) + v;
+          }
+        });
+      }
     });
-    const rows = Object.entries(byDate).map(([date, amount]) => ({ date, amount: Math.round(amount) })).sort((a, b) => a.date.localeCompare(b.date));
+    const rows = Object.entries(byDate).map(([date, d]) => ({
+      date,
+      amount: Math.round(d.amount),
+      byUnit: Object.fromEntries(Object.entries(d.byUnit).map(([k, v]) => [k, Math.round(v)]))
+    })).sort((a, b) => a.date.localeCompare(b.date));
     return rows.length ? rows : null;
   }
   function matchOfficeInstallmentsRows(rows, installments) {
@@ -767,8 +800,9 @@
       const inst = updatedInstallments[idx];
       if (Math.abs((Number(inst.amount) || 0) - row.amount) > 0.5) {
         changes.push({ label: row.date, fields: [{ key: "amount", label: "Amount", oldVal: inst.amount, newVal: row.amount }] });
-        inst.amount = row.amount;
       }
+      inst.amount = row.amount;
+      if (row.byUnit && Object.keys(row.byUnit).length) inst.byUnit = row.byUnit;
     });
     newRows.forEach((row) => updatedInstallments.push({ ...row }));
     updatedInstallments.sort((a, b) => a.date.localeCompare(b.date));
@@ -1276,6 +1310,58 @@
       canEdit && /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add office unit" })
     ] });
   }
+  function OfficeInstallmentScheduleTable({ installments, units, payments, onTogglePayment, canEdit = true }) {
+    const unitLabels = useMemo(() => {
+      const known = units.map((u) => u.unit).filter((u) => installments.some((row) => row.byUnit && u in row.byUnit));
+      const extra = [];
+      const seen = new Set(known);
+      installments.forEach((row) => {
+        Object.keys(row.byUnit || {}).forEach((k) => {
+          if (!seen.has(k)) { seen.add(k); extra.push(k); }
+        });
+      });
+      return [...known, ...extra];
+    }, [installments, units]);
+    if (!unitLabels.length) return null;
+    const today = /* @__PURE__ */ new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const totals = { amount: 0 };
+    unitLabels.forEach((u) => { totals[u] = 0; });
+    installments.forEach((row) => {
+      totals.amount += row.amount || 0;
+      unitLabels.forEach((u) => { totals[u] += row.byUnit?.[u] || 0; });
+    });
+    return /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
+      /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
+        /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Date" }),
+        ...unitLabels.map((u) => /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: u }, u)),
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Total" })
+      ] }) }),
+      /* @__PURE__ */ jsx("tbody", { children: installments.map((row) => {
+        const dk = sanitizeFbKey(row.date);
+        const past = row.date < todayStr;
+        return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+          /* @__PURE__ */ jsx("td", { "data-label": "Date", className: `py-1.5 pr-3 ${past ? "text-neutral-500" : "text-neutral-900"}`, children: fmtDate(row.date) }),
+          ...unitLabels.map((u) => {
+            const amount = row.byUnit?.[u];
+            const uk = sanitizeFbKey(u);
+            const paid = !!payments?.[dk]?.[uk];
+            return /* @__PURE__ */ jsx("td", { "data-label": u, className: "py-1.5 pr-3 text-right", children: amount == null ? /* @__PURE__ */ jsx("span", { className: "text-neutral-300", children: "—" }) : /* @__PURE__ */ jsx("div", { className: "flex flex-col items-end gap-1", children: [
+              /* @__PURE__ */ jsx("span", { className: "font-mono tabular-nums", children: egp(amount) }),
+              canEdit ? /* @__PURE__ */ jsx("button", { onClick: () => onTogglePayment(row.date, u), className: `text-[10px] uppercase tracking-wide px-1.5 py-0.5 border rounded ${paid ? "border-emerald-300 text-emerald-700 bg-emerald-50" : "border-neutral-300 text-neutral-400"}`, children: paid ? "Paid" : "Not paid" }) : /* @__PURE__ */ jsx("span", { className: `text-[10px] uppercase tracking-wide ${paid ? "text-emerald-700" : "text-neutral-400"}`, children: paid ? "Paid" : "Not paid" })
+            ] }) }, u);
+          }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Total", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(row.amount) })
+        ] }, row.date);
+      }) }),
+      /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
+        /* @__PURE__ */ jsx("td", { className: "py-2 pr-3", children: "Total" }),
+        ...unitLabels.map((u) => /* @__PURE__ */ jsx("td", { "data-label": u, className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals[u]) }, u)),
+        /* @__PURE__ */ jsx("td", { "data-label": "Total", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.amount) })
+      ] }) })
+    ] }) });
+  }
   function LoanFacilitiesTable({ facilities }) {
     const [sortKey, sortDir, handleSort] = useSortState("outstanding");
     const [query, setQuery] = useState("");
@@ -1463,11 +1549,12 @@
         if (!window.XLSX) throw new Error("Spreadsheet reader did not load — check your connection and try again.");
         const buf = await file.arrayBuffer();
         const wb = window.XLSX.read(buf, { type: "array" });
+        const unitLabels = units.map((u) => u.unit);
         let unitRows = null, installmentRows = null;
         wb.SheetNames.forEach((name) => {
           const grid = window.XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: null });
           if (!unitRows) unitRows = parseOfficeUnitsSheet(grid);
-          if (!installmentRows) installmentRows = parseOfficeInstallmentsSheet(grid);
+          if (!installmentRows) installmentRows = parseOfficeInstallmentsSheet(grid, unitLabels);
         });
         if (!unitRows && !installmentRows) throw new Error('Could not find an "Office no" units table or a "Total installment" schedule in this file.');
         const unitsResult = unitRows ? matchOfficeUnitsRows(unitRows, units) : null;
@@ -1870,6 +1957,7 @@
     const [certificates, setCertificates] = useState(SEED_CERTIFICATES);
     const [officeUnits, setOfficeUnits] = useState(SEED_OFFICE_UNITS);
     const [officeInstallments, setOfficeInstallments] = useState(SEED_OFFICE_INSTALLMENTS);
+    const [officeInstallmentPayments, setOfficeInstallmentPayments] = useState({});
     const [conversions, setConversions] = useState(SEED_CONVERSIONS);
     const [history, setHistory] = useState([]);
     const [loadState, setLoadState] = useState("loading");
@@ -1892,7 +1980,7 @@
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, lf, cert, c, lr, ou, oi] = await Promise.all([
+        const [h, l, lf, cert, c, lr, ou, oi, oip] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
           loadJson("loanFacilities", SEED_LOAN_FACILITIES),
@@ -1900,7 +1988,8 @@
           loadJson("conversions", SEED_CONVERSIONS),
           loadJson("liveRates", null),
           loadJson("officeUnits", SEED_OFFICE_UNITS),
-          loadJson("officeInstallments", SEED_OFFICE_INSTALLMENTS)
+          loadJson("officeInstallments", SEED_OFFICE_INSTALLMENTS),
+          loadJson("officeInstallmentPayments", {})
         ]);
         let dailyEntries = [];
         try {
@@ -1920,6 +2009,7 @@
           setLiveRates(lr);
           setOfficeUnits(ou);
           setOfficeInstallments(oi);
+          setOfficeInstallmentPayments(oip);
           setLoadState("ready");
         }
       })();
@@ -1948,6 +2038,20 @@
     const handleLoansChange = (next) => debouncedSave("loans", next, setLoans);
     const handleOfficeUnitsChange = (next) => debouncedSave("officeUnits", next, setOfficeUnits);
     const handleOfficeInstallmentsChange = (next) => debouncedSave("officeInstallments", next, setOfficeInstallments);
+    const handleToggleOfficeInstallmentPayment = async (dateKey, unitKey) => {
+      const dk = sanitizeFbKey(dateKey);
+      const uk = sanitizeFbKey(unitKey);
+      const next = !officeInstallmentPayments?.[dk]?.[uk];
+      setOfficeInstallmentPayments((prev) => ({ ...prev, [dk]: { ...(prev[dk] || {}), [uk]: next } }));
+      if (db) {
+        try {
+          await db.ref(`officeInstallmentPayments/${dk}/${uk}`).set(next);
+        } catch {
+        }
+      } else {
+        saveJson("officeInstallmentPayments", { ...officeInstallmentPayments, [dk]: { ...(officeInstallmentPayments[dk] || {}), [uk]: next } });
+      }
+    };
     const handleApplyLoanStatement = async (updatedFacilities) => {
       setSaving(true);
       const totals = updatedFacilities.reduce((s, f) => ({ outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { outstanding: 0, installment: 0 });
@@ -2815,7 +2919,12 @@ Save anyway?`);
           /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "These are still being paid off in quarterly installments, so they aren't fully owned yet — only the 5% advance is counted as an asset. The full price and what's still owed are shown here for reference." }),
           /* @__PURE__ */ jsx(OfficeDealUpload, { units: officeUnits, installments: officeInstallments, onApplyUnits: handleOfficeUnitsChange, onApplyInstallments: handleOfficeInstallmentsChange, canEdit }),
           /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits, onChange: handleOfficeUnitsChange, canEdit }),
-          /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per the installment schedule, through ~2034. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` })
+          /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per the installment schedule, through ~2034. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` }),
+          /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Installment schedule, per unit" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Each due date's installment, broken out by office unit — mark one paid once it clears." }),
+            /* @__PURE__ */ jsx(OfficeInstallmentScheduleTable, { installments: officeInstallments, units: officeUnits, payments: officeInstallmentPayments, onTogglePayment: handleToggleOfficeInstallmentPayment, canEdit })
+          ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Monthly cash flow, by currency", dek: "Certificate and fund income measured against loan installments, each currency on its own terms." }),

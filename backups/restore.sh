@@ -15,8 +15,9 @@
 #                                                            # calls, no credentials
 #                                                            # needed
 #
-# Restores holdings, loans, conversions, daily, loanFacilities, and
-# certificates — every collection the weekly backup workflow exports.
+# Restores holdings, loans, conversions, daily, loanFacilities,
+# certificates, officeUnits, officeInstallments, and officeInstallmentPayments
+# — every collection the weekly backup workflow exports.
 
 set -euo pipefail
 
@@ -28,7 +29,7 @@ if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then
   exit 1
 fi
 
-COLLECTIONS="holdings loans conversions daily loanFacilities certificates"
+COLLECTIONS="holdings loans conversions daily loanFacilities certificates officeUnits officeInstallments officeInstallmentPayments"
 
 for key in $COLLECTIONS; do
   if ! jq -e "has(\"$key\")" "$FILE" > /dev/null; then
