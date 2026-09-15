@@ -661,6 +661,120 @@
     const missingCertificates = certificates.filter((c, i) => !usedIndexes.has(i));
     return { updatedCertificates, changes, unmatchedRows, skippedRows, missingCertificates };
   }
+  function parseOfficeUnitsSheet(grid) {
+    const headerRowIdx = grid.findIndex((r) => r.some((c) => String(c || "").trim().toLowerCase() === "office no"));
+    if (headerRowIdx === -1) return null;
+    const header = grid[headerRowIdx].map((c) => String(c || "").trim().toLowerCase());
+    const col = (name) => header.indexOf(name);
+    const idxUnit = col("office no");
+    const idxSize = col("size");
+    const idxParking = col("no of parking");
+    const idxAmount = col("amount");
+    const idxAdv = col("adv");
+    const idxInstallmentTotal = col("installment total");
+    const rows = [];
+    for (let i = headerRowIdx + 1; i < grid.length; i++) {
+      const r = grid[i];
+      const unit = r[idxUnit];
+      if (!unit || !String(unit).trim()) continue;
+      const totalPrice = Number(r[idxAmount]);
+      if (!Number.isFinite(totalPrice) || totalPrice <= 0) continue;
+      rows.push({
+        unit: String(unit).trim(),
+        size: r[idxSize] != null ? String(r[idxSize]).trim() : "",
+        parking: Number(r[idxParking]) || 0,
+        totalPrice,
+        advance: Number(r[idxAdv]) || 0,
+        remaining: Number(r[idxInstallmentTotal]) || 0
+      });
+    }
+    return rows.length ? rows : null;
+  }
+  function matchOfficeUnitsRows(rows, units) {
+    const OFFICE_UNIT_FIELDS = [
+      { key: "size", label: "Size" },
+      { key: "parking", label: "Parking" },
+      { key: "totalPrice", label: "Total price" },
+      { key: "advance", label: "Advance paid" },
+      { key: "remaining", label: "Remaining installments" }
+    ];
+    const updatedUnits = units.map((u) => ({ ...u }));
+    const changes = [];
+    const unmatchedRows = [];
+    const usedIndexes = /* @__PURE__ */ new Set();
+    rows.forEach((row) => {
+      const idx = units.findIndex((u) => u.unit.trim() === row.unit.trim());
+      if (idx === -1) {
+        unmatchedRows.push(row);
+        return;
+      }
+      usedIndexes.add(idx);
+      const unit = updatedUnits[idx];
+      const rowChanges = [];
+      OFFICE_UNIT_FIELDS.forEach(({ key, label }) => {
+        const newVal = row[key];
+        if (newVal === "" || newVal === null || newVal === void 0) return;
+        const oldVal = unit[key];
+        const changed = key === "size" ? String(oldVal) !== String(newVal) : Math.abs((Number(oldVal) || 0) - (Number(newVal) || 0)) > 0.5;
+        if (changed) {
+          rowChanges.push({ key, label, oldVal, newVal });
+          unit[key] = newVal;
+        }
+      });
+      if (rowChanges.length) changes.push({ label: unit.unit, fields: rowChanges });
+    });
+    const missingUnits = units.filter((u, i) => !usedIndexes.has(i));
+    return { updatedUnits, changes, unmatchedRows, missingUnits };
+  }
+  function parseOfficeInstallmentsSheet(grid) {
+    let dateCol = -1, noCol = -1, totalCol = -1;
+    grid.forEach((row) => {
+      row.forEach((cell, c) => {
+        const v = String(cell || "").trim().toLowerCase();
+        if (v === "date" && dateCol === -1) dateCol = c;
+        if (v === "no" && noCol === -1) noCol = c;
+        if (v === "total installment" && totalCol === -1) totalCol = c;
+      });
+    });
+    if (dateCol === -1 || totalCol === -1) return null;
+    const byDate = {};
+    grid.forEach((row) => {
+      const noVal = noCol !== -1 ? row[noCol] : null;
+      if (typeof noVal !== "number") return;
+      const dateRaw = row[dateCol];
+      const amountRaw = row[totalCol];
+      if (dateRaw == null || amountRaw == null) return;
+      const dateStr = parseLoanStatementDate(dateRaw);
+      const amount = Number(amountRaw);
+      if (!dateStr || !Number.isFinite(amount)) return;
+      byDate[dateStr] = (byDate[dateStr] || 0) + amount;
+    });
+    const rows = Object.entries(byDate).map(([date, amount]) => ({ date, amount: Math.round(amount) })).sort((a, b) => a.date.localeCompare(b.date));
+    return rows.length ? rows : null;
+  }
+  function matchOfficeInstallmentsRows(rows, installments) {
+    const updatedInstallments = installments.map((i) => ({ ...i }));
+    const changes = [];
+    const newRows = [];
+    const usedIndexes = /* @__PURE__ */ new Set();
+    rows.forEach((row) => {
+      const idx = installments.findIndex((i) => i.date === row.date);
+      if (idx === -1) {
+        newRows.push(row);
+        return;
+      }
+      usedIndexes.add(idx);
+      const inst = updatedInstallments[idx];
+      if (Math.abs((Number(inst.amount) || 0) - row.amount) > 0.5) {
+        changes.push({ label: row.date, fields: [{ key: "amount", label: "Amount", oldVal: inst.amount, newVal: row.amount }] });
+        inst.amount = row.amount;
+      }
+    });
+    newRows.forEach((row) => updatedInstallments.push({ ...row }));
+    updatedInstallments.sort((a, b) => a.date.localeCompare(b.date));
+    const missingInstallments = installments.filter((i, idx) => !usedIndexes.has(idx));
+    return { updatedInstallments, changes, newRows, missingInstallments };
+  }
   var MATURITY_WARNING_DAYS = 30;
   var daysUntil = (dateStr) => {
     if (!dateStr) return null;
@@ -1333,6 +1447,92 @@
       ] })
     ] });
   }
+  function OfficeDealUpload({ units, installments, onApplyUnits, onApplyInstallments, canEdit }) {
+    const [preview, setPreview] = useState(null);
+    const [error, setError] = useState("");
+    const [busy, setBusy] = useState(false);
+    const inputRef = useRef(null);
+    if (!canEdit) return null;
+    const handleFile = async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      setError("");
+      setPreview(null);
+      try {
+        await ensureXLSX();
+        if (!window.XLSX) throw new Error("Spreadsheet reader did not load — check your connection and try again.");
+        const buf = await file.arrayBuffer();
+        const wb = window.XLSX.read(buf, { type: "array" });
+        let unitRows = null, installmentRows = null;
+        wb.SheetNames.forEach((name) => {
+          const grid = window.XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: null });
+          if (!unitRows) unitRows = parseOfficeUnitsSheet(grid);
+          if (!installmentRows) installmentRows = parseOfficeInstallmentsSheet(grid);
+        });
+        if (!unitRows && !installmentRows) throw new Error('Could not find an "Office no" units table or a "Total installment" schedule in this file.');
+        const unitsResult = unitRows ? matchOfficeUnitsRows(unitRows, units) : null;
+        const installmentsResult = installmentRows ? matchOfficeInstallmentsRows(installmentRows, installments) : null;
+        setPreview({ unitsResult, installmentsResult });
+      } catch (err) {
+        setError(err.message || "Could not read that file.");
+      } finally {
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    };
+    const handleApply = async () => {
+      if (!preview) return;
+      setBusy(true);
+      if (preview.unitsResult) await onApplyUnits(preview.unitsResult.updatedUnits);
+      if (preview.installmentsResult) await onApplyInstallments(preview.installmentsResult.updatedInstallments);
+      setBusy(false);
+      setPreview(null);
+    };
+    const fmtVal = (key, v) => key === "totalPrice" || key === "advance" || key === "remaining" || key === "amount" ? egp(v) : String(v);
+    const unitChanges = preview?.unitsResult?.changes || [];
+    const instChanges = preview?.installmentsResult?.changes || [];
+    const instNewRows = preview?.installmentsResult?.newRows || [];
+    const totalUpdates = unitChanges.length + instChanges.length + instNewRows.length;
+    return /* @__PURE__ */ jsx("div", { className: "mb-6 border border-dashed border-neutral-300 p-4", children: [
+      /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between gap-4 flex-wrap", children: [
+        /* @__PURE__ */ jsx("div", { children: [
+          /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "Upload office deal sheet" }),
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 max-w-md", children: "The .xlsx with the office units table and the installment schedule (both sheets read from one file) — matches units by office number and installments by due date, and shows what changed before saving anything." })
+        ] }),
+        /* @__PURE__ */ jsx("label", { className: "shrink-0 cursor-pointer text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors", children: [
+          "Choose file",
+          /* @__PURE__ */ jsx("input", { ref: inputRef, type: "file", accept: ".xlsx,.xls", onChange: handleFile, className: "hidden" })
+        ] })
+      ] }),
+      error && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-700 mt-3", children: error }),
+      preview && /* @__PURE__ */ jsx("div", { className: "mt-4", children: [
+        totalUpdates === 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500", children: "No differences found — everything matched already matches this file." }),
+        unitChanges.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-3", children: [
+          /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-1", children: "Office units" }),
+          /* @__PURE__ */ jsx("div", { className: "space-y-2", children: unitChanges.map((c, i) => /* @__PURE__ */ jsx("div", { className: "text-xs border-b border-neutral-100 pb-2", children: [
+            /* @__PURE__ */ jsx("div", { className: "font-mono text-neutral-900", children: c.label }),
+            ...c.fields.map((f) => /* @__PURE__ */ jsx("div", { className: "text-neutral-500 pl-3", children: `${f.label}: ${fmtVal(f.key, f.oldVal)} → ${fmtVal(f.key, f.newVal)}` }))
+          ] }, i)) })
+        ] }),
+        (instChanges.length > 0 || instNewRows.length > 0) && /* @__PURE__ */ jsx("div", { className: "mb-3", children: [
+          /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-1", children: "Installment schedule" }),
+          /* @__PURE__ */ jsx("div", { className: "space-y-2", children: [
+            ...instChanges.map((c, i) => /* @__PURE__ */ jsx("div", { className: "text-xs border-b border-neutral-100 pb-2", children: [
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-neutral-900", children: fmtDate(c.label) }),
+              ...c.fields.map((f) => /* @__PURE__ */ jsx("div", { className: "text-neutral-500 pl-3", children: `${f.label}: ${fmtVal(f.key, f.oldVal)} → ${fmtVal(f.key, f.newVal)}` }))
+            ] }, `c${i}`)),
+            ...instNewRows.map((r, i) => /* @__PURE__ */ jsx("div", { className: "text-xs border-b border-neutral-100 pb-2 text-emerald-700", children: `New: ${fmtDate(r.date)} — ${egp(r.amount)}` }, `n${i}`))
+          ] })
+        ] }),
+        preview.unitsResult?.unmatchedRows.length > 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-amber-700 mt-1", children: `${preview.unitsResult.unmatchedRows.length} unit row(s) in the file did not match any existing office unit — not added automatically.` }),
+        preview.unitsResult?.missingUnits.length > 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mt-1", children: `${preview.unitsResult.missingUnits.length} existing unit(s) not present in this file — left unchanged: ${preview.unitsResult.missingUnits.map((u) => u.unit).join(", ")}.` }),
+        preview.installmentsResult?.missingInstallments.length > 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mt-1", children: `${preview.installmentsResult.missingInstallments.length} previously tracked installment date(s) not present in this file — left unchanged.` }),
+        /* @__PURE__ */ jsx("div", { className: "flex gap-2 mt-4", children: [
+          /* @__PURE__ */ jsx("button", { onClick: handleApply, disabled: busy || totalUpdates === 0, className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none", children: busy ? "Saving…" : `Apply ${totalUpdates} update${totalUpdates === 1 ? "" : "s"}` }),
+          /* @__PURE__ */ jsx("button", { onClick: () => setPreview(null), className: "text-xs uppercase tracking-wide text-neutral-500 px-3 py-1.5", children: "Cancel" })
+        ] })
+      ] })
+    ] });
+  }
   function MetalRowsTable({ rows, showGrams }) {
     const [sortKey, sortDir, handleSort] = useSortState("value");
     const totals = rows.reduce((s, r) => ({ invested: s.invested + (r.investmentNative || 0), value: s.value + (r.value || 0), grams: s.grams + (r.grams || 0) }), { invested: 0, value: 0, grams: 0 });
@@ -1747,6 +1947,7 @@
     const handleHoldingsChange = (next) => debouncedSave("holdings", next, setHoldings);
     const handleLoansChange = (next) => debouncedSave("loans", next, setLoans);
     const handleOfficeUnitsChange = (next) => debouncedSave("officeUnits", next, setOfficeUnits);
+    const handleOfficeInstallmentsChange = (next) => debouncedSave("officeInstallments", next, setOfficeInstallments);
     const handleApplyLoanStatement = async (updatedFacilities) => {
       setSaving(true);
       const totals = updatedFacilities.reduce((s, f) => ({ outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { outstanding: 0, installment: 0 });
@@ -2612,6 +2813,7 @@ Save anyway?`);
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Office units", dek: `${officeUnits.length} units, ${egp(officeUnits.reduce((s, u) => s + u.totalPrice, 0))} full contract price — only the advance paid counts toward Total Assets above.` }),
           /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "These are still being paid off in quarterly installments, so they aren't fully owned yet — only the 5% advance is counted as an asset. The full price and what's still owed are shown here for reference." }),
+          /* @__PURE__ */ jsx(OfficeDealUpload, { units: officeUnits, installments: officeInstallments, onApplyUnits: handleOfficeUnitsChange, onApplyInstallments: handleOfficeInstallmentsChange, canEdit }),
           /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits, onChange: handleOfficeUnitsChange, canEdit }),
           /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per the installment schedule, through ~2034. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` })
         ] }),
