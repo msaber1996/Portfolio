@@ -227,12 +227,31 @@
     { date: "2034-03-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
     { date: "2034-06-16", amount: 8753163, byUnit: { "2A-D2-202": 1302990, "2A-D2-302": 1384973, "2A-D2-402": 1260328, "2A-D2-G01": 2408090, "2A-D2-G02": 2396782 } }
   ];
-  var nextOfficeInstallment = (schedule) => {
+  var nextOfficeInstallment = (schedule, payments) => {
     const today = /* @__PURE__ */ new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    return schedule.find((row) => row.date >= todayStr) || null;
+    return schedule.find((row) => {
+      const rowUnits = Object.keys(row.byUnit || {});
+      if (!rowUnits.length || !payments) return row.date >= todayStr;
+      const dk = sanitizeFbKey(row.date);
+      return !rowUnits.every((u) => !!payments?.[dk]?.[sanitizeFbKey(u)]);
+    }) || null;
   };
+  function officeUnitRemainingPaidOff(unitLabel, installments, payments) {
+    const rows = installments.filter((r) => r.byUnit && unitLabel in r.byUnit).slice().sort((a, b) => a.date.localeCompare(b.date));
+    let sum = 0;
+    rows.forEach((row, idx) => {
+      // row 0 (earliest date) is the initial advance — already excluded from
+      // the "remaining installments" baseline itself, so skip it here too or
+      // paying it off would subtract it twice.
+      if (idx === 0) return;
+      const dk = sanitizeFbKey(row.date);
+      const uk = sanitizeFbKey(unitLabel);
+      if (payments?.[dk]?.[uk]) sum += row.byUnit[unitLabel] || 0;
+    });
+    return sum;
+  }
   var SEED_LOANS = [
     { id: "loan-egp", label: "Secured EGP loans (9 facilities)", currency: "EGP", amount: 88646115.24, rate: "", installment: 4031095.39 },
     { id: "loan-usd", label: "USD loan (CIB)", currency: "USD", amount: 72e4, rate: 7, installment: 22231.51 }
@@ -1272,17 +1291,19 @@
       canEdit && /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add loan" })
     ] });
   }
-  function OfficeUnitsTable({ units, onChange, canEdit = true }) {
+  function OfficeUnitsTable({ units, onChange, canEdit = true, installments, payments }) {
     const [sortKey, sortDir, handleSort] = useSortState("totalPrice");
     const update = (unit, patch) => onChange(units.map((u) => u.unit === unit ? { ...u, ...patch } : u));
     const remove = (unit) => onChange(units.filter((u) => u.unit !== unit));
     const add = () => onChange([...units, { unit: `New unit ${units.length + 1}`, size: "", parking: 0, totalPrice: 0, advance: 0, remaining: 0 }]);
+    const hasSchedule = (u) => !!installments && installments.some((row) => row.byUnit && u.unit in row.byUnit);
+    const effectiveRemaining = (u) => hasSchedule(u) ? Math.max(0, (u.remaining || 0) - officeUnitRemainingPaidOff(u.unit, installments, payments)) : u.remaining || 0;
     const totals = units.reduce((s, u) => ({
       totalPrice: s.totalPrice + u.totalPrice,
       advance: s.advance + u.advance,
-      remaining: s.remaining + u.remaining
+      remaining: s.remaining + effectiveRemaining(u)
     }), { totalPrice: 0, advance: 0, remaining: 0 });
-    const sorted = sortRows(units, sortKey, sortDir, (u, k) => u[k]);
+    const sorted = sortRows(units, sortKey, sortDir, (u, k) => k === "remaining" ? effectiveRemaining(u) : u[k]);
     return /* @__PURE__ */ jsx("div", { children: [
       /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
@@ -1300,7 +1321,7 @@
           /* @__PURE__ */ jsx("td", { "data-label": "Parking", className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.parking, onChange: (v) => update(u.unit, { parking: Number(v) || 0 }), readOnly: !canEdit }) }),
           /* @__PURE__ */ jsx("td", { "data-label": "Total price", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.totalPrice, onChange: (v) => update(u.unit, { totalPrice: Number(v) || 0 }), readOnly: !canEdit }) }),
           /* @__PURE__ */ jsx("td", { "data-label": "Advance paid (5%)", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.advance, onChange: (v) => update(u.unit, { advance: Number(v) || 0 }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { "data-label": "Remaining installments", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.remaining, onChange: (v) => update(u.unit, { remaining: Number(v) || 0 }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Remaining installments", className: "py-1.5 pr-3 w-32", children: hasSchedule(u) ? /* @__PURE__ */ jsx("div", { className: "text-right font-mono tabular-nums", title: "Computed from the installment schedule below, minus what's marked paid — not editable directly.", children: egp(effectiveRemaining(u)) }) : /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.remaining, onChange: (v) => update(u.unit, { remaining: Number(v) || 0 }), readOnly: !canEdit }) }),
           canEdit && /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(u.unit) }) })
         ] }, u.unit)) }),
         /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
@@ -2281,7 +2302,7 @@ Save anyway?`);
       return triggers.length ? { date: currDay.date, triggers } : null;
     }, [computedHistory, totalLiabilities]);
     const OFFICE_DUE_WARNING_DAYS = 14;
-    const nextOfficeInstallmentRow = nextOfficeInstallment(officeInstallments);
+    const nextOfficeInstallmentRow = nextOfficeInstallment(officeInstallments, officeInstallmentPayments);
     const officeNextDueDate = nextOfficeInstallmentRow ? nextOfficeInstallmentRow.date : null;
     const officeNextDueAmount = nextOfficeInstallmentRow ? nextOfficeInstallmentRow.amount : 0;
     const officeDaysUntilDue = daysUntil(officeNextDueDate);
@@ -2509,8 +2530,9 @@ Save anyway?`);
       const loanFacilityRowsHtml = loanFacilities.map((f) => `<tr><td>${f.label}</td><td class="num mono">${f.rate.toFixed(1)}%</td><td class="num mono">${egp(f.amountFinanced)}</td><td class="num mono">${egp(f.outstanding)}</td><td class="num mono">${egp(f.installment)}</td><td>${fmtDate(f.openDate)}</td><td>${fmtDate(f.maturityDate)}</td></tr>`).join("");
       const loanFacilityTotals = loanFacilities.reduce((s, f) => ({ amountFinanced: s.amountFinanced + f.amountFinanced, outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { amountFinanced: 0, outstanding: 0, installment: 0 });
       const convRowsHtml = conversionsWithRunning.map((c) => `<tr><td>${c.date}</td><td style="text-transform:capitalize">${c.type}</td><td class="num mono">${usd(c.amountUsd)}</td><td class="num mono">${usd(c.running)}</td></tr>`).join("");
-      const officeUnitsRowsHtml = officeUnits.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(u.advance)}</td><td class="num mono">${egp(u.remaining)}</td></tr>`).join("");
-      const officeUnitsTotals = officeUnits.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + u.advance, remaining: s.remaining + u.remaining }), { totalPrice: 0, advance: 0, remaining: 0 });
+      const officeUnitEffectiveRemaining = (u) => officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit) ? Math.max(0, (u.remaining || 0) - officeUnitRemainingPaidOff(u.unit, officeInstallments, officeInstallmentPayments)) : u.remaining || 0;
+      const officeUnitsRowsHtml = officeUnits.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(u.advance)}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td></tr>`).join("");
+      const officeUnitsTotals = officeUnits.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + u.advance, remaining: s.remaining + officeUnitEffectiveRemaining(u) }), { totalPrice: 0, advance: 0, remaining: 0 });
       const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td></tr>`).join("");
       const metalFundRowsHtml = metalFundRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
       const metalPhysicalRowsHtml = metalPhysicalRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${(r.grams || 0).toLocaleString()}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
@@ -2680,6 +2702,8 @@ Save anyway?`);
       loanFacilities,
       certificates,
       officeUnits,
+      officeInstallments,
+      officeInstallmentPayments,
       conversionSummary,
       portfolioInsights
     ]);
@@ -2939,7 +2963,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Office units", dek: `${officeUnits.length} units, ${egp(officeUnits.reduce((s, u) => s + u.totalPrice, 0))} full contract price — only the advance paid counts toward Total Assets above.` }),
           /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "These are still being paid off in quarterly installments, so they aren't fully owned yet — only the 5% advance is counted as an asset. The full price and what's still owed are shown here for reference." }),
           /* @__PURE__ */ jsx(OfficeDealUpload, { units: officeUnits, installments: officeInstallments, onApplyUnits: handleOfficeUnitsChange, onApplyInstallments: handleOfficeInstallmentsChange, canEdit }),
-          /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits, onChange: handleOfficeUnitsChange, canEdit }),
+          /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits, onChange: handleOfficeUnitsChange, canEdit, installments: officeInstallments, payments: officeInstallmentPayments }),
           /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per the installment schedule, through ~2034. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Installment schedule, per unit" }),
