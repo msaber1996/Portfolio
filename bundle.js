@@ -1317,6 +1317,7 @@
     ] });
   }
   function OfficeInstallmentScheduleTable({ installments, units, payments, onTogglePayment, canEdit = true }) {
+    const [expanded, setExpanded] = useState(false);
     const unitLabels = useMemo(() => {
       const known = units.map((u) => u.unit).filter((u) => installments.some((row) => row.byUnit && u in row.byUnit));
       const extra = [];
@@ -1338,7 +1339,20 @@
       totals.amount += row.amount || 0;
       unitLabels.forEach((u) => { totals[u] += row.byUnit?.[u] || 0; });
     });
-    return /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
+    const paidDatesCount = installments.filter((row) => {
+      const dk = sanitizeFbKey(row.date);
+      const rowUnits = Object.keys(row.byUnit || {});
+      return rowUnits.length > 0 && rowUnits.every((u) => !!payments?.[dk]?.[sanitizeFbKey(u)]);
+    }).length;
+    return /* @__PURE__ */ jsx("div", { children: [
+      /* @__PURE__ */ jsx("button", { onClick: () => setExpanded(!expanded), "aria-expanded": expanded, className: "w-full flex items-center justify-between gap-3 text-xs uppercase tracking-wide border border-neutral-300 px-3 py-2 hover:border-neutral-600 transition-colors", children: [
+        /* @__PURE__ */ jsx("span", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsx(ChevronDown, { size: 14, strokeWidth: 1.5, className: `shrink-0 text-neutral-400 transition-transform duration-200 ${expanded ? "rotate-180" : ""}` }),
+          expanded ? "Hide installment schedule" : "Show installment schedule"
+        ] }),
+        /* @__PURE__ */ jsx("span", { className: "text-neutral-500 normal-case tracking-normal", children: `${paidDatesCount} of ${installments.length} dates fully paid` })
+      ] }),
+      expanded && /* @__PURE__ */ jsx("div", { className: "mt-4 rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
       /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
         /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Date" }),
         ...unitLabels.map((u) => /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: u }, u)),
@@ -1366,7 +1380,8 @@
         ...unitLabels.map((u) => /* @__PURE__ */ jsx("td", { "data-label": u, className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals[u]) }, u)),
         /* @__PURE__ */ jsx("td", { "data-label": "Total", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.amount) })
       ] }) })
-    ] }) });
+    ] }) })
+    ] });
   }
   function LoanFacilitiesTable({ facilities }) {
     const [sortKey, sortDir, handleSort] = useSortState("outstanding");
