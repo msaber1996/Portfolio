@@ -834,6 +834,18 @@
     const missingInstallments = installments.filter((i, idx) => !usedIndexes.has(idx));
     return { updatedInstallments, changes, newRows, missingInstallments };
   }
+  function parseOfficeReceiptText(text, installments, unitLabels) {
+    const flat = text.replace(/\s+/g, " ");
+    const dateMatch = flat.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    const date = dateMatch ? `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}` : null;
+    const matchedUnits = unitLabels.filter((label) => {
+      const parts = String(label).trim().split("-").map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      const re = new RegExp(parts.join("[^A-Za-z0-9]*"), "i");
+      return re.test(flat);
+    });
+    const matchedRow = date ? installments.find((r) => r.date === date) || null : null;
+    return { date, matchedUnits, matchedRow };
+  }
   var MATURITY_WARNING_DAYS = 30;
   var daysUntil = (dateStr) => {
     if (!dateStr) return null;
@@ -1348,6 +1360,99 @@
         ] }) })
       ] }) }),
       canEdit && /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add office unit" })
+    ] });
+  }
+  function OfficeReceiptUpload({ installments, units, payments, onMarkPaid, canEdit }) {
+    const [ocrBusy, setOcrBusy] = useState(false);
+    const [ocrError, setOcrError] = useState("");
+    const [preview, setPreview] = useState(null);
+    const [applying, setApplying] = useState(false);
+    const inputRef = useRef(null);
+    if (!canEdit) return null;
+    const unitLabels = units.map((u) => u.unit);
+    const handleFile = async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      setOcrError("");
+      setPreview(null);
+      setOcrBusy(true);
+      try {
+        await ensureTesseract();
+        if (!window.Tesseract) throw new Error("Receipt reader did not load — check your connection and try again.");
+        const worker = await window.Tesseract.createWorker("eng+ara");
+        await worker.setParameters({ tessedit_pageseg_mode: "4" });
+        let text = "";
+        try {
+          const { data } = await worker.recognize(file);
+          text = data?.text || "";
+        } finally {
+          await worker.terminate();
+        }
+        const { date, matchedUnits, matchedRow } = parseOfficeReceiptText(text, installments, unitLabels);
+        if (!date) {
+          setOcrError("Could not detect a due date on that receipt — try a clearer photo, or mark it manually below.");
+          return;
+        }
+        if (!matchedRow) {
+          setOcrError(`Detected date ${fmtDate(date)}, but that isn't a known installment date — check the receipt, or mark it manually below.`);
+          return;
+        }
+        if (!matchedUnits.length) {
+          setOcrError(`Detected date ${fmtDate(date)}, but no unit codes were recognized on the receipt — check the photo, or mark it manually below.`);
+          return;
+        }
+        const dk = sanitizeFbKey(date);
+        setPreview({
+          date,
+          amount: matchedRow.amount,
+          matchedUnits,
+          checked: Object.fromEntries(matchedUnits.map((u) => [u, true])),
+          alreadyPaid: matchedUnits.filter((u) => !!payments?.[dk]?.[sanitizeFbKey(u)])
+        });
+      } catch (err) {
+        setOcrError(err.message || "Could not read that receipt.");
+      } finally {
+        setOcrBusy(false);
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    };
+    const handleApply = async () => {
+      if (!preview) return;
+      setApplying(true);
+      const toMark = preview.matchedUnits.filter((u) => preview.checked[u]);
+      await Promise.all(toMark.map((u) => onMarkPaid(preview.date, u, true)));
+      setApplying(false);
+      setPreview(null);
+    };
+    const toggleChecked = (unit) => setPreview((p) => ({ ...p, checked: { ...p.checked, [unit]: !p.checked[unit] } }));
+    return /* @__PURE__ */ jsx("div", { className: "mb-6 border border-dashed border-neutral-300 p-4", children: [
+      /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between gap-4 flex-wrap", children: [
+        /* @__PURE__ */ jsx("div", { children: [
+          /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "Upload payment receipt" }),
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 max-w-md", children: "A photo of the bank transfer receipt — reads the due date and which units it covers, then marks them paid after you confirm." })
+        ] }),
+        /* @__PURE__ */ jsx("label", { className: `shrink-0 cursor-pointer text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors ${ocrBusy ? "opacity-40 pointer-events-none" : ""}`, children: [
+          ocrBusy ? /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-1.5", children: [/* @__PURE__ */ jsx(Loader2, { size: 12, className: "animate-spin" }), "Reading receipt…"] }) : "Choose photo",
+          /* @__PURE__ */ jsx("input", { ref: inputRef, type: "file", accept: "image/*", onChange: handleFile, disabled: ocrBusy, className: "hidden" })
+        ] })
+      ] }),
+      ocrError && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-700 mt-3", children: ocrError }),
+      preview && /* @__PURE__ */ jsx("div", { className: "mt-4", children: [
+        /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-700", children: [
+          "Detected ",
+          /* @__PURE__ */ jsx("b", { children: fmtDate(preview.date) }),
+          `, ${egp(preview.amount)} total. Units mentioned:`
+        ] }),
+        /* @__PURE__ */ jsx("div", { className: "mt-2 space-y-1.5", children: preview.matchedUnits.map((u) => /* @__PURE__ */ jsx("label", { className: "flex items-center gap-2 text-xs", children: [
+          /* @__PURE__ */ jsx("input", { type: "checkbox", checked: !!preview.checked[u], onChange: () => toggleChecked(u) }),
+          /* @__PURE__ */ jsx("span", { className: "font-mono text-neutral-900", children: u }),
+          preview.alreadyPaid.includes(u) && /* @__PURE__ */ jsx("span", { className: "text-neutral-400", children: "(already marked paid)" })
+        ] }, u)) }),
+        /* @__PURE__ */ jsx("div", { className: "flex gap-2 mt-4", children: [
+          /* @__PURE__ */ jsx("button", { onClick: handleApply, disabled: applying || !preview.matchedUnits.some((u) => preview.checked[u]), className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none", children: applying ? "Saving…" : `Mark ${preview.matchedUnits.filter((u) => preview.checked[u]).length} paid` }),
+          /* @__PURE__ */ jsx("button", { onClick: () => setPreview(null), className: "text-xs uppercase tracking-wide text-neutral-500 px-3 py-1.5", children: "Cancel" })
+        ] })
+      ] })
     ] });
   }
   function OfficeInstallmentScheduleTable({ installments, units, payments, onTogglePayment, canEdit = true }) {
@@ -2093,19 +2198,23 @@
     const handleLoansChange = (next) => debouncedSave("loans", next, setLoans);
     const handleOfficeUnitsChange = (next) => debouncedSave("officeUnits", next, setOfficeUnits);
     const handleOfficeInstallmentsChange = (next) => debouncedSave("officeInstallments", next, setOfficeInstallments);
-    const handleToggleOfficeInstallmentPayment = async (dateKey, unitKey) => {
+    const handleSetOfficeInstallmentPayment = async (dateKey, unitKey, paid) => {
       const dk = sanitizeFbKey(dateKey);
       const uk = sanitizeFbKey(unitKey);
-      const next = !officeInstallmentPayments?.[dk]?.[uk];
-      setOfficeInstallmentPayments((prev) => ({ ...prev, [dk]: { ...(prev[dk] || {}), [uk]: next } }));
+      setOfficeInstallmentPayments((prev) => ({ ...prev, [dk]: { ...(prev[dk] || {}), [uk]: paid } }));
       if (db) {
         try {
-          await db.ref(`officeInstallmentPayments/${dk}/${uk}`).set(next);
+          await db.ref(`officeInstallmentPayments/${dk}/${uk}`).set(paid);
         } catch {
         }
       } else {
-        saveJson("officeInstallmentPayments", { ...officeInstallmentPayments, [dk]: { ...(officeInstallmentPayments[dk] || {}), [uk]: next } });
+        saveJson("officeInstallmentPayments", { ...officeInstallmentPayments, [dk]: { ...(officeInstallmentPayments[dk] || {}), [uk]: paid } });
       }
+    };
+    const handleToggleOfficeInstallmentPayment = (dateKey, unitKey) => {
+      const dk = sanitizeFbKey(dateKey);
+      const uk = sanitizeFbKey(unitKey);
+      return handleSetOfficeInstallmentPayment(dateKey, unitKey, !officeInstallmentPayments?.[dk]?.[uk]);
     };
     const handleApplyLoanStatement = async (updatedFacilities) => {
       setSaving(true);
@@ -2981,6 +3090,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Installment schedule, per unit" }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Each due date's installment, broken out by office unit — mark one paid once it clears." }),
+            /* @__PURE__ */ jsx(OfficeReceiptUpload, { installments: officeInstallments, units: officeUnits, payments: officeInstallmentPayments, onMarkPaid: handleSetOfficeInstallmentPayment, canEdit }),
             /* @__PURE__ */ jsx(OfficeInstallmentScheduleTable, { installments: officeInstallments, units: officeUnits, payments: officeInstallmentPayments, onTogglePayment: handleToggleOfficeInstallmentPayment, canEdit })
           ] })
         ] }),
