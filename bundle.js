@@ -2990,7 +2990,8 @@ Save anyway?`);
       const maintTotals = propsWithMaint.reduce((s, u) => ({ total: s.total + maintTotal(u), paid: s.paid + maintPaidSoFar(u), remaining: s.remaining + maintRemaining(u) }), { total: 0, paid: 0, remaining: 0 });
       const nextInstRow = nextOfficeInstallment(officeInstallments, officeInstallmentPayments);
       const nextMaintRow = nextOfficeInstallment(officeMaintenance, officeMaintenancePayments);
-      const grandTotalOutstanding = totalLiabilities + propTotals.remaining + maintTotals.remaining;
+      const grandTotalOutstanding = loansOutstanding + propTotals.remaining + maintTotals.remaining;
+      const variableCurrentValue = variableInvestments.totalInvested + variableInvestments.totalProfit;
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Portfolio Readiness — Liabilities report ${latest?.date || ""}</title>
 <style>
   * { box-sizing: border-box; }
@@ -3021,14 +3022,15 @@ Save anyway?`);
   <h1>Everything owed</h1>
   <p class="dek">Loans, secured facilities, and what's still owed on every property — installments and maintenance, each tracked separately.</p>
   <div class="grid4">
-    <div><div class="stat-label">Loans outstanding</div><div class="stat-value mono">${egp(totalLiabilities)}</div></div>
+    <div><div class="stat-label">Loans outstanding</div><div class="stat-value mono">${egp(loansOutstanding)}</div></div>
     <div><div class="stat-label">Properties, remaining installments</div><div class="stat-value mono">${egp(propTotals.remaining)}</div></div>
     <div><div class="stat-label">Properties, remaining maintenance</div><div class="stat-value mono">${egp(maintTotals.remaining)}</div></div>
     <div><div class="stat-label">Total outstanding</div><div class="stat-value mono">${egp(grandTotalOutstanding)}</div></div>
   </div>
+  <p class="note">For reference — variable investments (funds, gold, Beltone): ${egp(variableInvestments.totalInvested)} invested, ${egp(variableCurrentValue)} current value (${pctStr(variableInvestments.returnPct)}). Not a liability, shown here just as context against the totals above.</p>
 
   <h2>Loans</h2>
-  <table><tr><th>Loan</th><th>Currency</th><th class="num">Amount</th><th class="num">Installment</th></tr>${loanRowsHtml}<tr><td><b>Total</b></td><td></td><td class="num mono"><b>${egp(totalLiabilities)}</b></td><td></td></tr></table>
+  <table><tr><th>Loan</th><th>Currency</th><th class="num">Amount</th><th class="num">Installment</th></tr>${loanRowsHtml}<tr><td><b>Total</b></td><td></td><td class="num mono"><b>${egp(loansOutstanding)}</b></td><td></td></tr></table>
 
   <h2>Secured EGP facilities, individually</h2>
   <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding</th><th class="num">Installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${loanFacilities.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
@@ -3038,8 +3040,20 @@ Save anyway?`);
   <table><tr><th>Property</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th></tr>${propRowsHtml}<tr><td><b>Total (${officeUnits.length})</b></td><td class="num mono"><b>${egp(propTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(propTotals.paid)}</b></td><td class="num mono"><b>${egp(propTotals.remaining)}</b></td></tr></table>
 
   <h2>Properties — remaining maintenance</h2>
-  <p class="note">Next due ${fmtDate(nextMaintRow?.date)}${nextMaintRow ? `, ${egp(nextMaintRow.amount)}` : ""}. Not counted toward loans outstanding or Total Assets — tracked here so nothing gets missed.</p>
+  <p class="note">Next due ${fmtDate(nextMaintRow?.date)}${nextMaintRow ? `, ${egp(nextMaintRow.amount)}` : ""}. Not counted toward Total Assets, but is included in Total outstanding above.</p>
   <table><tr><th>Property</th><th class="num">Total maintenance</th><th class="num">Paid</th><th class="num">Remaining</th></tr>${maintRowsHtml}<tr><td><b>Total (${propsWithMaint.length})</b></td><td class="num mono"><b>${egp(maintTotals.total)}</b></td><td class="num mono"><b>${egp(maintTotals.paid)}</b></td><td class="num mono"><b>${egp(maintTotals.remaining)}</b></td></tr></table>
+
+  <h2>Monthly cash flow</h2>
+  <p class="note">Cash in (recurring monthly income) against cash out (loan installments, plus property installments &amp; maintenance averaged over the next 12 months).</p>
+  <table>
+    <tr><td>EGP — cash in (certificates)</td><td class="num mono">${egp(cashFlow.egp.income)}</td></tr>
+    <tr><td>EGP — cash out, loans</td><td class="num mono">${egp(cashFlow.egp.outflow)}</td></tr>
+    <tr><td>EGP — cash out, properties (avg/mo)</td><td class="num mono">${egp(cashFlow.egp.propertyMonthly)}</td></tr>
+    <tr><td><b>EGP — net monthly</b></td><td class="num mono"><b>${egp(cashFlow.egp.income - cashFlow.egp.outflow - cashFlow.egp.propertyMonthly)}</b></td></tr>
+    <tr><td>USD — cash in (certificates &amp; deposits)</td><td class="num mono">${usd(cashFlow.usd.income)}</td></tr>
+    <tr><td>USD — cash out, loans</td><td class="num mono">${usd(cashFlow.usd.outflow)}</td></tr>
+    <tr><td><b>USD — net monthly</b></td><td class="num mono"><b>${usd(cashFlow.usd.income - cashFlow.usd.outflow)}</b></td></tr>
+  </table>
 
   <div class="footer"><span>Figures as tracked in the working file. For internal review, not financial advice.</span><span>Generated ${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}</span></div>
 </body></html>`;
@@ -3052,7 +3066,7 @@ Save anyway?`);
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 2e3);
-    }, [loans, loanFacilities, officeUnits, officeInstallments, officeInstallmentPayments, officeMaintenance, officeMaintenancePayments, totalLiabilities, officeNextDueDate, officeNextDueAmount, latest]);
+    }, [loans, loanFacilities, officeUnits, officeInstallments, officeInstallmentPayments, officeMaintenance, officeMaintenancePayments, loansOutstanding, officeNextDueDate, officeNextDueAmount, latest, variableInvestments, cashFlow]);
     if (loadState === "loading") {
       return /* @__PURE__ */ jsx(LoadingSkeleton, {});
     }
