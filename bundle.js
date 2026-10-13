@@ -180,8 +180,8 @@
     { id: "goldbar1kg", type: "gold", label: "Gold Bars - 1kg", currency: "EGP", investment: 23103150, purchaseNav: 7701.05, grams: 3000, purchaseDate: "2026-03-02" },
     { id: "certs", type: "fixed", label: "EGP certificates & CDs (incl. CIB)", currency: "EGP", investment: 457780000, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "treasury", type: "fixed", label: "NBE Treasury Bills (364-day)", currency: "EGP", investment: 84014400, purchaseNav: 0, grams: 0, navGroup: "" },
-    { id: "usdcd", type: "fixed", label: "USD certificate (CIB)", currency: "USD", investment: 8e5, purchaseNav: 0, grams: 0, navGroup: "" },
-    { id: "usdcash", type: "fixed", label: "USD term deposit (NBE, 4.6%, monthly renewal)", currency: "USD", investment: 512382, purchaseNav: 0, grams: 0, navGroup: "" },
+    { id: "usdcd", type: "fixed", label: "USD certificate (CIB)", currency: "USD", investment: 8e5, purchaseNav: 0, grams: 0, navGroup: "", rate: 4.5 },
+    { id: "usdcash", type: "fixed", label: "USD term deposit (NBE, 4.6%, monthly renewal)", currency: "USD", investment: 512382, purchaseNav: 0, grams: 0, navGroup: "", rate: 4.6 },
     { id: "brokerage", type: "fixed", label: "Brokerage (Tycoon)", currency: "EGP", investment: 9e6, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "offices", type: "fixed", label: "Properties (paid so far)", currency: "EGP", investment: 17029500, purchaseNav: 0, grams: 0, navGroup: "" }
   ];
@@ -359,11 +359,6 @@
     { date: "2026-07-29", rate: 50.65, gold: 6691, nbe1: 165.56, nbe2: 304.62, nbe4: 304.6833, nbe5: 54.51, cib: 1047.59, azopp: 50.36859, azgold: 22.5265, beltone: 1.16706 },
     { date: "2026-07-30", rate: 51.1, gold: 6800, nbe1: 165.56, nbe2: 304.62, nbe4: 304.6978, nbe5: 54.51, cib: 1046.19, azopp: 49.70344, azgold: 22.85158, beltone: 1.16789 }
   ];
-  var CASH_FLOW = {
-    egp: { income: 7120225, outflow: 4031095.38 },
-    usd: { income: 3e3 + 1964, outflow: 0 }
-    // 3,000 from the CIB USD certificate; 1,964 = 512,382 NBE term deposit @ 4.6%/yr, monthly.
-  };
   var uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
   var FIREBASE_CONFIG = {
     apiKey: "AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI",
@@ -2629,11 +2624,36 @@ Save anyway?`);
     const largestWeightPct = totalAssets && ASSETS.length ? Math.max(...ASSETS.map((a) => a.value), 0) / totalAssets * 100 : 0;
     const diversificationScore = 100 - largestWeightPct;
     const leverageScore = Math.max(0, 100 - debtRatioPct * 2);
-    const usdNet = CASH_FLOW.usd.income - CASH_FLOW.usd.outflow;
-    const currencyScore = CASH_FLOW.usd.outflow > 0 ? Math.min(100, CASH_FLOW.usd.income / CASH_FLOW.usd.outflow * 100) : 100;
+    const cashFlow = useMemo(() => {
+      const today = /* @__PURE__ */ new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const in12Months = new Date(today);
+      in12Months.setFullYear(in12Months.getFullYear() + 1);
+      const in12MonthsStr = `${in12Months.getFullYear()}-${String(in12Months.getMonth() + 1).padStart(2, "0")}-${String(in12Months.getDate()).padStart(2, "0")}`;
+      const sumUnpaidInWindow = (schedule, payments) => schedule.reduce((s, row) => {
+        if (row.date < todayStr || row.date > in12MonthsStr) return s;
+        const dk = sanitizeFbKey(row.date);
+        const rowUnits = Object.keys(row.byUnit || {});
+        const unpaidSum = rowUnits.reduce((s2, u) => !payments?.[dk]?.[sanitizeFbKey(u)] ? s2 + (row.byUnit[u] || 0) : s2, 0);
+        return s + unpaidSum;
+      }, 0);
+      const propertyInstallmentsMonthly = sumUnpaidInWindow(officeInstallments, officeInstallmentPayments) / 12;
+      const propertyMaintenanceMonthly = sumUnpaidInWindow(officeMaintenance, officeMaintenancePayments) / 12;
+      const egpCertIncome = certificates.reduce((s, c) => s + c.amount * c.rate / 100 / 12, 0);
+      const egpLoanOutflow = loans.filter((l) => l.currency === "EGP").reduce((s, l) => s + l.installment, 0);
+      const usdCertIncome = holdings.filter((h) => h.currency === "USD" && h.type === "fixed" && h.rate).reduce((s, h) => s + h.investment * h.rate / 100 / 12, 0);
+      const usdLoanOutflow = loans.filter((l) => l.currency === "USD").reduce((s, l) => s + l.installment, 0);
+      return {
+        egp: { income: egpCertIncome, outflow: egpLoanOutflow, propertyMonthly: propertyInstallmentsMonthly + propertyMaintenanceMonthly },
+        usd: { income: usdCertIncome, outflow: usdLoanOutflow }
+      };
+    }, [certificates, holdings, loans, officeInstallments, officeInstallmentPayments, officeMaintenance, officeMaintenancePayments]);
+    const usdNet = cashFlow.usd.income - cashFlow.usd.outflow;
+    const currencyScore = cashFlow.usd.outflow > 0 ? Math.min(100, cashFlow.usd.income / cashFlow.usd.outflow * 100) : 100;
     const readiness = ASSETS.length ? Math.round((leverageScore + liquidityScore + diversificationScore + currencyScore) / 4) : 0;
     const readinessLabel = readiness >= 75 ? "Well positioned" : readiness >= 55 ? "Adequate, room to improve" : "Needs attention";
-    const egpNet = CASH_FLOW.egp.income - CASH_FLOW.egp.outflow;
+    const egpNet = cashFlow.egp.income - cashFlow.egp.outflow - cashFlow.egp.propertyMonthly;
     const analysis = useMemo(() => {
       if (!firstComputed || !latestComputed || computedHistory.length < 2) return null;
       const changeVal = latestComputed.markedToMarket - firstComputed.markedToMarket;
@@ -2859,10 +2879,12 @@ Save anyway?`);
 
   <h2>Monthly cash flow</h2>
   <table>
-    <tr><td>EGP \u2014 certificate &amp; fund income</td><td class="num mono">${egp(CASH_FLOW.egp.income)}</td></tr>
-    <tr><td>EGP \u2014 loan installments</td><td class="num mono">${egp(CASH_FLOW.egp.outflow)}</td></tr>
+    <tr><td>EGP \u2014 certificate income</td><td class="num mono">${egp(cashFlow.egp.income)}</td></tr>
+    <tr><td>EGP \u2014 loan installments</td><td class="num mono">${egp(cashFlow.egp.outflow)}</td></tr>
+    <tr><td>EGP \u2014 property installments &amp; maintenance (avg/mo, next 12mo)</td><td class="num mono">${egp(cashFlow.egp.propertyMonthly)}</td></tr>
     <tr><td><b>EGP \u2014 net monthly surplus</b></td><td class="num mono"><b>${egp(egpNet)}</b></td></tr>
-    <tr><td>USD \u2014 certificate &amp; deposit income</td><td class="num mono">${usd(CASH_FLOW.usd.income)}</td></tr>
+    <tr><td>USD \u2014 certificate &amp; deposit income</td><td class="num mono">${usd(cashFlow.usd.income)}</td></tr>
+    <tr><td>USD \u2014 loan installments</td><td class="num mono">${usd(cashFlow.usd.outflow)}</td></tr>
     <tr><td><b>USD \u2014 net monthly surplus</b></td><td class="num mono"><b>${usd(usdNet)}</b></td></tr>
   </table>
 
@@ -3290,21 +3312,23 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Monthly cash flow, by currency", dek: "Certificate and fund income measured against loan installments, each currency on its own terms." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Monthly cash flow, by currency", dek: "Certificate income measured against loan installments and property obligations, each currency on its own terms." }),
           /* @__PURE__ */ jsx("div", { className: "flex gap-2 mb-6", children: /* @__PURE__ */ jsx(Toggle, { options: [{ id: "egp", label: "EGP" }, { id: "usd", label: "USD" }], value: ccy, onChange: setCcy }) }),
-          ccy === "egp" ? /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-6", children: [
-            /* @__PURE__ */ jsx(Stat, { label: "Certificate & fund income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.egp.income, format: egp }), sub: "per month" }),
-            /* @__PURE__ */ jsx(Stat, { label: "Loan installments", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.egp.outflow, format: egp }), sub: "per month" }),
+          ccy === "egp" ? /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-4 gap-6", children: [
+            /* @__PURE__ */ jsx(Stat, { label: "Certificate income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: cashFlow.egp.income, format: egp }), sub: "per month" }),
+            /* @__PURE__ */ jsx(Stat, { label: "Loan installments", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: cashFlow.egp.outflow, format: egp }), sub: "per month" }),
+            /* @__PURE__ */ jsx(Stat, { label: "Property installments & maintenance", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: cashFlow.egp.propertyMonthly, format: egp }), sub: "avg/month, next 12mo" }),
             /* @__PURE__ */ jsx(Stat, { label: "Net monthly position", value: /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-1", children: [
               /* @__PURE__ */ jsx(ArrowUpRight, { size: 18, strokeWidth: 1.5 }),
               /* @__PURE__ */ jsx(AnimatedNumber, { value: egpNet, format: egp })
             ] }), emphasis: true, sub: "surplus" })
-          ] }) : /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-6", children: [
-            /* @__PURE__ */ jsx(Stat, { label: "Certificate & deposit income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: CASH_FLOW.usd.income, format: usd }), sub: "per month" }),
+          ] }) : /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-6", children: [
+            /* @__PURE__ */ jsx(Stat, { label: "Certificate & deposit income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: cashFlow.usd.income, format: usd }), sub: "per month" }),
+            /* @__PURE__ */ jsx(Stat, { label: "Loan installments", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: cashFlow.usd.outflow, format: usd }), sub: "per month" }),
             /* @__PURE__ */ jsx(Stat, { label: "Net monthly position", value: /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-1", children: [
               /* @__PURE__ */ jsx(ArrowUpRight, { size: 18, strokeWidth: 1.5 }),
               /* @__PURE__ */ jsx(AnimatedNumber, { value: usdNet, format: usd })
-            ] }), emphasis: true, sub: "surplus — no active USD loan" })
+            ] }), emphasis: true, sub: "surplus" })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
