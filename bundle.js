@@ -2930,6 +2930,91 @@ Save anyway?`);
       conversionSummary,
       portfolioInsights
     ]);
+    const downloadLiabilitiesReport = useCallback(() => {
+      const loanRowsHtml = loans.map((l) => {
+        const amt = l.currency === "USD" ? usd(l.amount) : egp(l.amount);
+        const inst = l.currency === "USD" ? usd(l.installment) : egp(l.installment);
+        return `<tr><td>${l.label}</td><td>${l.currency}</td><td class="num mono">${amt}</td><td class="num mono">${inst}</td></tr>`;
+      }).join("");
+      const loanFacilityRowsHtml = loanFacilities.map((f) => `<tr><td>${f.label}</td><td class="num mono">${f.rate.toFixed(1)}%</td><td class="num mono">${egp(f.amountFinanced)}</td><td class="num mono">${egp(f.outstanding)}</td><td class="num mono">${egp(f.installment)}</td><td>${fmtDate(f.openDate)}</td><td>${fmtDate(f.maturityDate)}</td></tr>`).join("");
+      const loanFacilityTotals = loanFacilities.reduce((s, f) => ({ amountFinanced: s.amountFinanced + f.amountFinanced, outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { amountFinanced: 0, outstanding: 0, installment: 0 });
+      const propHasSchedule = (u) => officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
+      const propPaidSoFar = (u) => propHasSchedule(u) ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0;
+      const propRemaining = (u) => propHasSchedule(u) ? Math.max(0, u.totalPrice - propPaidSoFar(u)) : u.remaining || 0;
+      const propRowsHtml = officeUnits.map((u) => `<tr><td>${u.unit}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(propPaidSoFar(u))}</td><td class="num mono">${egp(propRemaining(u))}</td></tr>`).join("");
+      const propTotals = officeUnits.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, paid: s.paid + propPaidSoFar(u), remaining: s.remaining + propRemaining(u) }), { totalPrice: 0, paid: 0, remaining: 0 });
+      const maintHasSchedule = (u) => officeMaintenance.some((row) => row.byUnit && u.unit in row.byUnit);
+      const maintPaidSoFar = (u) => officeUnitPaidSoFar(u.unit, officeMaintenance, officeMaintenancePayments);
+      const maintTotal = (u) => officeMaintenance.reduce((s, row) => s + (row.byUnit?.[u.unit] || 0), 0);
+      const maintRemaining = (u) => Math.max(0, maintTotal(u) - maintPaidSoFar(u));
+      const propsWithMaint = officeUnits.filter((u) => maintHasSchedule(u));
+      const maintRowsHtml = propsWithMaint.map((u) => `<tr><td>${u.unit}</td><td class="num mono">${egp(maintTotal(u))}</td><td class="num mono">${egp(maintPaidSoFar(u))}</td><td class="num mono">${egp(maintRemaining(u))}</td></tr>`).join("");
+      const maintTotals = propsWithMaint.reduce((s, u) => ({ total: s.total + maintTotal(u), paid: s.paid + maintPaidSoFar(u), remaining: s.remaining + maintRemaining(u) }), { total: 0, paid: 0, remaining: 0 });
+      const nextInstRow = nextOfficeInstallment(officeInstallments, officeInstallmentPayments);
+      const nextMaintRow = nextOfficeInstallment(officeMaintenance, officeMaintenancePayments);
+      const grandTotalOutstanding = totalLiabilities + propTotals.remaining + maintTotals.remaining;
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Portfolio Readiness — Liabilities report ${latest?.date || ""}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color:#171717; background:#FAFAF9; margin:0; padding:32px 40px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-size:32px; margin:6px 0 2px; }
+  .eyebrow { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:#737373; display:flex; justify-content:space-between; border-bottom:2px solid #171717; padding-bottom:10px; }
+  .dek { color:#525252; font-size:14px; margin:4px 0 20px; max-width:560px; }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; border-top:1px solid #E5E5E5; padding-top:14px; margin-bottom:24px; }
+  .stat-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#737373; }
+  .stat-value { font-size:20px; margin-top:2px; }
+  h2 { font-family: Georgia, "Times New Roman", serif; font-size:18px; border-bottom:1px solid #D4D4D4; padding-bottom:6px; margin:26px 0 10px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  td, th { padding:5px 8px; }
+  th { text-align:left; font-size:10px; text-transform:uppercase; color:#737373; border-bottom:1px solid #D4D4D4; }
+  tr:nth-child(even) td { background:#F5F5F4; }
+  .num { text-align:right; }
+  .note { font-size:12.5px; color:#404040; line-height:1.6; margin:4px 0 12px; }
+  .footer { font-size:10px; color:#A3A3A3; border-top:2px solid #171717; margin-top:28px; padding-top:10px; display:flex; justify-content:space-between; }
+  @media print { .no-print { display:none !important; } }
+</style></head>
+<body>
+  <div class="no-print" style="background:#171717;color:#fff;padding:10px 16px;margin:-32px -40px 24px;display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;">This is a standalone file — open it anywhere, share it with anyone</span>
+    <button onclick="window.print()" style="background:transparent;border:1px solid #737373;color:#fff;padding:6px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;">Print / Save as PDF</button>
+  </div>
+  <div class="eyebrow"><span>Portfolio Readiness</span><span>Liabilities report, as of ${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}</span></div>
+  <h1>Everything owed</h1>
+  <p class="dek">Loans, secured facilities, and what's still owed on every property — installments and maintenance, each tracked separately.</p>
+  <div class="grid4">
+    <div><div class="stat-label">Loans outstanding</div><div class="stat-value mono">${egp(totalLiabilities)}</div></div>
+    <div><div class="stat-label">Properties, remaining installments</div><div class="stat-value mono">${egp(propTotals.remaining)}</div></div>
+    <div><div class="stat-label">Properties, remaining maintenance</div><div class="stat-value mono">${egp(maintTotals.remaining)}</div></div>
+    <div><div class="stat-label">Total outstanding</div><div class="stat-value mono">${egp(grandTotalOutstanding)}</div></div>
+  </div>
+
+  <h2>Loans</h2>
+  <table><tr><th>Loan</th><th>Currency</th><th class="num">Amount</th><th class="num">Installment</th></tr>${loanRowsHtml}<tr><td><b>Total</b></td><td></td><td class="num mono"><b>${egp(totalLiabilities)}</b></td><td></td></tr></table>
+
+  <h2>Secured EGP facilities, individually</h2>
+  <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding</th><th class="num">Installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${loanFacilities.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
+
+  <h2>Properties — remaining installments</h2>
+  <p class="note">Next due ${fmtDate(nextInstRow?.date)}${nextInstRow ? `, ${egp(nextInstRow.amount)}` : ""}.</p>
+  <table><tr><th>Property</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th></tr>${propRowsHtml}<tr><td><b>Total (${officeUnits.length})</b></td><td class="num mono"><b>${egp(propTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(propTotals.paid)}</b></td><td class="num mono"><b>${egp(propTotals.remaining)}</b></td></tr></table>
+
+  <h2>Properties — remaining maintenance</h2>
+  <p class="note">Next due ${fmtDate(nextMaintRow?.date)}${nextMaintRow ? `, ${egp(nextMaintRow.amount)}` : ""}. Not counted toward loans outstanding or Total Assets — tracked here so nothing gets missed.</p>
+  <table><tr><th>Property</th><th class="num">Total maintenance</th><th class="num">Paid</th><th class="num">Remaining</th></tr>${maintRowsHtml}<tr><td><b>Total (${propsWithMaint.length})</b></td><td class="num mono"><b>${egp(maintTotals.total)}</b></td><td class="num mono"><b>${egp(maintTotals.paid)}</b></td><td class="num mono"><b>${egp(maintTotals.remaining)}</b></td></tr></table>
+
+  <div class="footer"><span>Figures as tracked in the working file. For internal review, not financial advice.</span><span>Generated ${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}</span></div>
+</body></html>`;
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `portfolio-liabilities-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2e3);
+    }, [loans, loanFacilities, officeUnits, officeInstallments, officeInstallmentPayments, officeMaintenance, officeMaintenancePayments, totalLiabilities, officeNextDueDate, officeNextDueAmount, latest]);
     if (loadState === "loading") {
       return /* @__PURE__ */ jsx(LoadingSkeleton, {});
     }
@@ -3011,6 +3096,10 @@ Save anyway?`);
                 /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); downloadReport(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left", children: [
                   /* @__PURE__ */ jsx(FileDown, { size: 14 }),
                   " Download report"
+                ] }),
+                /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); downloadLiabilitiesReport(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
+                  /* @__PURE__ */ jsx(FileDown, { size: 14 }),
+                  " Download liabilities report"
                 ] }),
                 /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); handleExportBackup(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
                   /* @__PURE__ */ jsx(FileDown, { size: 14 }),
