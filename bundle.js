@@ -2487,10 +2487,26 @@ Save anyway?`);
         return { ...c, value, currentPct };
       });
     }, [ASSETS, holdings, totalAssets]);
-    const totalLiabilities = useMemo(
+    const propertiesOutstanding = useMemo(() => {
+      const instRemaining = officeUnits.reduce((s, u) => {
+        const hasSchedule = officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
+        const paid = hasSchedule ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0;
+        const remaining = hasSchedule ? Math.max(0, u.totalPrice - paid) : u.remaining || 0;
+        return s + remaining;
+      }, 0);
+      const maintRemaining = officeUnits.reduce((s, u) => {
+        const total = officeMaintenance.reduce((s2, row) => s2 + (row.byUnit?.[u.unit] || 0), 0);
+        if (!total) return s;
+        const paid = officeUnitPaidSoFar(u.unit, officeMaintenance, officeMaintenancePayments);
+        return s + Math.max(0, total - paid);
+      }, 0);
+      return instRemaining + maintRemaining;
+    }, [officeUnits, officeInstallments, officeInstallmentPayments, officeMaintenance, officeMaintenancePayments]);
+    const loansOutstanding = useMemo(
       () => loans.reduce((s, l) => s + (l.currency === "USD" ? l.amount * (displayComputed?.rate || 0) : l.amount), 0),
       [loans, displayComputed]
     );
+    const totalLiabilities = useMemo(() => loansOutstanding + propertiesOutstanding, [loansOutstanding, propertiesOutstanding]);
     const netWorth = totalAssets - totalLiabilities;
     const debtRatioPct = totalAssets ? totalLiabilities / totalAssets * 100 : 0;
     const dailyAlert = useMemo(() => {
@@ -3280,7 +3296,7 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "What is owed", dek: `${loans.length} facilities, ${egp(totalLiabilities)} outstanding. Add or remove a loan freely.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "What is owed", dek: `${loans.length} facilities, ${egp(loansOutstanding)} outstanding — plus ${egp(propertiesOutstanding)} in remaining property installments & maintenance (see section 07), for ${egp(totalLiabilities)} total liabilities. Add or remove a loan freely.` }),
           /* @__PURE__ */ jsx(CollapsibleSection, { label: "loans", summary: `${loans.length} loan lines, ${egp(totalLiabilities)}`, children: /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange, canEdit }) }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${loanFacilities.length} secured EGP facilities, individually` }),
