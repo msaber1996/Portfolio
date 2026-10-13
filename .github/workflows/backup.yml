@@ -50,6 +50,8 @@ jobs:
           OFFICE_UNITS=$(curl -sf "${DB}/officeUnits.json?auth=${ID_TOKEN}")
           OFFICE_INSTALLMENTS=$(curl -sf "${DB}/officeInstallments.json?auth=${ID_TOKEN}")
           OFFICE_INSTALLMENT_PAYMENTS=$(curl -sf "${DB}/officeInstallmentPayments.json?auth=${ID_TOKEN}")
+          OFFICE_MAINTENANCE=$(curl -sf "${DB}/officeMaintenance.json?auth=${ID_TOKEN}")
+          OFFICE_MAINTENANCE_PAYMENTS=$(curl -sf "${DB}/officeMaintenancePayments.json?auth=${ID_TOKEN}")
 
           mkdir -p backups
           STAMP=$(date -u +%Y-%m-%d)
@@ -63,8 +65,10 @@ jobs:
             --argjson officeUnits "$OFFICE_UNITS" \
             --argjson officeInstallments "$OFFICE_INSTALLMENTS" \
             --argjson officeInstallmentPayments "$OFFICE_INSTALLMENT_PAYMENTS" \
+            --argjson officeMaintenance "$OFFICE_MAINTENANCE" \
+            --argjson officeMaintenancePayments "$OFFICE_MAINTENANCE_PAYMENTS" \
             --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '{generatedAt: $generatedAt, holdings: $holdings, loans: $loans, conversions: $conversions, daily: $daily, loanFacilities: $loanFacilities, certificates: $certificates, officeUnits: $officeUnits, officeInstallments: $officeInstallments, officeInstallmentPayments: $officeInstallmentPayments}' \
+            '{generatedAt: $generatedAt, holdings: $holdings, loans: $loans, conversions: $conversions, daily: $daily, loanFacilities: $loanFacilities, certificates: $certificates, officeUnits: $officeUnits, officeInstallments: $officeInstallments, officeInstallmentPayments: $officeInstallmentPayments, officeMaintenance: $officeMaintenance, officeMaintenancePayments: $officeMaintenancePayments}' \
             > "backups/backup-${STAMP}.json"
 
           echo "Wrote backups/backup-${STAMP}.json"

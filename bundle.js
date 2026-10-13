@@ -183,14 +183,17 @@
     { id: "usdcd", type: "fixed", label: "USD certificate (CIB)", currency: "USD", investment: 8e5, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "usdcash", type: "fixed", label: "USD term deposit (NBE, 4.6%, monthly renewal)", currency: "USD", investment: 512382, purchaseNav: 0, grams: 0, navGroup: "" },
     { id: "brokerage", type: "fixed", label: "Brokerage (Tycoon)", currency: "EGP", investment: 9e6, purchaseNav: 0, grams: 0, navGroup: "" },
-    { id: "offices", type: "fixed", label: "Office units (5, advance paid)", currency: "EGP", investment: 17029500, purchaseNav: 0, grams: 0, navGroup: "" }
+    { id: "offices", type: "fixed", label: "Properties (paid so far)", currency: "EGP", investment: 17029500, purchaseNav: 0, grams: 0, navGroup: "" }
   ];
   var SEED_OFFICE_UNITS = [
     { unit: "2A-D2-202", size: "305m\xB2", parking: 3, totalPrice: 50700000, advance: 2535000, remaining: 48165000 },
     { unit: "2A-D2-302", size: "308m\xB2", parking: 2, totalPrice: 53890000, advance: 2694500, remaining: 48165000 },
     { unit: "2A-D2-402", size: "288.5m\xB2", parking: 2, totalPrice: 49040000, advance: 2452000, remaining: 46630662 },
     { unit: "2A-D2-G01", size: "529.5m\xB2", parking: 4, totalPrice: 93700000, advance: 4685000, remaining: 89015000 },
-    { unit: "2A-D2-G02", size: "529.5m\xB2", parking: 4, totalPrice: 93260000, advance: 4663000, remaining: 88597000 }
+    { unit: "2A-D2-G02", size: "529.5m\xB2", parking: 4, totalPrice: 93260000, advance: 4663000, remaining: 88597000 },
+    { unit: "Belle Vie Valley V-V-101", size: "Villa", parking: 0, totalPrice: 9676888, advance: 7959228, remaining: 1717660 },
+    { unit: "BV Beach Residence CG-B8-G-3", size: "Apartment", parking: 0, totalPrice: 5380888, advance: 4425768, remaining: 955120 },
+    { unit: "WM-TSEII-AV-419F", size: "Residential unit", parking: 0, totalPrice: 10915219, advance: 4219504, remaining: 6695712 }
   ];
   var OFFICE_INSTALLMENT_BY_UNIT_STANDARD = { "2A-D2-202": 1353690, "2A-D2-302": 1438863, "2A-D2-402": 1309368, "2A-D2-G01": 2501790, "2A-D2-G02": 2490042 };
   var SEED_OFFICE_INSTALLMENTS = [
@@ -225,7 +228,69 @@
     { date: "2033-09-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
     { date: "2033-12-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
     { date: "2034-03-16", amount: 9093753, byUnit: OFFICE_INSTALLMENT_BY_UNIT_STANDARD },
-    { date: "2034-06-16", amount: 8753163, byUnit: { "2A-D2-202": 1302990, "2A-D2-302": 1384973, "2A-D2-402": 1260328, "2A-D2-G01": 2408090, "2A-D2-G02": 2396782 } }
+    { date: "2034-06-16", amount: 8753163, byUnit: { "2A-D2-202": 1302990, "2A-D2-302": 1384973, "2A-D2-402": 1260328, "2A-D2-G01": 2408090, "2A-D2-G02": 2396782 } },
+    { date: "2021-03-25", amount: 602310, byUnit: { "Belle Vie Valley V-V-101": 387075, "BV Beach Residence CG-B8-G-3": 215235 } },
+    { date: "2021-06-23", amount: 557136, byUnit: { "Belle Vie Valley V-V-101": 358044, "BV Beach Residence CG-B8-G-3": 199092 } },
+    { date: "2021-09-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2021-12-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2022-03-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2022-06-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2022-09-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2022-12-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2023-03-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2023-06-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2023-09-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2023-12-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2024-03-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2024-06-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2024-09-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2024-11-05", amount: 1767005, byUnit: { "WM-TSEII-AV-419F": 1767005 } },
+    { date: "2024-12-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2025-01-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2025-04-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2025-06-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2025-07-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2025-09-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2025-10-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2025-12-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2026-01-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2026-03-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2026-04-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2026-06-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2026-06-16", amount: 17029500, byUnit: { "2A-D2-202": 2535000, "2A-D2-302": 2694500, "2A-D2-402": 2452000, "2A-D2-G01": 4685000, "2A-D2-G02": 4663000 } },
+    { date: "2026-07-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2026-09-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2026-09-20", amount: 343529, byUnit: { "Belle Vie Valley V-V-101": 343529 } },
+    { date: "2026-09-30", amount: 191021, byUnit: { "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2026-10-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2026-12-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2027-01-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2027-03-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2027-04-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2027-06-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2027-07-21", amount: 1440357, byUnit: { "WM-TSEII-AV-419F": 1440357 } },
+    { date: "2027-09-01", amount: 534550, byUnit: { "Belle Vie Valley V-V-101": 343529, "BV Beach Residence CG-B8-G-3": 191021 } },
+    { date: "2027-10-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2027-12-01", amount: 534580, byUnit: { "Belle Vie Valley V-V-101": 343544, "BV Beach Residence CG-B8-G-3": 191036 } },
+    { date: "2028-01-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2028-04-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2028-07-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2028-10-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2029-01-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2029-04-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2029-07-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2029-10-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2030-01-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2030-04-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } },
+    { date: "2030-07-21", amount: 350357, byUnit: { "WM-TSEII-AV-419F": 350357 } }
+  ].sort((a, b) => a.date.localeCompare(b.date));
+  var SEED_OFFICE_MAINTENANCE = [
+    { date: "2022-04-01", amount: 351020, byUnit: { "Belle Vie Valley V-V-101": 225599, "BV Beach Residence CG-B8-G-3": 125421 } },
+    { date: "2023-04-01", amount: 348401, byUnit: { "Belle Vie Valley V-V-101": 223916, "BV Beach Residence CG-B8-G-3": 124485 } },
+    { date: "2024-04-01", amount: 348401, byUnit: { "Belle Vie Valley V-V-101": 223916, "BV Beach Residence CG-B8-G-3": 124485 } },
+    { date: "2024-11-05", amount: 272500, byUnit: { "WM-TSEII-AV-419F": 272500 } },
+    { date: "2027-01-21", amount: 817500, byUnit: { "WM-TSEII-AV-419F": 817500 } },
+    { date: "2030-03-16", amount: 27247200, byUnit: { "2A-D2-202": 4056000, "2A-D2-302": 4311200, "2A-D2-402": 3923200, "2A-D2-G01": 7496000, "2A-D2-G02": 7460800 } }
   ];
   var nextOfficeInstallment = (schedule, payments) => {
     const today = /* @__PURE__ */ new Date();
@@ -238,14 +303,10 @@
       return !rowUnits.every((u) => !!payments?.[dk]?.[sanitizeFbKey(u)]);
     }) || null;
   };
-  function officeUnitRemainingPaidOff(unitLabel, installments, payments) {
-    const rows = installments.filter((r) => r.byUnit && unitLabel in r.byUnit).slice().sort((a, b) => a.date.localeCompare(b.date));
+  function officeUnitPaidSoFar(unitLabel, installments, payments) {
     let sum = 0;
-    rows.forEach((row, idx) => {
-      // row 0 (earliest date) is the initial advance — already excluded from
-      // the "remaining installments" baseline itself, so skip it here too or
-      // paying it off would subtract it twice.
-      if (idx === 0) return;
+    installments.forEach((row) => {
+      if (!row.byUnit || !(unitLabel in row.byUnit)) return;
       const dk = sanitizeFbKey(row.date);
       const uk = sanitizeFbKey(unitLabel);
       if (payments?.[dk]?.[uk]) sum += row.byUnit[unitLabel] || 0;
@@ -1322,31 +1383,32 @@
     const remove = (unit) => onChange(units.filter((u) => u.unit !== unit));
     const add = () => onChange([...units, { unit: `New unit ${units.length + 1}`, size: "", parking: 0, totalPrice: 0, advance: 0, remaining: 0 }]);
     const hasSchedule = (u) => !!installments && installments.some((row) => row.byUnit && u.unit in row.byUnit);
-    const effectiveRemaining = (u) => hasSchedule(u) ? Math.max(0, (u.remaining || 0) - officeUnitRemainingPaidOff(u.unit, installments, payments)) : u.remaining || 0;
+    const paidSoFar = (u) => hasSchedule(u) ? officeUnitPaidSoFar(u.unit, installments, payments) : u.advance || 0;
+    const effectiveRemaining = (u) => hasSchedule(u) ? Math.max(0, u.totalPrice - paidSoFar(u)) : u.remaining || 0;
     const totals = units.reduce((s, u) => ({
       totalPrice: s.totalPrice + u.totalPrice,
-      advance: s.advance + u.advance,
+      advance: s.advance + paidSoFar(u),
       remaining: s.remaining + effectiveRemaining(u)
     }), { totalPrice: 0, advance: 0, remaining: 0 });
-    const sorted = sortRows(units, sortKey, sortDir, (u, k) => k === "remaining" ? effectiveRemaining(u) : u[k]);
+    const sorted = sortRows(units, sortKey, sortDir, (u, k) => k === "remaining" ? effectiveRemaining(u) : k === "advance" ? paidSoFar(u) : u[k]);
     return /* @__PURE__ */ jsx("div", { children: [
       /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
-          /* @__PURE__ */ jsx(SortTh, { label: "Office", sortKey: "unit", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Unit", sortKey: "unit", activeKey: sortKey, dir: sortDir, onSort: handleSort }),
           /* @__PURE__ */ jsx("th", { className: "text-left py-2 pr-3", children: "Size" }),
           /* @__PURE__ */ jsx(SortTh, { label: "Parking", sortKey: "parking", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
           /* @__PURE__ */ jsx(SortTh, { label: "Total price", sortKey: "totalPrice", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
-          /* @__PURE__ */ jsx(SortTh, { label: "Advance paid (5%)", sortKey: "advance", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+          /* @__PURE__ */ jsx(SortTh, { label: "Paid so far", sortKey: "advance", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
           /* @__PURE__ */ jsx(SortTh, { label: "Remaining installments", sortKey: "remaining", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
           canEdit && /* @__PURE__ */ jsx("th", { className: "py-2" })
         ] }) }),
         /* @__PURE__ */ jsx("tbody", { children: sorted.map((u) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
-          /* @__PURE__ */ jsx("td", { "data-label": "Office", className: "py-1.5 pr-3 font-mono text-xs min-w-32", children: /* @__PURE__ */ jsx(Cell, { value: u.unit, onChange: (v) => update(u.unit, { unit: v }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Unit", className: "py-1.5 pr-3 font-mono text-xs min-w-32", children: /* @__PURE__ */ jsx(Cell, { value: u.unit, onChange: (v) => update(u.unit, { unit: v }), readOnly: !canEdit }) }),
           /* @__PURE__ */ jsx("td", { "data-label": "Size", className: "py-1.5 pr-3 w-24", children: /* @__PURE__ */ jsx(Cell, { value: u.size, onChange: (v) => update(u.unit, { size: v }), readOnly: !canEdit }) }),
           /* @__PURE__ */ jsx("td", { "data-label": "Parking", className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.parking, onChange: (v) => update(u.unit, { parking: Number(v) || 0 }), readOnly: !canEdit }) }),
           /* @__PURE__ */ jsx("td", { "data-label": "Total price", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.totalPrice, onChange: (v) => update(u.unit, { totalPrice: Number(v) || 0 }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { "data-label": "Advance paid (5%)", className: "py-1.5 pr-3 w-32", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.advance, onChange: (v) => update(u.unit, { advance: Number(v) || 0 }), readOnly: !canEdit }) }),
-          /* @__PURE__ */ jsx("td", { "data-label": "Remaining installments", className: "py-1.5 pr-3 w-32", children: hasSchedule(u) ? /* @__PURE__ */ jsx("div", { className: "text-right font-mono tabular-nums", title: "Computed from the installment schedule below, minus what's marked paid — not editable directly.", children: egp(effectiveRemaining(u)) }) : /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.remaining, onChange: (v) => update(u.unit, { remaining: Number(v) || 0 }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Paid so far", className: "py-1.5 pr-3 w-32", children: hasSchedule(u) ? /* @__PURE__ */ jsx("div", { className: "text-right font-mono tabular-nums", title: "Computed from the installment schedule below — sum of everything marked paid. Not editable directly.", children: egp(paidSoFar(u)) }) : /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.advance, onChange: (v) => update(u.unit, { advance: Number(v) || 0 }), readOnly: !canEdit }) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Remaining installments", className: "py-1.5 pr-3 w-32", children: hasSchedule(u) ? /* @__PURE__ */ jsx("div", { className: "text-right font-mono tabular-nums", title: "Total price minus what's marked paid — not editable directly.", children: egp(effectiveRemaining(u)) }) : /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: u.remaining, onChange: (v) => update(u.unit, { remaining: Number(v) || 0 }), readOnly: !canEdit }) }),
           canEdit && /* @__PURE__ */ jsx("td", { className: "py-1.5", children: /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => remove(u.unit) }) })
         ] }, u.unit)) }),
         /* @__PURE__ */ jsx("tfoot", { children: /* @__PURE__ */ jsx("tr", { className: "border-t-2 border-neutral-900 font-medium", children: [
@@ -1354,12 +1416,12 @@
           /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
           /* @__PURE__ */ jsx("td", { className: "py-2 pr-3" }),
           /* @__PURE__ */ jsx("td", { "data-label": "Total price", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.totalPrice) }),
-          /* @__PURE__ */ jsx("td", { "data-label": "Advance paid (5%)", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.advance) }),
+          /* @__PURE__ */ jsx("td", { "data-label": "Paid so far", className: "py-2 pr-3 text-right font-mono tabular-nums", children: egp(totals.advance) }),
           /* @__PURE__ */ jsx("td", { "data-label": "Remaining installments", className: "py-2 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(totals.remaining) }),
           canEdit && /* @__PURE__ */ jsx("td", { className: "py-2" })
         ] }) })
       ] }) }),
-      canEdit && /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add office unit" })
+      canEdit && /* @__PURE__ */ jsx(AddRowButton, { onClick: add, label: "Add property" })
     ] });
   }
   function OfficeReceiptUpload({ installments, units, payments, onMarkPaid, canEdit }) {
@@ -1455,7 +1517,7 @@
       ] })
     ] });
   }
-  function OfficeInstallmentScheduleTable({ installments, units, payments, onTogglePayment, canEdit = true }) {
+  function OfficeInstallmentScheduleTable({ installments, units, payments, onTogglePayment, canEdit = true, label = "installment schedule" }) {
     const [expanded, setExpanded] = useState(false);
     const unitLabels = useMemo(() => {
       const known = units.map((u) => u.unit).filter((u) => installments.some((row) => row.byUnit && u in row.byUnit));
@@ -1487,7 +1549,7 @@
       /* @__PURE__ */ jsx("button", { onClick: () => setExpanded(!expanded), "aria-expanded": expanded, className: "w-full flex items-center justify-between gap-3 text-xs uppercase tracking-wide border border-neutral-300 px-3 py-2 hover:border-neutral-600 transition-colors", children: [
         /* @__PURE__ */ jsx("span", { className: "flex items-center gap-2", children: [
           /* @__PURE__ */ jsx(ChevronDown, { size: 14, strokeWidth: 1.5, className: `shrink-0 text-neutral-400 transition-transform duration-200 ${expanded ? "rotate-180" : ""}` }),
-          expanded ? "Hide installment schedule" : "Show installment schedule"
+          expanded ? `Hide ${label}` : `Show ${label}`
         ] }),
         /* @__PURE__ */ jsx("span", { className: "text-neutral-500 normal-case tracking-normal", children: `${paidDatesCount} of ${installments.length} dates fully paid` })
       ] }),
@@ -2118,6 +2180,8 @@
     const [officeUnits, setOfficeUnits] = useState(SEED_OFFICE_UNITS);
     const [officeInstallments, setOfficeInstallments] = useState(SEED_OFFICE_INSTALLMENTS);
     const [officeInstallmentPayments, setOfficeInstallmentPayments] = useState({});
+    const [officeMaintenance, setOfficeMaintenance] = useState(SEED_OFFICE_MAINTENANCE);
+    const [officeMaintenancePayments, setOfficeMaintenancePayments] = useState({});
     const [conversions, setConversions] = useState(SEED_CONVERSIONS);
     const [history, setHistory] = useState([]);
     const [loadState, setLoadState] = useState("loading");
@@ -2140,7 +2204,7 @@
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, lf, cert, c, lr, ou, oi, oip] = await Promise.all([
+        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
           loadJson("loanFacilities", SEED_LOAN_FACILITIES),
@@ -2149,7 +2213,9 @@
           loadJson("liveRates", null),
           loadJson("officeUnits", SEED_OFFICE_UNITS),
           loadJson("officeInstallments", SEED_OFFICE_INSTALLMENTS),
-          loadJson("officeInstallmentPayments", {})
+          loadJson("officeInstallmentPayments", {}),
+          loadJson("officeMaintenance", SEED_OFFICE_MAINTENANCE),
+          loadJson("officeMaintenancePayments", {})
         ]);
         let dailyEntries = [];
         try {
@@ -2170,6 +2236,8 @@
           setOfficeUnits(ou);
           setOfficeInstallments(oi);
           setOfficeInstallmentPayments(oip);
+          setOfficeMaintenance(om);
+          setOfficeMaintenancePayments(omp);
           setLoadState("ready");
         }
       })();
@@ -2216,6 +2284,37 @@
       const uk = sanitizeFbKey(unitKey);
       return handleSetOfficeInstallmentPayment(dateKey, unitKey, !officeInstallmentPayments?.[dk]?.[uk]);
     };
+    const handleOfficeMaintenanceChange = (next) => debouncedSave("officeMaintenance", next, setOfficeMaintenance);
+    const handleSetOfficeMaintenancePayment = async (dateKey, unitKey, paid) => {
+      const dk = sanitizeFbKey(dateKey);
+      const uk = sanitizeFbKey(unitKey);
+      setOfficeMaintenancePayments((prev) => ({ ...prev, [dk]: { ...(prev[dk] || {}), [uk]: paid } }));
+      if (db) {
+        try {
+          await db.ref(`officeMaintenancePayments/${dk}/${uk}`).set(paid);
+        } catch {
+        }
+      } else {
+        saveJson("officeMaintenancePayments", { ...officeMaintenancePayments, [dk]: { ...(officeMaintenancePayments[dk] || {}), [uk]: paid } });
+      }
+    };
+    const handleToggleOfficeMaintenancePayment = (dateKey, unitKey) => {
+      const dk = sanitizeFbKey(dateKey);
+      const uk = sanitizeFbKey(unitKey);
+      return handleSetOfficeMaintenancePayment(dateKey, unitKey, !officeMaintenancePayments?.[dk]?.[uk]);
+    };
+    useEffect(() => {
+      if (!canEdit || loadState !== "ready") return;
+      const officesHolding = holdings.find((h) => h.id === "offices");
+      if (!officesHolding) return;
+      const totalPaidSoFar = officeUnits.reduce((s, u) => {
+        const hasSchedule = officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
+        return s + (hasSchedule ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0);
+      }, 0);
+      if (Math.abs(totalPaidSoFar - officesHolding.investment) > 0.5) {
+        handleHoldingsChange(holdings.map((h) => h.id === "offices" ? { ...h, investment: totalPaidSoFar } : h));
+      }
+    }, [officeUnits, officeInstallments, officeInstallmentPayments, holdings, canEdit, loadState]);
     const handleApplyLoanStatement = async (updatedFacilities) => {
       setSaving(true);
       const totals = updatedFacilities.reduce((s, f) => ({ outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { outstanding: 0, installment: 0 });
@@ -2652,9 +2751,11 @@ Save anyway?`);
       const loanFacilityRowsHtml = loanFacilities.map((f) => `<tr><td>${f.label}</td><td class="num mono">${f.rate.toFixed(1)}%</td><td class="num mono">${egp(f.amountFinanced)}</td><td class="num mono">${egp(f.outstanding)}</td><td class="num mono">${egp(f.installment)}</td><td>${fmtDate(f.openDate)}</td><td>${fmtDate(f.maturityDate)}</td></tr>`).join("");
       const loanFacilityTotals = loanFacilities.reduce((s, f) => ({ amountFinanced: s.amountFinanced + f.amountFinanced, outstanding: s.outstanding + f.outstanding, installment: s.installment + f.installment }), { amountFinanced: 0, outstanding: 0, installment: 0 });
       const convRowsHtml = conversionsWithRunning.map((c) => `<tr><td>${c.date}</td><td style="text-transform:capitalize">${c.type}</td><td class="num mono">${usd(c.amountUsd)}</td><td class="num mono">${usd(c.running)}</td></tr>`).join("");
-      const officeUnitEffectiveRemaining = (u) => officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit) ? Math.max(0, (u.remaining || 0) - officeUnitRemainingPaidOff(u.unit, officeInstallments, officeInstallmentPayments)) : u.remaining || 0;
-      const officeUnitsRowsHtml = officeUnits.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(u.advance)}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td></tr>`).join("");
-      const officeUnitsTotals = officeUnits.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + u.advance, remaining: s.remaining + officeUnitEffectiveRemaining(u) }), { totalPrice: 0, advance: 0, remaining: 0 });
+      const officeUnitHasSchedule = (u) => officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
+      const officeUnitPaidSoFarDisplay = (u) => officeUnitHasSchedule(u) ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0;
+      const officeUnitEffectiveRemaining = (u) => officeUnitHasSchedule(u) ? Math.max(0, u.totalPrice - officeUnitPaidSoFarDisplay(u)) : u.remaining || 0;
+      const officeUnitsRowsHtml = officeUnits.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(officeUnitPaidSoFarDisplay(u))}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td></tr>`).join("");
+      const officeUnitsTotals = officeUnits.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + officeUnitPaidSoFarDisplay(u), remaining: s.remaining + officeUnitEffectiveRemaining(u) }), { totalPrice: 0, advance: 0, remaining: 0 });
       const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td><td class="num mono">${d.markedToMarketCost ? pctStr(d.gain / d.markedToMarketCost * 100) : "—"}</td></tr>`).join("");
       const metalFundRowsHtml = metalFundRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
       const metalPhysicalRowsHtml = metalPhysicalRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${(r.grams || 0).toLocaleString()}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
@@ -2752,9 +2853,9 @@ Save anyway?`);
   <p class="note">The ${loanFacilities.length} secured EGP facilities, individually — these roll up into the single "Secured EGP loans" row above.</p>
   <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding balance</th><th class="num">Monthly installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${loanFacilities.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
 
-  <h2>Office units</h2>
-  <p class="note">Still being paid off in installments per the payment schedule — only the 5% advance (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}.</p>
-  <table><tr><th>Office</th><th>Size</th><th class="num">Parking</th><th class="num">Total price</th><th class="num">Advance paid</th><th class="num">Remaining installments</th></tr>${officeUnitsRowsHtml}<tr><td><b>Total (${officeUnits.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(officeUnitsTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.advance)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.remaining)}</b></td></tr></table>
+  <h2>Properties</h2>
+  <p class="note">Still being paid off in installments per the payment schedule — what's been paid so far (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}.</p>
+  <table><tr><th>Unit</th><th>Size</th><th class="num">Parking</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining installments</th></tr>${officeUnitsRowsHtml}<tr><td><b>Total (${officeUnits.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(officeUnitsTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.advance)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.remaining)}</b></td></tr></table>
 
   <h2>Monthly cash flow</h2>
   <table>
@@ -3082,16 +3183,21 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Office units", dek: `${officeUnits.length} units, ${egp(officeUnits.reduce((s, u) => s + u.totalPrice, 0))} full contract price — only the advance paid counts toward Total Assets above.` }),
-          /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "These are still being paid off in quarterly installments, so they aren't fully owned yet — only the 5% advance is counted as an asset. The full price and what's still owed are shown here for reference." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Properties", dek: `${officeUnits.length} properties, ${egp(officeUnits.reduce((s, u) => s + u.totalPrice, 0))} full contract price — what's paid so far counts toward Total Assets above.` }),
+          /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "Offices, a villa, an apartment, and a residential unit, all still being paid off in installments — not fully owned yet. The amount paid so far (not the full price) is counted as an asset, and updates automatically as installments get marked paid below." }),
           /* @__PURE__ */ jsx(OfficeDealUpload, { units: officeUnits, installments: officeInstallments, onApplyUnits: handleOfficeUnitsChange, onApplyInstallments: handleOfficeInstallmentsChange, canEdit }),
           /* @__PURE__ */ jsx(CollapsibleSection, { label: "office units", summary: `${officeUnits.length} units`, children: /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits, onChange: handleOfficeUnitsChange, canEdit, installments: officeInstallments, payments: officeInstallmentPayments }) }),
-          /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per the installment schedule, through ~2034. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` }),
+          /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per each property's installment schedule. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Installment schedule, per unit" }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Each due date's installment, broken out by office unit — mark one paid once it clears." }),
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Installment schedule, per property" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Each due date's installment, broken out by property — mark one paid once it clears." }),
             /* @__PURE__ */ jsx(OfficeReceiptUpload, { installments: officeInstallments, units: officeUnits, payments: officeInstallmentPayments, onMarkPaid: handleSetOfficeInstallmentPayment, canEdit }),
             /* @__PURE__ */ jsx(OfficeInstallmentScheduleTable, { installments: officeInstallments, units: officeUnits, payments: officeInstallmentPayments, onTogglePayment: handleToggleOfficeInstallmentPayment, canEdit })
+          ] }),
+          /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Maintenance schedule, per property" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Maintenance/club deposits are tracked separately from installments — not counted toward Total Assets either way, just tracked so nothing gets missed." }),
+            /* @__PURE__ */ jsx(OfficeInstallmentScheduleTable, { installments: officeMaintenance, units: officeUnits, payments: officeMaintenancePayments, onTogglePayment: handleToggleOfficeMaintenancePayment, canEdit, label: "maintenance schedule" })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
