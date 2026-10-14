@@ -292,6 +292,7 @@
     { date: "2027-01-21", amount: 817500, byUnit: { "WM-TSEII-AV-419F": 817500 } },
     { date: "2030-03-16", amount: 27247200, byUnit: { "2A-D2-202": 4056000, "2A-D2-302": 4311200, "2A-D2-402": 3923200, "2A-D2-G01": 7496000, "2A-D2-G02": 7460800 } }
   ];
+  var SEED_NEWS_FEED = { items: [], updatedAt: null };
   var nextOfficeInstallment = (schedule, payments) => {
     const today = /* @__PURE__ */ new Date();
     today.setHours(0, 0, 0, 0);
@@ -902,6 +903,19 @@
     const matchedRow = date ? installments.find((r) => r.date === date) || null : null;
     return { date, matchedUnits, matchedRow };
   }
+  function timeAgo(dateStr) {
+    if (!dateStr) return "";
+    const target = new Date(dateStr);
+    if (isNaN(target.getTime())) return "";
+    const diffMs = Date.now() - target.getTime();
+    const diffMin = Math.round(diffMs / 6e4);
+    if (diffMin < 1) return "just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.round(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.round(diffHr / 24);
+    return `${diffDay}d ago`;
+  }
   var MATURITY_WARNING_DAYS = 30;
   var daysUntil = (dateStr) => {
     if (!dateStr) return null;
@@ -1266,6 +1280,23 @@
         summary ? /* @__PURE__ */ jsx("span", { className: "text-neutral-500 normal-case tracking-normal", children: summary }) : null
       ] }),
       expanded && /* @__PURE__ */ jsx("div", { className: "mt-4", children })
+    ] });
+  }
+  function NewsFeed({ newsFeed }) {
+    const [expanded, setExpanded] = useState(false);
+    const items = newsFeed?.items || [];
+    const VISIBLE_COUNT = 8;
+    if (!items.length) {
+      return /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-500", children: "No headlines yet — this refreshes automatically a few times a day." });
+    }
+    const shown = expanded ? items : items.slice(0, VISIBLE_COUNT);
+    return /* @__PURE__ */ jsx("div", { children: [
+      newsFeed.updatedAt && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4", children: `Updated ${timeAgo(newsFeed.updatedAt)}.` }),
+      /* @__PURE__ */ jsx("ul", { className: "divide-y divide-neutral-200", children: shown.map((item, i) => /* @__PURE__ */ jsx("li", { className: "py-3", children: /* @__PURE__ */ jsx("a", { href: item.link, target: "_blank", rel: "noopener noreferrer", className: "block group", children: [
+        /* @__PURE__ */ jsx("div", { dir: "auto", className: "text-sm text-neutral-900 group-hover:underline", children: item.title }),
+        /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-1", children: `${item.source || "Unknown source"} \xB7 ${timeAgo(item.pubDate)}` })
+      ] }) }, item.link || i)) }),
+      items.length > VISIBLE_COUNT && /* @__PURE__ */ jsx("button", { onClick: () => setExpanded(!expanded), className: "mt-4 text-xs uppercase tracking-wide text-neutral-500 hover:text-neutral-800 transition-colors", children: expanded ? "Show fewer" : `Show all ${items.length} headlines` })
     ] });
   }
   function TableSearch({ value, onChange, placeholder = "Filter…" }) {
@@ -2219,6 +2250,7 @@
     const [officeInstallmentPayments, setOfficeInstallmentPayments] = useState({});
     const [officeMaintenance, setOfficeMaintenance] = useState(SEED_OFFICE_MAINTENANCE);
     const [officeMaintenancePayments, setOfficeMaintenancePayments] = useState({});
+    const [newsFeed, setNewsFeed] = useState(SEED_NEWS_FEED);
     const [conversions, setConversions] = useState(SEED_CONVERSIONS);
     const [history, setHistory] = useState([]);
     const [loadState, setLoadState] = useState("loading");
@@ -2241,7 +2273,7 @@
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp] = await Promise.all([
+        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp, nf] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
           loadJson("loanFacilities", SEED_LOAN_FACILITIES),
@@ -2252,7 +2284,8 @@
           loadJson("officeInstallments", SEED_OFFICE_INSTALLMENTS),
           loadJson("officeInstallmentPayments", {}),
           loadJson("officeMaintenance", SEED_OFFICE_MAINTENANCE),
-          loadJson("officeMaintenancePayments", {})
+          loadJson("officeMaintenancePayments", {}),
+          loadJson("newsFeed", SEED_NEWS_FEED)
         ]);
         let dailyEntries = [];
         try {
@@ -2275,6 +2308,7 @@
           setOfficeInstallmentPayments(oip);
           setOfficeMaintenance(om);
           setOfficeMaintenancePayments(omp);
+          setNewsFeed(nf);
           setLoadState("ready");
         }
       })();
@@ -3475,8 +3509,12 @@ Save anyway?`);
             /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["S&P 500", "FOREXCOM:SPXUSD|1D"], ["Nasdaq", "FOREXCOM:NSXUSD|1D"], ["Dow Jones", "FOREXCOM:DJI|1D"]], height: 300, dark })
           ] })
         ] }),
+        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+          /* @__PURE__ */ jsx(SectionHeading, { index: "11", title: "Economic news", dek: "Headlines likely to move the numbers above — the Egyptian pound, EGX, gold, and major global decisions (the Fed, interest rates). Refreshed automatically a few times a day." }),
+          /* @__PURE__ */ jsx(NewsFeed, { newsFeed })
+        ] }),
         /* @__PURE__ */ jsx("section", { id: "daily-pricing-form", className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "11", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically. Editing an existing day? Use the pencil icon on its row in History and analysis below." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "12", title: "Today's pricing", dek: "Update the rate, gold price, and each fund's NAV. New holdings above appear here automatically. Editing an existing day? Use the pencil icon on its row in History and analysis below." }),
           !editingEntry && daysSinceLastEntry >= 1 && /* @__PURE__ */ jsx("div", { className: "mb-4 flex items-center gap-2 border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800", children: [
             /* @__PURE__ */ jsx(AlertTriangle, { size: 14, className: "shrink-0 text-amber-500" }),
             daysSinceLastEntry === 1 ? "It's been 1 day since your last update — add today's entry below." : `It's been ${daysSinceLastEntry} days since your last update — add today's entry below.`
@@ -3496,7 +3534,7 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "12", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "13", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
           computedHistory.length >= 2 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Net worth vs. gold vs. USD/EGP, since ${firstComputed.date}` }),

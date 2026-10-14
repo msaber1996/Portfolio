@@ -1,0 +1,108 @@
+name: Fetch economic news headlines
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch RSS feeds, push headlines to Firebase
+        run: |
+          set -euo pipefail
+
+          # Google News RSS search — no API key needed, free, and lets us scope
+          # each query by language/country (hl/gl/ceid) and recency (when:Nd).
+          # Three buckets: high-volume Arabic/Egypt coverage, curated English
+          # Egypt-business coverage, and global market-moving news (Fed, gold).
+          fetch_feed() {
+            curl -sf -G "https://news.google.com/rss/search" \
+              --data-urlencode "q=$1" \
+              --data-urlencode "hl=$2" --data-urlencode "gl=$3" --data-urlencode "ceid=$3:$2" \
+              -A "Mozilla/5.0" --max-time 20
+          }
+
+          AR_EGYPT=$(fetch_feed '("البورصة المصرية" OR "البنك المركزي المصري" OR "سعر الذهب" OR "سعر الفائدة" OR "الجنيه المصري") when:2d' ar EG || echo "")
+          EN_EGYPT=$(fetch_feed '("Egyptian pound" OR "Egypt economy" OR "Central Bank of Egypt" OR EGX stock) when:4d' en-US US || echo "")
+          EN_GLOBAL=$(fetch_feed '("Federal Reserve" rate decision OR "gold price" record high OR "interest rate decision") when:2d' en-US US || echo "")
+
+          echo "$AR_EGYPT" > ar_egypt.xml
+          echo "$EN_EGYPT" > en_egypt.xml
+          echo "$EN_GLOBAL" > en_global.xml
+
+          FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          ID_TOKEN=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
+            | jq -r '.idToken')
+
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to get a Firebase auth token, aborting without writing."
+            exit 1
+          fi
+
+          NEWS_JSON=$(node -e '
+            const fs = require("fs");
+
+            function decodeEntities(s) {
+              return s
+                .replace(/&amp;/g, "&")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">")
+                .replace(/&quot;/g, "\"")
+                .replace(/&#0?39;/g, "'"'"'")
+                .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+                .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)));
+            }
+            function stripCdata(s) {
+              const m = s.match(/^<!\[CDATA\[([\s\S]*)\]\]>$/);
+              return decodeEntities(m ? m[1] : s).trim();
+            }
+            // Known low-signal aggregator/ticker-spam domains — drop rather than
+            // filter by keyword, since their titles otherwise look legitimate.
+            const SOURCE_DENYLIST = ["tradingview", "binance", "moomoo", "ad-hoc-news", "biggo finance", "cryptorank", "beincrypto", "inkl"];
+            function parseFeed(path, lang) {
+              let xml;
+              try { xml = fs.readFileSync(path, "utf8"); } catch { return []; }
+              const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => m[1]);
+              return items.map((it) => {
+                const rawTitle = (it.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || "";
+                const link = stripCdata((it.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || "");
+                const pubDate = ((it.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || "").trim();
+                const source = stripCdata((it.match(/<source[^>]*>([\s\S]*?)<\/source>/) || [])[1] || "");
+                let title = stripCdata(rawTitle);
+                if (source) {
+                  for (const sep of [" - ", " | "]) {
+                    if (title.endsWith(sep + source)) { title = title.slice(0, -(sep + source).length).trim(); break; }
+                  }
+                }
+                return { title, link, source, pubDate, lang };
+              }).filter((x) => x.title && x.link && x.source && !SOURCE_DENYLIST.some((d) => x.source.toLowerCase().includes(d)));
+            }
+
+            let all = [
+              ...parseFeed("ar_egypt.xml", "ar").slice(0, 14),
+              ...parseFeed("en_egypt.xml", "en").slice(0, 10),
+              ...parseFeed("en_global.xml", "en").slice(0, 8),
+            ];
+            const seen = new Set();
+            all = all.filter((x) => {
+              const key = x.title.trim().toLowerCase();
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+            all.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+            all = all.slice(0, 30);
+            console.log(JSON.stringify({ items: all, updatedAt: new Date().toISOString() }));
+          ')
+
+          echo "$NEWS_JSON" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{const j=JSON.parse(d);console.log(`Fetched ${j.items.length} headlines.`);})'
+
+          DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
+          echo "$NEWS_JSON" > news.json
+          curl -sf -X PUT -d @news.json "${DB}/newsFeed.json?auth=${ID_TOKEN}" > /dev/null
+          echo "Wrote newsFeed."
