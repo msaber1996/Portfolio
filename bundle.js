@@ -2841,8 +2841,11 @@ Save anyway?`);
       const officeUnitHasSchedule = (u) => officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
       const officeUnitPaidSoFarDisplay = (u) => officeUnitHasSchedule(u) ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0;
       const officeUnitEffectiveRemaining = (u) => officeUnitHasSchedule(u) ? Math.max(0, u.totalPrice - officeUnitPaidSoFarDisplay(u)) : u.remaining || 0;
-      const officeUnitsRowsHtml = officeUnits.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(officeUnitPaidSoFarDisplay(u))}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td></tr>`).join("");
-      const officeUnitsTotals = officeUnits.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + officeUnitPaidSoFarDisplay(u), remaining: s.remaining + officeUnitEffectiveRemaining(u) }), { totalPrice: 0, advance: 0, remaining: 0 });
+      const officeOnlyUnits = officeUnits.filter((u) => officeGroupUnitNames.includes(u.unit));
+      const officeUnitsRowsHtml = officeOnlyUnits.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(officeUnitPaidSoFarDisplay(u))}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td></tr>`).join("");
+      const officeUnitsTotals = officeOnlyUnits.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + officeUnitPaidSoFarDisplay(u), remaining: s.remaining + officeUnitEffectiveRemaining(u) }), { totalPrice: 0, advance: 0, remaining: 0 });
+      const individualPropertyRowsHtml = individualProperties.map((u) => `<tr><td>${u.unit}</td><td>${u.project || ""}</td><td>${u.size}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(officeUnitPaidSoFarDisplay(u))}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td></tr>`).join("");
+      const individualPropertyTotals = individualProperties.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, paid: s.paid + officeUnitPaidSoFarDisplay(u), remaining: s.remaining + officeUnitEffectiveRemaining(u) }), { totalPrice: 0, paid: 0, remaining: 0 });
       const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td><td class="num mono">${d.markedToMarketCost ? pctStr(d.gain / d.markedToMarketCost * 100) : "—"}</td></tr>`).join("");
       const metalFundRowsHtml = metalFundRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
       const metalPhysicalRowsHtml = metalPhysicalRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${(r.grams || 0).toLocaleString()}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
@@ -2940,9 +2943,13 @@ Save anyway?`);
   <p class="note">The ${loanFacilities.length} secured EGP facilities, individually — these roll up into the single "Secured EGP loans" row above.</p>
   <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding balance</th><th class="num">Monthly installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${loanFacilities.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
 
-  <h2>Properties</h2>
+  <h2>Office units</h2>
   <p class="note">Still being paid off in installments per the payment schedule — what's been paid so far (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}.</p>
-  <table><tr><th>Unit</th><th>Size</th><th class="num">Parking</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining installments</th></tr>${officeUnitsRowsHtml}<tr><td><b>Total (${officeUnits.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(officeUnitsTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.advance)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.remaining)}</b></td></tr></table>
+  <table><tr><th>Unit</th><th>Size</th><th class="num">Parking</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining installments</th></tr>${officeUnitsRowsHtml}<tr><td><b>Total (${officeOnlyUnits.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(officeUnitsTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.advance)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.remaining)}</b></td></tr></table>
+
+  <h2>Other properties</h2>
+  <p class="note">Each property has its own distinct payment schedule — what's been paid so far (${egp(individualPropertyTotals.paid)}) is counted toward Total Assets above.</p>
+  <table><tr><th>Unit</th><th>Project</th><th>Type</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th></tr>${individualPropertyRowsHtml}<tr><td><b>Total (${individualProperties.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(individualPropertyTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(individualPropertyTotals.paid)}</b></td><td class="num mono"><b>${egp(individualPropertyTotals.remaining)}</b></td></tr></table>
 
   <h2>Monthly cash flow</h2>
   <table>
@@ -3017,7 +3024,10 @@ Save anyway?`);
       officeInstallments,
       officeInstallmentPayments,
       conversionSummary,
-      portfolioInsights
+      portfolioInsights,
+      cashFlow,
+      officeGroupUnitNames,
+      individualProperties
     ]);
     const downloadLiabilitiesReport = useCallback(() => {
       const loanRowsHtml = loans.map((l) => {
@@ -3030,17 +3040,25 @@ Save anyway?`);
       const propHasSchedule = (u) => officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
       const propPaidSoFar = (u) => propHasSchedule(u) ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0;
       const propRemaining = (u) => propHasSchedule(u) ? Math.max(0, u.totalPrice - propPaidSoFar(u)) : u.remaining || 0;
-      const propRowsHtml = officeUnits.map((u) => `<tr><td>${u.unit}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(propPaidSoFar(u))}</td><td class="num mono">${egp(propRemaining(u))}</td></tr>`).join("");
       const propTotals = officeUnits.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, paid: s.paid + propPaidSoFar(u), remaining: s.remaining + propRemaining(u) }), { totalPrice: 0, paid: 0, remaining: 0 });
+      const officeUnitsForLiab = officeUnits.filter((u) => officeGroupUnitNames.includes(u.unit));
+      const propRowsHtmlOffice = officeUnitsForLiab.map((u) => `<tr><td>${u.unit}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(propPaidSoFar(u))}</td><td class="num mono">${egp(propRemaining(u))}</td></tr>`).join("");
+      const propTotalsOffice = officeUnitsForLiab.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, paid: s.paid + propPaidSoFar(u), remaining: s.remaining + propRemaining(u) }), { totalPrice: 0, paid: 0, remaining: 0 });
+      const propRowsHtmlIndividual = individualProperties.map((u) => `<tr><td>${u.unit}</td><td>${u.project || ""}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(propPaidSoFar(u))}</td><td class="num mono">${egp(propRemaining(u))}</td></tr>`).join("");
+      const propTotalsIndividual = individualProperties.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, paid: s.paid + propPaidSoFar(u), remaining: s.remaining + propRemaining(u) }), { totalPrice: 0, paid: 0, remaining: 0 });
       const maintHasSchedule = (u) => officeMaintenance.some((row) => row.byUnit && u.unit in row.byUnit);
       const maintPaidSoFar = (u) => officeUnitPaidSoFar(u.unit, officeMaintenance, officeMaintenancePayments);
       const maintTotal = (u) => officeMaintenance.reduce((s, row) => s + (row.byUnit?.[u.unit] || 0), 0);
       const maintRemaining = (u) => Math.max(0, maintTotal(u) - maintPaidSoFar(u));
       const propsWithMaint = officeUnits.filter((u) => maintHasSchedule(u));
-      const maintRowsHtml = propsWithMaint.map((u) => `<tr><td>${u.unit}</td><td class="num mono">${egp(maintTotal(u))}</td><td class="num mono">${egp(maintPaidSoFar(u))}</td><td class="num mono">${egp(maintRemaining(u))}</td></tr>`).join("");
       const maintTotals = propsWithMaint.reduce((s, u) => ({ total: s.total + maintTotal(u), paid: s.paid + maintPaidSoFar(u), remaining: s.remaining + maintRemaining(u) }), { total: 0, paid: 0, remaining: 0 });
+      const propsWithMaintOffice = officeUnitsForLiab.filter((u) => maintHasSchedule(u));
+      const maintRowsHtmlOffice = propsWithMaintOffice.map((u) => `<tr><td>${u.unit}</td><td class="num mono">${egp(maintTotal(u))}</td><td class="num mono">${egp(maintPaidSoFar(u))}</td><td class="num mono">${egp(maintRemaining(u))}</td></tr>`).join("");
+      const maintTotalsOffice = propsWithMaintOffice.reduce((s, u) => ({ total: s.total + maintTotal(u), paid: s.paid + maintPaidSoFar(u), remaining: s.remaining + maintRemaining(u) }), { total: 0, paid: 0, remaining: 0 });
+      const propsWithMaintIndividual = individualProperties.filter((u) => maintHasSchedule(u));
+      const maintRowsHtmlIndividual = propsWithMaintIndividual.map((u) => `<tr><td>${u.unit}</td><td>${u.project || ""}</td><td class="num mono">${egp(maintTotal(u))}</td><td class="num mono">${egp(maintPaidSoFar(u))}</td><td class="num mono">${egp(maintRemaining(u))}</td></tr>`).join("");
+      const maintTotalsIndividual = propsWithMaintIndividual.reduce((s, u) => ({ total: s.total + maintTotal(u), paid: s.paid + maintPaidSoFar(u), remaining: s.remaining + maintRemaining(u) }), { total: 0, paid: 0, remaining: 0 });
       const nextInstRow = nextOfficeInstallment(officeInstallments, officeInstallmentPayments);
-      const nextMaintRow = nextOfficeInstallment(officeMaintenance, officeMaintenancePayments);
       const grandTotalOutstanding = loansOutstanding + propTotals.remaining + maintTotals.remaining;
       const variableCurrentValue = variableInvestments.totalInvested + variableInvestments.totalProfit;
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Portfolio Readiness — Liabilities report ${latest?.date || ""}</title>
@@ -3086,13 +3104,20 @@ Save anyway?`);
   <h2>Secured EGP facilities, individually</h2>
   <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding</th><th class="num">Installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${loanFacilities.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
 
-  <h2>Properties — remaining installments</h2>
+  <h2>Office units — remaining installments</h2>
   <p class="note">Next due ${fmtDate(nextInstRow?.date)}${nextInstRow ? `, ${egp(nextInstRow.amount)}` : ""}.</p>
-  <table><tr><th>Property</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th></tr>${propRowsHtml}<tr><td><b>Total (${officeUnits.length})</b></td><td class="num mono"><b>${egp(propTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(propTotals.paid)}</b></td><td class="num mono"><b>${egp(propTotals.remaining)}</b></td></tr></table>
+  <table><tr><th>Unit</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th></tr>${propRowsHtmlOffice}<tr><td><b>Total (${officeUnitsForLiab.length})</b></td><td class="num mono"><b>${egp(propTotalsOffice.totalPrice)}</b></td><td class="num mono"><b>${egp(propTotalsOffice.paid)}</b></td><td class="num mono"><b>${egp(propTotalsOffice.remaining)}</b></td></tr></table>
 
-  <h2>Properties — remaining maintenance</h2>
-  <p class="note">Next due ${fmtDate(nextMaintRow?.date)}${nextMaintRow ? `, ${egp(nextMaintRow.amount)}` : ""}. Not counted toward Total Assets, but is included in Total outstanding above.</p>
-  <table><tr><th>Property</th><th class="num">Total maintenance</th><th class="num">Paid</th><th class="num">Remaining</th></tr>${maintRowsHtml}<tr><td><b>Total (${propsWithMaint.length})</b></td><td class="num mono"><b>${egp(maintTotals.total)}</b></td><td class="num mono"><b>${egp(maintTotals.paid)}</b></td><td class="num mono"><b>${egp(maintTotals.remaining)}</b></td></tr></table>
+  <h2>Office units — remaining maintenance</h2>
+  <p class="note">Not counted toward Total Assets, but is included in Total outstanding above.</p>
+  <table><tr><th>Unit</th><th class="num">Total maintenance</th><th class="num">Paid</th><th class="num">Remaining</th></tr>${maintRowsHtmlOffice}<tr><td><b>Total (${propsWithMaintOffice.length})</b></td><td class="num mono"><b>${egp(maintTotalsOffice.total)}</b></td><td class="num mono"><b>${egp(maintTotalsOffice.paid)}</b></td><td class="num mono"><b>${egp(maintTotalsOffice.remaining)}</b></td></tr></table>
+
+  <h2>Other properties — remaining installments</h2>
+  <table><tr><th>Unit</th><th>Project</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th></tr>${propRowsHtmlIndividual}<tr><td><b>Total (${individualProperties.length})</b></td><td></td><td class="num mono"><b>${egp(propTotalsIndividual.totalPrice)}</b></td><td class="num mono"><b>${egp(propTotalsIndividual.paid)}</b></td><td class="num mono"><b>${egp(propTotalsIndividual.remaining)}</b></td></tr></table>
+
+  <h2>Other properties — remaining maintenance</h2>
+  <p class="note">Not counted toward Total Assets, but is included in Total outstanding above.</p>
+  <table><tr><th>Unit</th><th>Project</th><th class="num">Total maintenance</th><th class="num">Paid</th><th class="num">Remaining</th></tr>${maintRowsHtmlIndividual}<tr><td><b>Total (${propsWithMaintIndividual.length})</b></td><td></td><td class="num mono"><b>${egp(maintTotalsIndividual.total)}</b></td><td class="num mono"><b>${egp(maintTotalsIndividual.paid)}</b></td><td class="num mono"><b>${egp(maintTotalsIndividual.remaining)}</b></td></tr></table>
 
   <h2>Monthly cash flow</h2>
   <p class="note">Cash in (recurring monthly income) against cash out (loan installments, plus property installments &amp; maintenance averaged over the next 12 months).</p>
@@ -3117,7 +3142,7 @@ Save anyway?`);
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 2e3);
-    }, [loans, loanFacilities, officeUnits, officeInstallments, officeInstallmentPayments, officeMaintenance, officeMaintenancePayments, loansOutstanding, officeNextDueDate, officeNextDueAmount, latest, variableInvestments, cashFlow]);
+    }, [loans, loanFacilities, officeUnits, officeInstallments, officeInstallmentPayments, officeMaintenance, officeMaintenancePayments, loansOutstanding, officeNextDueDate, officeNextDueAmount, latest, variableInvestments, cashFlow, officeGroupUnitNames, individualProperties]);
     if (loadState === "loading") {
       return /* @__PURE__ */ jsx(LoadingSkeleton, {});
     }
