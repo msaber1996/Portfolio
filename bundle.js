@@ -191,9 +191,9 @@
     { unit: "2A-D2-402", size: "288.5m\xB2", parking: 2, totalPrice: 49040000, advance: 2452000, remaining: 46630662 },
     { unit: "2A-D2-G01", size: "529.5m\xB2", parking: 4, totalPrice: 93700000, advance: 4685000, remaining: 89015000 },
     { unit: "2A-D2-G02", size: "529.5m\xB2", parking: 4, totalPrice: 93260000, advance: 4663000, remaining: 88597000 },
-    { unit: "Belle Vie Valley V-V-101", size: "Villa", parking: 0, totalPrice: 9676888, advance: 7959228, remaining: 1717660 },
-    { unit: "BV Beach Residence CG-B8-G-3", size: "Apartment", parking: 0, totalPrice: 5380888, advance: 4425768, remaining: 955120 },
-    { unit: "WM-TSEII-AV-419F", size: "Residential unit", parking: 0, totalPrice: 10915219, advance: 4219504, remaining: 6695712 }
+    { unit: "Belle Vie Valley V-V-101", size: "Villa", project: "Belle Vie – Emaar Misr", parking: 0, totalPrice: 9676888, advance: 7959228, remaining: 1717660 },
+    { unit: "BV Beach Residence CG-B8-G-3", size: "Apartment", project: "Belle Vie Beach Residence – Emaar Misr", parking: 0, totalPrice: 5380888, advance: 4425768, remaining: 955120 },
+    { unit: "WM-TSEII-AV-419F", size: "Residential unit", project: "The Wonder MarQ – MarQ Communities", parking: 0, totalPrice: 10915219, advance: 4219504, remaining: 6695712 }
   ];
   var OFFICE_INSTALLMENT_BY_UNIT_STANDARD = { "2A-D2-202": 1353690, "2A-D2-302": 1438863, "2A-D2-402": 1309368, "2A-D2-G01": 2501790, "2A-D2-G02": 2490042 };
   var SEED_OFFICE_INSTALLMENTS = [
@@ -1512,6 +1512,30 @@
       ] })
     ] });
   }
+  function PropertySummaryCard({ unit, onChangeField, canEdit, paidSoFar, remaining }) {
+    return /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4 mb-4 grid grid-cols-2 sm:grid-cols-5 gap-4", children: [
+      /* @__PURE__ */ jsx("div", { className: "col-span-2 sm:col-span-1", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Project" }),
+        /* @__PURE__ */ jsx(Cell, { value: unit.project || "", onChange: (v) => onChangeField({ project: v }), readOnly: !canEdit, width: "w-full mt-1" })
+      ] }),
+      /* @__PURE__ */ jsx("div", { children: [
+        /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Type" }),
+        /* @__PURE__ */ jsx(Cell, { value: unit.size, onChange: (v) => onChangeField({ size: v }), readOnly: !canEdit, width: "w-full mt-1" })
+      ] }),
+      /* @__PURE__ */ jsx("div", { children: [
+        /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total price" }),
+        /* @__PURE__ */ jsx(Cell, { type: "number", value: unit.totalPrice, onChange: (v) => onChangeField({ totalPrice: Number(v) || 0 }), readOnly: !canEdit, width: "w-full mt-1" })
+      ] }),
+      /* @__PURE__ */ jsx("div", { children: [
+        /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Paid so far" }),
+        /* @__PURE__ */ jsx("div", { className: "font-mono tabular-nums text-sm mt-1", children: egp(paidSoFar) })
+      ] }),
+      /* @__PURE__ */ jsx("div", { children: [
+        /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Remaining" }),
+        /* @__PURE__ */ jsx("div", { className: "font-mono tabular-nums text-sm mt-1", children: egp(remaining) })
+      ] })
+    ] });
+  }
   function filterScheduleForUnits(schedule, unitNames) {
     const nameSet = new Set(unitNames);
     return schedule.map((row) => {
@@ -2278,6 +2302,13 @@
     const handleHoldingsChange = (next) => debouncedSave("holdings", next, setHoldings);
     const handleLoansChange = (next) => debouncedSave("loans", next, setLoans);
     const handleOfficeUnitsChange = (next) => debouncedSave("officeUnits", next, setOfficeUnits);
+    const handleOfficeUnitsTableChange = (nextOfficeOnly) => {
+      const others = officeUnits.filter((u) => !officeGroupUnitNames.includes(u.unit));
+      handleOfficeUnitsChange([...nextOfficeOnly, ...others]);
+    };
+    const handlePropertyFieldChange = (unitName, patch) => {
+      handleOfficeUnitsChange(officeUnits.map((u) => u.unit === unitName ? { ...u, ...patch } : u));
+    };
     const handleOfficeInstallmentsChange = (next) => debouncedSave("officeInstallments", next, setOfficeInstallments);
     const handleSetOfficeInstallmentPayment = async (dateKey, unitKey, paid) => {
       const dk = sanitizeFbKey(dateKey);
@@ -3347,7 +3378,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Properties", dek: `${officeUnits.length} properties, ${egp(officeUnits.reduce((s, u) => s + u.totalPrice, 0))} full contract price — what's paid so far counts toward Total Assets above.` }),
           /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "Offices, a villa, an apartment, and a residential unit, all still being paid off in installments — not fully owned yet. The amount paid so far (not the full price) is counted as an asset, and updates automatically as installments get marked paid below." }),
           /* @__PURE__ */ jsx(OfficeDealUpload, { units: officeUnits, installments: officeInstallments, onApplyUnits: handleOfficeUnitsChange, onApplyInstallments: handleOfficeInstallmentsChange, canEdit }),
-          /* @__PURE__ */ jsx(CollapsibleSection, { label: "office units", summary: `${officeUnits.length} units`, children: /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits, onChange: handleOfficeUnitsChange, canEdit, installments: officeInstallments, payments: officeInstallmentPayments }) }),
+          /* @__PURE__ */ jsx(CollapsibleSection, { label: "office units", summary: `${officeGroupUnitNames.length} units`, children: /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits.filter((u) => officeGroupUnitNames.includes(u.unit)), onChange: handleOfficeUnitsTableChange, canEdit, installments: officeInstallments, payments: officeInstallmentPayments }) }),
           /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per each property's installment schedule. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Upload a payment receipt" }),
@@ -3355,7 +3386,15 @@ Save anyway?`);
             /* @__PURE__ */ jsx(OfficeReceiptUpload, { installments: officeInstallments, units: officeUnits, payments: officeInstallmentPayments, onMarkPaid: handleSetOfficeInstallmentPayment, canEdit })
           ] }),
           officeGroupUnitNames.length > 0 && /* @__PURE__ */ jsx(PropertyScheduleGroup, { title: "Office units — installment & maintenance schedule", unitNames: officeGroupUnitNames, units: officeUnits, installments: officeInstallments, installmentPayments: officeInstallmentPayments, onToggleInstallment: handleToggleOfficeInstallmentPayment, maintenance: officeMaintenance, maintenancePayments: officeMaintenancePayments, onToggleMaintenance: handleToggleOfficeMaintenancePayment, canEdit }),
-          individualProperties.map((u) => /* @__PURE__ */ jsx(PropertyScheduleGroup, { title: `${u.unit} — installment & maintenance schedule`, unitNames: [u.unit], units: officeUnits, installments: officeInstallments, installmentPayments: officeInstallmentPayments, onToggleInstallment: handleToggleOfficeInstallmentPayment, maintenance: officeMaintenance, maintenancePayments: officeMaintenancePayments, onToggleMaintenance: handleToggleOfficeMaintenancePayment, canEdit }, u.unit))
+          individualProperties.map((u) => {
+            const paidSoFar = officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments);
+            const remaining = Math.max(0, u.totalPrice - paidSoFar);
+            return /* @__PURE__ */ jsx("div", { className: "mt-10 pt-8 border-t border-neutral-200", children: [
+              /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: u.unit }),
+              /* @__PURE__ */ jsx(PropertySummaryCard, { unit: u, onChangeField: (patch) => handlePropertyFieldChange(u.unit, patch), canEdit, paidSoFar, remaining }),
+              /* @__PURE__ */ jsx(PropertyScheduleGroup, { title: "Installment & maintenance schedule", unitNames: [u.unit], units: officeUnits, installments: officeInstallments, installmentPayments: officeInstallmentPayments, onToggleInstallment: handleToggleOfficeInstallmentPayment, maintenance: officeMaintenance, maintenancePayments: officeMaintenancePayments, onToggleMaintenance: handleToggleOfficeMaintenancePayment, canEdit })
+            ] }, u.unit);
+          })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Monthly cash flow, by currency", dek: "Certificate income measured against loan installments and property obligations, each currency on its own terms." }),
