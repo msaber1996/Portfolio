@@ -1512,6 +1512,24 @@
       ] })
     ] });
   }
+  function filterScheduleForUnits(schedule, unitNames) {
+    const nameSet = new Set(unitNames);
+    return schedule.map((row) => {
+      const byUnit = Object.fromEntries(Object.entries(row.byUnit || {}).filter(([u]) => nameSet.has(u)));
+      if (!Object.keys(byUnit).length) return null;
+      return { date: row.date, amount: Object.values(byUnit).reduce((s, v) => s + v, 0), byUnit };
+    }).filter(Boolean);
+  }
+  function PropertyScheduleGroup({ title, unitNames, units, installments, installmentPayments, onToggleInstallment, maintenance, maintenancePayments, onToggleMaintenance, canEdit }) {
+    const groupUnits = useMemo(() => units.filter((u) => unitNames.includes(u.unit)), [units, unitNames]);
+    const groupInstallments = useMemo(() => filterScheduleForUnits(installments, unitNames), [installments, unitNames]);
+    const groupMaintenance = useMemo(() => filterScheduleForUnits(maintenance, unitNames), [maintenance, unitNames]);
+    return /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
+      /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: title }),
+      /* @__PURE__ */ jsx(OfficeInstallmentScheduleTable, { installments: groupInstallments, units: groupUnits, payments: installmentPayments, onTogglePayment: onToggleInstallment, canEdit, label: "installment schedule" }),
+      groupMaintenance.length > 0 && /* @__PURE__ */ jsx("div", { className: "mt-3", children: /* @__PURE__ */ jsx(OfficeInstallmentScheduleTable, { installments: groupMaintenance, units: groupUnits, payments: maintenancePayments, onTogglePayment: onToggleMaintenance, canEdit, label: "maintenance schedule" }) })
+    ] });
+  }
   function OfficeInstallmentScheduleTable({ installments, units, payments, onTogglePayment, canEdit = true, label = "installment schedule" }) {
     const [expanded, setExpanded] = useState(false);
     const unitLabels = useMemo(() => {
@@ -2539,6 +2557,8 @@ Save anyway?`);
     const officeNextDueAmount = nextOfficeInstallmentRow ? nextOfficeInstallmentRow.amount : 0;
     const officeDaysUntilDue = daysUntil(officeNextDueDate);
     const officeDueAlert = officeDaysUntilDue !== null && officeDaysUntilDue <= OFFICE_DUE_WARNING_DAYS ? { date: officeNextDueDate, amount: officeNextDueAmount, daysUntilDue: officeDaysUntilDue } : null;
+    const officeGroupUnitNames = useMemo(() => officeUnits.filter((u) => u.unit.startsWith("2A-D2-")).map((u) => u.unit), [officeUnits]);
+    const individualProperties = useMemo(() => officeUnits.filter((u) => !u.unit.startsWith("2A-D2-")), [officeUnits]);
     const activeAlerts = useMemo(() => {
       const list = [];
       if (dailyAlert && dailyAlert.date !== dismissedAlertDate) {
@@ -3330,16 +3350,12 @@ Save anyway?`);
           /* @__PURE__ */ jsx(CollapsibleSection, { label: "office units", summary: `${officeUnits.length} units`, children: /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits, onChange: handleOfficeUnitsChange, canEdit, installments: officeInstallments, payments: officeInstallmentPayments }) }),
           /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per each property's installment schedule. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Installment schedule, per property" }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Each due date's installment, broken out by property — mark one paid once it clears." }),
-            /* @__PURE__ */ jsx(OfficeReceiptUpload, { installments: officeInstallments, units: officeUnits, payments: officeInstallmentPayments, onMarkPaid: handleSetOfficeInstallmentPayment, canEdit }),
-            /* @__PURE__ */ jsx(OfficeInstallmentScheduleTable, { installments: officeInstallments, units: officeUnits, payments: officeInstallmentPayments, onTogglePayment: handleToggleOfficeInstallmentPayment, canEdit })
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Upload a payment receipt" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Works for any property below — detects the due date and which units it covers." }),
+            /* @__PURE__ */ jsx(OfficeReceiptUpload, { installments: officeInstallments, units: officeUnits, payments: officeInstallmentPayments, onMarkPaid: handleSetOfficeInstallmentPayment, canEdit })
           ] }),
-          /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Maintenance schedule, per property" }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Maintenance/club deposits are tracked separately from installments — not counted toward Total Assets either way, just tracked so nothing gets missed." }),
-            /* @__PURE__ */ jsx(OfficeInstallmentScheduleTable, { installments: officeMaintenance, units: officeUnits, payments: officeMaintenancePayments, onTogglePayment: handleToggleOfficeMaintenancePayment, canEdit, label: "maintenance schedule" })
-          ] })
+          officeGroupUnitNames.length > 0 && /* @__PURE__ */ jsx(PropertyScheduleGroup, { title: "Office units — installment & maintenance schedule", unitNames: officeGroupUnitNames, units: officeUnits, installments: officeInstallments, installmentPayments: officeInstallmentPayments, onToggleInstallment: handleToggleOfficeInstallmentPayment, maintenance: officeMaintenance, maintenancePayments: officeMaintenancePayments, onToggleMaintenance: handleToggleOfficeMaintenancePayment, canEdit }),
+          individualProperties.map((u) => /* @__PURE__ */ jsx(PropertyScheduleGroup, { title: `${u.unit} — installment & maintenance schedule`, unitNames: [u.unit], units: officeUnits, installments: officeInstallments, installmentPayments: officeInstallmentPayments, onToggleInstallment: handleToggleOfficeInstallmentPayment, maintenance: officeMaintenance, maintenancePayments: officeMaintenancePayments, onToggleMaintenance: handleToggleOfficeMaintenancePayment, canEdit }, u.unit))
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Monthly cash flow, by currency", dek: "Certificate income measured against loan installments and property obligations, each currency on its own terms." }),
