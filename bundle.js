@@ -2956,10 +2956,10 @@ Save anyway?`);
     <tr><td>EGP \u2014 certificate income</td><td class="num mono">${egp(cashFlow.egp.income)}</td></tr>
     <tr><td>EGP \u2014 loan installments</td><td class="num mono">${egp(cashFlow.egp.outflow)}</td></tr>
     <tr><td>EGP \u2014 property installments &amp; maintenance (avg/mo, next 12mo)</td><td class="num mono">${egp(cashFlow.egp.propertyMonthly)}</td></tr>
-    <tr><td><b>EGP \u2014 net monthly surplus</b></td><td class="num mono"><b>${egp(egpNet)}</b></td></tr>
+    <tr><td><b>EGP \u2014 net monthly ${egpNet >= 0 ? "surplus" : "deficit"}</b></td><td class="num mono"><b>${egp(egpNet)}</b></td></tr>
     <tr><td>USD \u2014 certificate &amp; deposit income</td><td class="num mono">${usd(cashFlow.usd.income)}</td></tr>
     <tr><td>USD \u2014 loan installments</td><td class="num mono">${usd(cashFlow.usd.outflow)}</td></tr>
-    <tr><td><b>USD \u2014 net monthly surplus</b></td><td class="num mono"><b>${usd(usdNet)}</b></td></tr>
+    <tr><td><b>USD \u2014 net monthly ${usdNet >= 0 ? "surplus" : "deficit"}</b></td><td class="num mono"><b>${usd(usdNet)}</b></td></tr>
   </table>
 
   <h2>Currency conversion history</h2>
@@ -3386,8 +3386,8 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "What is owed", dek: `${loans.length} facilities, ${egp(loansOutstanding)} outstanding — plus ${egp(propertiesOutstanding)} in remaining property installments & maintenance (see section 07), for ${egp(totalLiabilities)} total liabilities. Add or remove a loan freely.` }),
-          /* @__PURE__ */ jsx(CollapsibleSection, { label: "loans", summary: `${loans.length} loan lines, ${egp(totalLiabilities)}`, children: /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange, canEdit }) }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "What is owed", dek: `${loans.length} loan line${loans.length === 1 ? "" : "s"}, ${egp(loansOutstanding)} outstanding — plus ${egp(propertiesOutstanding)} in remaining property installments & maintenance (see section 07), for ${egp(totalLiabilities)} total liabilities. Add or remove a loan freely.` }),
+          /* @__PURE__ */ jsx(CollapsibleSection, { label: "loans", summary: `${loans.length} loan lines, ${egp(loansOutstanding)}`, children: /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange, canEdit }) }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${loanFacilities.length} secured EGP facilities, individually` }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “Secured EGP loans” row above." }),
@@ -3429,16 +3429,16 @@ Save anyway?`);
             /* @__PURE__ */ jsx(Stat, { label: "Loan installments", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: cashFlow.egp.outflow, format: egp }), sub: "per month" }),
             /* @__PURE__ */ jsx(Stat, { label: "Property installments & maintenance", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: cashFlow.egp.propertyMonthly, format: egp }), sub: "avg/month, next 12mo" }),
             /* @__PURE__ */ jsx(Stat, { label: "Net monthly position", value: /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-1", children: [
-              /* @__PURE__ */ jsx(ArrowUpRight, { size: 18, strokeWidth: 1.5 }),
+              egpNet >= 0 ? /* @__PURE__ */ jsx(ArrowUpRight, { size: 18, strokeWidth: 1.5 }) : /* @__PURE__ */ jsx(ArrowDownRight, { size: 18, strokeWidth: 1.5 }),
               /* @__PURE__ */ jsx(AnimatedNumber, { value: egpNet, format: egp })
-            ] }), emphasis: true, sub: "surplus" })
+            ] }), emphasis: true, sub: egpNet >= 0 ? "surplus" : "deficit" })
           ] }) : /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-6", children: [
             /* @__PURE__ */ jsx(Stat, { label: "Certificate & deposit income", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: cashFlow.usd.income, format: usd }), sub: "per month" }),
             /* @__PURE__ */ jsx(Stat, { label: "Loan installments", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: cashFlow.usd.outflow, format: usd }), sub: "per month" }),
             /* @__PURE__ */ jsx(Stat, { label: "Net monthly position", value: /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-1", children: [
-              /* @__PURE__ */ jsx(ArrowUpRight, { size: 18, strokeWidth: 1.5 }),
+              usdNet >= 0 ? /* @__PURE__ */ jsx(ArrowUpRight, { size: 18, strokeWidth: 1.5 }) : /* @__PURE__ */ jsx(ArrowDownRight, { size: 18, strokeWidth: 1.5 }),
               /* @__PURE__ */ jsx(AnimatedNumber, { value: usdNet, format: usd })
-            ] }), emphasis: true, sub: "surplus" })
+            ] }), emphasis: true, sub: usdNet >= 0 ? "surplus" : "deficit" })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
