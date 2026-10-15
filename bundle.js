@@ -1090,7 +1090,7 @@
       sub && /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-1", children: sub })
     ] });
   }
-  function LedgerRow({ item, total, isOpen, onToggle }) {
+  function LedgerRow({ item, total, isOpen, onToggle, breakdown }) {
     const pctOfTotal = total ? item.value / total * 100 : 0;
     return /* @__PURE__ */ jsx("div", { className: "border-b border-neutral-200", children: [
       /* @__PURE__ */ jsx("button", { onClick: onToggle, className: "w-full flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 py-3 text-left group", "aria-expanded": isOpen, children: [
@@ -1107,7 +1107,10 @@
           /* @__PURE__ */ jsx("span", { className: "font-mono tabular-nums text-sm w-28 sm:w-32 md:w-36 text-right text-neutral-900 shrink-0", children: item.currency === "USD" ? usd(item.currentNative) : egp(item.value) })
         ] })
       ] }),
-      isOpen && /* @__PURE__ */ jsx("div", { className: "pb-4 pl-7 pr-2 -mt-1 text-xs text-neutral-500 max-w-xl", children: [
+      isOpen && /* @__PURE__ */ jsx("div", { className: "pb-4 pl-7 pr-2 -mt-1 text-xs text-neutral-500 max-w-xl", children: breakdown && breakdown.length ? /* @__PURE__ */ jsx("ul", { children: breakdown.map((b) => /* @__PURE__ */ jsx("li", { className: "flex justify-between gap-4 py-0.5", children: [
+        /* @__PURE__ */ jsx("span", { children: b.unit }),
+        /* @__PURE__ */ jsx("span", { className: "font-mono tabular-nums", children: egp(b.paid) })
+      ] }, b.unit)) }) : [
         item.note,
         item.purchaseDate && ` — bought ${fmtDate(item.purchaseDate)}`
       ] })
@@ -2389,8 +2392,11 @@
         const hasSchedule = officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
         return s + (hasSchedule ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0);
       }, 0);
-      if (Math.abs(totalPaidSoFar - officesHolding.investment) > 0.5) {
-        handleHoldingsChange(holdings.map((h) => h.id === "offices" ? { ...h, investment: totalPaidSoFar } : h));
+      const patch = {};
+      if (Math.abs(totalPaidSoFar - officesHolding.investment) > 0.5) patch.investment = totalPaidSoFar;
+      if (officesHolding.label !== "Properties (paid so far)") patch.label = "Properties (paid so far)";
+      if (Object.keys(patch).length) {
+        handleHoldingsChange(holdings.map((h) => h.id === "offices" ? { ...h, ...patch } : h));
       }
     }, [officeUnits, officeInstallments, officeInstallmentPayments, holdings, canEdit, loadState]);
     const handleApplyLoanStatement = async (updatedFacilities) => {
@@ -2624,6 +2630,11 @@ Save anyway?`);
     const officeDueAlert = officeDaysUntilDue !== null && officeDaysUntilDue <= OFFICE_DUE_WARNING_DAYS ? { date: officeNextDueDate, amount: officeNextDueAmount, daysUntilDue: officeDaysUntilDue } : null;
     const officeGroupUnitNames = useMemo(() => officeUnits.filter((u) => u.unit.startsWith("2A-D2-")).map((u) => u.unit), [officeUnits]);
     const individualProperties = useMemo(() => officeUnits.filter((u) => !u.unit.startsWith("2A-D2-")), [officeUnits]);
+    const officePaidBreakdown = useMemo(() => officeUnits.map((u) => {
+      const hasSchedule = officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
+      const paid = hasSchedule ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0;
+      return { unit: u.unit, paid };
+    }).filter((x) => x.paid > 0), [officeUnits, officeInstallments, officeInstallmentPayments]);
     const activeAlerts = useMemo(() => {
       const list = [];
       if (dailyAlert && dailyAlert.date !== dismissedAlertDate) {
@@ -3363,7 +3374,7 @@ Save anyway?`);
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id) }, a.id)) })
+          /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id), breakdown: a.id === "offices" ? officePaidBreakdown : null }, a.id)) })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Metal: funds vs physical", dek: "Paper gold exposure (AZ Gold Fund) against the actual bars in hand, side by side." }),
