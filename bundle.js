@@ -2901,7 +2901,11 @@ Save anyway?`);
       const officeOnlyUnits = officeUnits.filter((u) => officeGroupUnitNames.includes(u.unit));
       const officeUnitsRowsHtml = officeOnlyUnits.map((u) => `<tr><td>${u.unit}</td><td>${u.size}</td><td class="num mono">${u.parking}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(officeUnitPaidSoFarDisplay(u))}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td></tr>`).join("");
       const officeUnitsTotals = officeOnlyUnits.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, advance: s.advance + officeUnitPaidSoFarDisplay(u), remaining: s.remaining + officeUnitEffectiveRemaining(u) }), { totalPrice: 0, advance: 0, remaining: 0 });
-      const individualPropertyRowsHtml = individualProperties.map((u) => `<tr><td>${u.unit}</td><td>${u.project || ""}</td><td>${u.size}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(officeUnitPaidSoFarDisplay(u))}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td></tr>`).join("");
+      const unitNextDueText = (u) => {
+        const row = nextOfficeInstallment(filterScheduleForUnits(officeInstallments, [u.unit]), officeInstallmentPayments);
+        return row ? `${fmtDate(row.date)}, ${egp(row.amount)}` : "—";
+      };
+      const individualPropertyRowsHtml = individualProperties.map((u) => `<tr><td>${u.unit}</td><td>${u.project || ""}</td><td>${u.size}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(officeUnitPaidSoFarDisplay(u))}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td><td>${unitNextDueText(u)}</td></tr>`).join("");
       const individualPropertyTotals = individualProperties.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, paid: s.paid + officeUnitPaidSoFarDisplay(u), remaining: s.remaining + officeUnitEffectiveRemaining(u) }), { totalPrice: 0, paid: 0, remaining: 0 });
       const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td><td class="num mono">${d.markedToMarketCost ? pctStr(d.gain / d.markedToMarketCost * 100) : "—"}</td></tr>`).join("");
       const metalFundRowsHtml = metalFundRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
@@ -3006,7 +3010,7 @@ Save anyway?`);
 
   <h2>Other properties</h2>
   <p class="note">Each property has its own distinct payment schedule — what's been paid so far (${egp(individualPropertyTotals.paid)}) is counted toward Total Assets above.</p>
-  <table><tr><th>Unit</th><th>Project</th><th>Type</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th></tr>${individualPropertyRowsHtml}<tr><td><b>Total (${individualProperties.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(individualPropertyTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(individualPropertyTotals.paid)}</b></td><td class="num mono"><b>${egp(individualPropertyTotals.remaining)}</b></td></tr></table>
+  <table><tr><th>Unit</th><th>Project</th><th>Type</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th><th>Next due</th></tr>${individualPropertyRowsHtml}<tr><td><b>Total (${individualProperties.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(individualPropertyTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(individualPropertyTotals.paid)}</b></td><td class="num mono"><b>${egp(individualPropertyTotals.remaining)}</b></td><td></td></tr></table>
 
   <h2>Monthly cash flow</h2>
   <table>
@@ -3471,9 +3475,15 @@ Save anyway?`);
           individualProperties.map((u) => {
             const paidSoFar = officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments);
             const remaining = Math.max(0, u.totalPrice - paidSoFar);
+            const unitNextDueRow = nextOfficeInstallment(filterScheduleForUnits(officeInstallments, [u.unit]), officeInstallmentPayments);
+            const unitNextDueDate = unitNextDueRow ? unitNextDueRow.date : null;
+            const unitNextDueAmount = unitNextDueRow ? unitNextDueRow.amount : 0;
+            const unitDaysUntilDue = daysUntil(unitNextDueDate);
+            const unitDueAlert = unitDaysUntilDue !== null && unitDaysUntilDue <= OFFICE_DUE_WARNING_DAYS ? { daysUntilDue: unitDaysUntilDue } : null;
             return /* @__PURE__ */ jsx("div", { className: "mt-10 pt-8 border-t border-neutral-200", children: [
               /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: u.unit }),
               /* @__PURE__ */ jsx(PropertySummaryCard, { unit: u, onChangeField: (patch) => handlePropertyFieldChange(u.unit, patch), canEdit, paidSoFar, remaining }),
+              /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 mb-4 ${unitDueAlert ? unitDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Next due ${fmtDate(unitNextDueDate)}${unitNextDueDate ? `, ${egp(unitNextDueAmount)}` : ""}${unitDueAlert ? unitDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(unitDueAlert.daysUntilDue)}d overdue` : ` — in ${unitDueAlert.daysUntilDue}d` : ""}.` }),
               /* @__PURE__ */ jsx(PropertyScheduleGroup, { title: "Installment & maintenance schedule", unitNames: [u.unit], units: officeUnits, installments: officeInstallments, installmentPayments: officeInstallmentPayments, onToggleInstallment: handleToggleOfficeInstallmentPayment, maintenance: officeMaintenance, maintenancePayments: officeMaintenancePayments, onToggleMaintenance: handleToggleOfficeMaintenancePayment, canEdit })
             ] }, u.unit);
           })
