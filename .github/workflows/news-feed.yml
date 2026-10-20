@@ -83,21 +83,30 @@ jobs:
               }).filter((x) => x.title && x.link && x.source && !SOURCE_DENYLIST.some((d) => x.source.toLowerCase().includes(d)));
             }
 
-            let all = [
-              ...parseFeed("ar_egypt.xml", "ar").slice(0, 14),
-              ...parseFeed("en_egypt.xml", "en").slice(0, 10),
-              ...parseFeed("en_global.xml", "en").slice(0, 8),
+            // Each bucket is already newest-first from Google News. A flat
+            // merge-and-sort-by-date buries en_egypt/en_global under
+            // ar_egypt, since gold-price articles post many times an hour —
+            // so interleave round-robin across the 3 buckets instead, which
+            // guarantees a mix in the visible top-N rather than pure
+            // recency picking one bucket for every slot.
+            const buckets = [
+              parseFeed("ar_egypt.xml", "ar").slice(0, 14),
+              parseFeed("en_egypt.xml", "en").slice(0, 10),
+              parseFeed("en_global.xml", "en").slice(0, 8),
             ];
             const seen = new Set();
-            all = all.filter((x) => {
-              const key = x.title.trim().toLowerCase();
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            });
-            all.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-            all = all.slice(0, 30);
-            console.log(JSON.stringify({ items: all, updatedAt: new Date().toISOString() }));
+            const all = [];
+            for (let i = 0; all.length < 30 && buckets.some((b) => i < b.length); i++) {
+              for (const bucket of buckets) {
+                if (i >= bucket.length) continue;
+                const item = bucket[i];
+                const key = item.title.trim().toLowerCase();
+                if (seen.has(key)) continue;
+                seen.add(key);
+                all.push(item);
+              }
+            }
+            console.log(JSON.stringify({ items: all.slice(0, 30), updatedAt: new Date().toISOString() }));
           ')
 
           echo "$NEWS_JSON" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{const j=JSON.parse(d);console.log(`Fetched ${j.items.length} headlines.`);})'
