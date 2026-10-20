@@ -903,6 +903,17 @@
     const matchedRow = date ? installments.find((r) => r.date === date) || null : null;
     return { date, matchedUnits, matchedRow };
   }
+  function normalizeArabicDigits(s) {
+    const map = { "٠": "0", "١": "1", "٢": "2", "٣": "3", "٤": "4", "٥": "5", "٦": "6", "٧": "7", "٨": "8", "٩": "9" };
+    return s.replace(/[٠-٩]/g, (d) => map[d]);
+  }
+  function parseDistributionAmount(text) {
+    const normalized = normalizeArabicDigits(text).replace(/٬/g, ",").replace(/٫/g, ".");
+    const matches = normalized.match(/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d{4,}(?:\.\d+)?/g) || [];
+    const amounts = matches.map((m) => Number(m.replace(/,/g, ""))).filter((n) => !isNaN(n) && n >= 10);
+    if (!amounts.length) return null;
+    return Math.max(...amounts);
+  }
   function timeAgo(dateStr) {
     if (!dateStr) return "";
     const target = new Date(dateStr);
@@ -1541,6 +1552,77 @@
         ] }, u)) }),
         /* @__PURE__ */ jsx("div", { className: "flex gap-2 mt-4", children: [
           /* @__PURE__ */ jsx("button", { onClick: handleApply, disabled: applying || !preview.matchedUnits.some((u) => preview.checked[u]), className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none", children: applying ? "Saving…" : `Mark ${preview.matchedUnits.filter((u) => preview.checked[u]).length} paid` }),
+          /* @__PURE__ */ jsx("button", { onClick: () => setPreview(null), className: "text-xs uppercase tracking-wide text-neutral-500 px-3 py-1.5", children: "Cancel" })
+        ] })
+      ] })
+    ] });
+  }
+  function NbeDistributionUpload({ currentTotal, onApply, canEdit }) {
+    const [ocrBusy, setOcrBusy] = useState(false);
+    const [ocrError, setOcrError] = useState("");
+    const [preview, setPreview] = useState(null);
+    const [applying, setApplying] = useState(false);
+    const inputRef = useRef(null);
+    if (!canEdit) return null;
+    const handleFile = async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      setOcrError("");
+      setPreview(null);
+      setOcrBusy(true);
+      try {
+        await ensureTesseract();
+        if (!window.Tesseract) throw new Error("Receipt reader did not load — check your connection and try again.");
+        const worker = await window.Tesseract.createWorker("eng+ara");
+        await worker.setParameters({ tessedit_pageseg_mode: "4" });
+        let text = "";
+        try {
+          const { data } = await worker.recognize(file);
+          text = data?.text || "";
+        } finally {
+          await worker.terminate();
+        }
+        const amount = parseDistributionAmount(text);
+        if (!amount) {
+          setOcrError("Could not detect an amount on that image — enter it manually below.");
+          setPreview({ amount: 0 });
+          return;
+        }
+        setPreview({ amount });
+      } catch (err) {
+        setOcrError(err.message || "Could not read that image.");
+      } finally {
+        setOcrBusy(false);
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    };
+    const handleApply = async () => {
+      if (!preview || !preview.amount) return;
+      setApplying(true);
+      await onApply(preview.amount);
+      setApplying(false);
+      setPreview(null);
+    };
+    return /* @__PURE__ */ jsx("div", { className: "mb-6 border border-dashed border-neutral-300 p-4", children: [
+      /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between gap-4 flex-wrap", children: [
+        /* @__PURE__ */ jsx("div", { children: [
+          /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "Upload NBE distribution notice" }),
+          /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 max-w-md", children: `A photo of the fund distribution notification — reads the amount, then adds it to the running total (currently ${egp(currentTotal)}) after you confirm.` })
+        ] }),
+        /* @__PURE__ */ jsx("label", { className: `shrink-0 cursor-pointer text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors ${ocrBusy ? "opacity-40 pointer-events-none" : ""}`, children: [
+          ocrBusy ? /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-1.5", children: [/* @__PURE__ */ jsx(Loader2, { size: 12, className: "animate-spin" }), "Reading…"] }) : "Choose photo",
+          /* @__PURE__ */ jsx("input", { ref: inputRef, type: "file", accept: "image/*", onChange: handleFile, disabled: ocrBusy, className: "hidden" })
+        ] })
+      ] }),
+      ocrError && /* @__PURE__ */ jsx("p", { className: "text-xs text-red-700 mt-3", children: ocrError }),
+      preview && /* @__PURE__ */ jsx("div", { className: "mt-4", children: [
+        /* @__PURE__ */ jsx("label", { className: "text-xs text-neutral-700 flex items-center gap-2 flex-wrap", children: [
+          "Detected amount:",
+          /* @__PURE__ */ jsx(Cell, { type: "number", value: preview.amount, onChange: (v) => setPreview((p) => ({ ...p, amount: Number(v) || 0 })), width: "w-32", align: "right" }),
+          "EGP — check it against the photo before adding."
+        ] }),
+        /* @__PURE__ */ jsx("div", { className: "flex gap-2 mt-4", children: [
+          /* @__PURE__ */ jsx("button", { onClick: handleApply, disabled: applying || !preview.amount, className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors disabled:opacity-40 disabled:pointer-events-none", children: applying ? "Saving…" : `Add ${egp(preview.amount)} to total` }),
           /* @__PURE__ */ jsx("button", { onClick: () => setPreview(null), className: "text-xs uppercase tracking-wide text-neutral-500 px-3 py-1.5", children: "Cancel" })
         ] })
       ] })
@@ -2426,6 +2508,18 @@
       await saveJson("certificates", updatedCertificates);
       await saveJson("holdings", nextHoldings);
       setCertificates(updatedCertificates);
+      setHoldings(nextHoldings);
+      setSaving(false);
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1800);
+    };
+    const handleAddNbeDistribution = async (amount) => {
+      setSaving(true);
+      const existing = holdings.find((h) => h.id === "nbeDist");
+      const nextHoldings = existing
+        ? holdings.map((h) => h.id === "nbeDist" ? { ...h, investment: (h.investment || 0) + amount } : h)
+        : [...holdings, { id: "nbeDist", type: "fixed", currency: "EGP", label: "NBE fund distributions received", investment: amount, navGroup: "", purchaseNav: 0, grams: 0 }];
+      await saveJson("holdings", nextHoldings);
       setHoldings(nextHoldings);
       setSaving(false);
       setSavedFlash(true);
@@ -3373,6 +3467,11 @@ Save anyway?`);
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "01", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
           /* @__PURE__ */ jsx(CollapsibleSection, { label: "holdings", summary: `${holdings.length} holdings, ${egp(totalAssets)}`, children: /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit }) }),
+          /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "NBE fund distributions" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Payouts NBE deposits into the account for Fund 1/2/5 — logged here as a single running total, counted as a cash holding." }),
+            /* @__PURE__ */ jsx(NbeDistributionUpload, { currentTotal: holdings.find((h) => h.id === "nbeDist")?.investment || 0, onApply: handleAddNbeDistribution, canEdit })
+          ] }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${certificates.length} EGP certificates & CDs, individually` }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “EGP certificates & CDs” holding above. Monthly interest reconciles with the “EGP — certificate & fund income” line in section 08." }),

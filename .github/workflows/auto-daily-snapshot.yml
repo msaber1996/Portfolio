@@ -1,0 +1,68 @@
+name: Auto-save today's daily entry if none was saved manually
+
+# Fallback only — if you save today's entry yourself (via the "Today's
+# pricing" form), this is a no-op. Runs late in the day to give you time
+# to do that first. When it does write, it carries forward every fund's
+# last known NAV (NBE/CIB/AZ/Beltone — there's no live source for these)
+# and only refreshes rate + gold from liveRates, so fund performance
+# shows flat (0%) for days nobody updated them manually.
+
+on:
+  schedule:
+    - cron: '0 20 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save today's entry if missing, carrying fund NAVs forward
+        run: |
+          set -euo pipefail
+
+          FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          ID_TOKEN=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
+            | jq -r '.idToken')
+
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to get a Firebase auth token, aborting."
+            exit 1
+          fi
+
+          DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
+          TODAY=$(date -u +%Y-%m-%d)
+
+          EXISTING=$(curl -sf "${DB}/daily/${TODAY}.json?auth=${ID_TOKEN}")
+          if [ "$EXISTING" != "null" ]; then
+            echo "daily/${TODAY} already exists (saved manually, or by an earlier run today) — nothing to do."
+            exit 0
+          fi
+
+          LIVE_RATES=$(curl -sf "${DB}/liveRates.json?auth=${ID_TOKEN}")
+          RATE=$(echo "$LIVE_RATES" | jq -r '.rate // empty')
+          GOLD=$(echo "$LIVE_RATES" | jq -r '.gold // empty')
+          if [ -z "$RATE" ] || [ -z "$GOLD" ]; then
+            echo "liveRates is missing rate/gold, aborting without writing."
+            exit 1
+          fi
+
+          ALL_DAILY=$(curl -sf "${DB}/daily.json?auth=${ID_TOKEN}")
+          LAST_DATE=$(echo "$ALL_DAILY" | jq -r 'if type == "object" then (keys | sort | .[-1] // empty) else empty end')
+          if [ -z "$LAST_DATE" ]; then
+            echo "No prior daily entry to carry fund NAVs forward from, aborting without writing."
+            exit 1
+          fi
+
+          NEW_ENTRY=$(echo "$ALL_DAILY" | jq \
+            --arg last "$LAST_DATE" \
+            --arg date "$TODAY" \
+            --argjson rate "$RATE" \
+            --argjson gold "$GOLD" \
+            --arg updatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '.[$last] + {date: $date, rate: $rate, gold: $gold, autoSaved: true, updatedAt: $updatedAt}')
+
+          curl -sf -X PUT -d "$NEW_ENTRY" "${DB}/daily/${TODAY}.json?auth=${ID_TOKEN}" > /dev/null
+          echo "Wrote daily/${TODAY}, fund NAVs carried forward from ${LAST_DATE}: $NEW_ENTRY"
