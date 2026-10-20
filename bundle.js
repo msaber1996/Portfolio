@@ -1272,9 +1272,9 @@
     }, [JSON.stringify(symbols), height, dark]);
     return /* @__PURE__ */ jsx("div", { className: "tradingview-widget-container", ref: containerRef, style: { minHeight: `${height}px` } });
   }
-  function CollapsibleSection({ label, summary, children, defaultExpanded = false, className }) {
+  function CollapsibleSection({ id, label, summary, children, defaultExpanded = false, className }) {
     const [expanded, setExpanded] = useState(defaultExpanded);
-    return /* @__PURE__ */ jsx("div", { className, children: [
+    return /* @__PURE__ */ jsx("div", { id, className, children: [
       /* @__PURE__ */ jsx("button", { onClick: () => setExpanded(!expanded), "aria-expanded": expanded, className: "w-full flex items-center justify-between gap-3 text-xs uppercase tracking-wide border border-neutral-300 px-3 py-2 hover:border-neutral-600 transition-colors", children: [
         /* @__PURE__ */ jsx("span", { className: "flex items-center gap-2", children: [
           /* @__PURE__ */ jsx(ChevronDown, { size: 14, strokeWidth: 1.5, className: `shrink-0 text-neutral-400 transition-transform duration-200 ${expanded ? "rotate-180" : ""}` }),
@@ -1578,11 +1578,19 @@
       return { date: row.date, amount: Object.values(byUnit).reduce((s, v) => s + v, 0), byUnit };
     }).filter(Boolean);
   }
-  function PropertyScheduleGroup({ title, unitNames, units, installments, installmentPayments, onToggleInstallment, maintenance, maintenancePayments, onToggleMaintenance, canEdit }) {
+  function domId(s) {
+    return String(s).replace(/[^a-zA-Z0-9_-]/g, "-");
+  }
+  function scrollToId(id) {
+    if (!id || typeof document === "undefined") return;
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function PropertyScheduleGroup({ id, title, unitNames, units, installments, installmentPayments, onToggleInstallment, maintenance, maintenancePayments, onToggleMaintenance, canEdit }) {
     const groupUnits = useMemo(() => units.filter((u) => unitNames.includes(u.unit)), [units, unitNames]);
     const groupInstallments = useMemo(() => filterScheduleForUnits(installments, unitNames), [installments, unitNames]);
     const groupMaintenance = useMemo(() => filterScheduleForUnits(maintenance, unitNames), [maintenance, unitNames]);
-    return /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
+    return /* @__PURE__ */ jsx("div", { id, className: "mt-8", children: [
       /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: title }),
       /* @__PURE__ */ jsx(OfficeInstallmentScheduleTable, { installments: groupInstallments, units: groupUnits, payments: installmentPayments, onTogglePayment: onToggleInstallment, canEdit, label: "installment schedule" }),
       groupMaintenance.length > 0 && /* @__PURE__ */ jsx("div", { className: "mt-3", children: /* @__PURE__ */ jsx(OfficeInstallmentScheduleTable, { installments: groupMaintenance, units: groupUnits, payments: maintenancePayments, onTogglePayment: onToggleMaintenance, canEdit, label: "maintenance schedule" }) })
@@ -2636,6 +2644,12 @@ Save anyway?`);
       if (units.length === 1) return `${units[0]} installment`;
       return "Property installment";
     }, [nextOfficeInstallmentRow, officeGroupUnitNames]);
+    const officeNextDueTargetId = useMemo(() => {
+      const units = Object.keys(nextOfficeInstallmentRow?.byUnit || {});
+      if (!units.length || units.every((u) => officeGroupUnitNames.includes(u))) return "office-units-schedule";
+      if (units.length === 1) return `property-${domId(units[0])}`;
+      return "properties-section";
+    }, [nextOfficeInstallmentRow, officeGroupUnitNames]);
     const officeGroupSchedule = useMemo(() => filterScheduleForUnits(officeInstallments, officeGroupUnitNames), [officeInstallments, officeGroupUnitNames]);
     const officeGroupNextDueRow = nextOfficeInstallment(officeGroupSchedule, officeInstallmentPayments);
     const officeGroupNextDueDate = officeGroupNextDueRow ? officeGroupNextDueRow.date : null;
@@ -2650,24 +2664,24 @@ Save anyway?`);
     const activeAlerts = useMemo(() => {
       const list = [];
       if (dailyAlert && dailyAlert.date !== dismissedAlertDate) {
-        list.push({ id: `daily-${dailyAlert.date}`, severity: "warning", text: `Notable move today — ${dailyAlert.triggers.join(" · ")}` });
+        list.push({ id: `daily-${dailyAlert.date}`, targetId: "overview", severity: "warning", text: `Notable move today — ${dailyAlert.triggers.join(" · ")}` });
       }
       if (officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate) {
         const amt = egp(officeDueAlert.amount);
-        list.push({ id: `office-${officeDueAlert.date}`, severity: officeDueAlert.daysUntilDue < 0 ? "danger" : "warning", text: officeDueAlert.daysUntilDue < 0 ? `${officeNextDueLabel} ${amt} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)}d ago` : officeDueAlert.daysUntilDue === 0 ? `${officeNextDueLabel} ${amt} is due today` : `${officeNextDueLabel} ${amt} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue}d` });
+        list.push({ id: `office-${officeDueAlert.date}`, targetId: officeNextDueTargetId, severity: officeDueAlert.daysUntilDue < 0 ? "danger" : "warning", text: officeDueAlert.daysUntilDue < 0 ? `${officeNextDueLabel} ${amt} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)}d ago` : officeDueAlert.daysUntilDue === 0 ? `${officeNextDueLabel} ${amt} is due today` : `${officeNextDueLabel} ${amt} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue}d` });
       }
       certificates.forEach((c, i) => {
         const d = daysUntil(c.maturityDate);
         if (d === null || d > MATURITY_WARNING_DAYS) return;
-        list.push({ id: `cert-${i}-${c.maturityDate}`, severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${c.label} matured ${fmtDate(c.maturityDate)}, ${Math.abs(d)}d ago` : `${c.label} matures ${fmtDate(c.maturityDate)}, in ${d}d` });
+        list.push({ id: `cert-${i}-${c.maturityDate}`, targetId: "certificates-section", severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${c.label} matured ${fmtDate(c.maturityDate)}, ${Math.abs(d)}d ago` : `${c.label} matures ${fmtDate(c.maturityDate)}, in ${d}d` });
       });
       loanFacilities.forEach((l, i) => {
         const d = daysUntil(l.maturityDate);
         if (d === null || d > MATURITY_WARNING_DAYS) return;
-        list.push({ id: `loan-${i}-${l.maturityDate}`, severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${l.label} matured ${fmtDate(l.maturityDate)}, ${Math.abs(d)}d ago` : `${l.label} matures ${fmtDate(l.maturityDate)}, in ${d}d` });
+        list.push({ id: `loan-${i}-${l.maturityDate}`, targetId: "loan-facilities-section", severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${l.label} matured ${fmtDate(l.maturityDate)}, ${Math.abs(d)}d ago` : `${l.label} matures ${fmtDate(l.maturityDate)}, in ${d}d` });
       });
       return list;
-    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, officeNextDueLabel, loanFacilities, certificates]);
+    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, officeNextDueLabel, officeNextDueTargetId, loanFacilities, certificates]);
     useEffect(() => {
       if (typeof navigator === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
         setPushStatus("unsupported");
@@ -3209,14 +3223,14 @@ Save anyway?`);
     }
     return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-neutral-50 text-neutral-900 font-sans animate-fadein", key: view, children: [
       !showAdmin && dailyAlert && dailyAlert.date !== dismissedAlertDate && /* @__PURE__ */ jsx("div", { className: "bg-amber-50 border-b-2 border-amber-400", children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
-        /* @__PURE__ */ jsx("div", { className: "text-sm text-amber-900 leading-relaxed", children: [
+        /* @__PURE__ */ jsx("div", { role: "button", tabIndex: 0, onClick: () => scrollToId("overview"), className: "text-sm text-amber-900 leading-relaxed cursor-pointer hover:underline", children: [
           /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Notable move today — " }),
           dailyAlert.triggers.join(" · ")
         ] }),
         /* @__PURE__ */ jsx("button", { onClick: () => setDismissedAlertDate(dailyAlert.date), className: "text-xs text-amber-700 underline shrink-0 whitespace-nowrap", children: "Dismiss" })
       ] }) }),
       !showAdmin && officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate && /* @__PURE__ */ jsx("div", { className: `border-b-2 ${officeDueAlert.daysUntilDue < 0 ? "bg-red-50 border-red-400" : "bg-amber-50 border-amber-400"}`, children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
-        /* @__PURE__ */ jsx("div", { className: `text-sm leading-relaxed ${officeDueAlert.daysUntilDue < 0 ? "text-red-900" : "text-amber-900"}`, children: [
+        /* @__PURE__ */ jsx("div", { role: "button", tabIndex: 0, onClick: () => scrollToId(officeNextDueTargetId), className: `text-sm leading-relaxed cursor-pointer hover:underline ${officeDueAlert.daysUntilDue < 0 ? "text-red-900" : "text-amber-900"}`, children: [
           /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: `${officeNextDueLabel} — ` }),
           officeDueAlert.daysUntilDue < 0 ? `${egp(officeDueAlert.amount)} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)} day${Math.abs(officeDueAlert.daysUntilDue) === 1 ? "" : "s"} ago.` : officeDueAlert.daysUntilDue === 0 ? `${egp(officeDueAlert.amount)} is due today.` : `${egp(officeDueAlert.amount)} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue} day${officeDueAlert.daysUntilDue === 1 ? "" : "s"}.`
         ] }),
@@ -3264,7 +3278,7 @@ Save anyway?`);
               bellOpen && /* @__PURE__ */ jsx("div", { className: "fixed inset-0 z-10", onClick: () => setBellOpen(false) }),
               bellOpen && /* @__PURE__ */ jsx("div", { className: "fixed top-4 right-4 w-80 max-w-[calc(100vw-2rem)] bg-white border border-neutral-300 shadow-lg z-20", children: [
                 /* @__PURE__ */ jsx("div", { className: "px-4 py-2.5 border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500", children: "Notifications" }),
-                activeAlerts.length === 0 ? /* @__PURE__ */ jsx("div", { className: "px-4 py-4 text-xs text-neutral-400", children: "No active alerts." }) : /* @__PURE__ */ jsx("div", { className: "max-h-72 overflow-y-auto", children: activeAlerts.map((a) => /* @__PURE__ */ jsx("div", { className: `px-4 py-2.5 text-xs leading-relaxed border-b border-neutral-100 ${a.severity === "danger" ? "text-red-800" : "text-amber-800"}`, children: a.text }, a.id)) }),
+                activeAlerts.length === 0 ? /* @__PURE__ */ jsx("div", { className: "px-4 py-4 text-xs text-neutral-400", children: "No active alerts." }) : /* @__PURE__ */ jsx("div", { className: "max-h-72 overflow-y-auto", children: activeAlerts.map((a) => /* @__PURE__ */ jsx("button", { onClick: () => { setBellOpen(false); scrollToId(a.targetId); }, className: `w-full text-left px-4 py-2.5 text-xs leading-relaxed border-b border-neutral-100 hover:bg-neutral-50 transition-colors ${a.severity === "danger" ? "text-red-800" : "text-amber-800"}`, children: a.text }, a.id)) }),
                 /* @__PURE__ */ jsx("div", { className: "px-4 py-2.5 border-t border-neutral-200", children: pushStatus === "unsupported" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Push notifications aren't supported here." }) : pushStatus === "subscribed" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-emerald-700", children: "Push notifications enabled \u2014 you'll get these even if the site is closed." }) : notifPermission === "denied" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Notifications blocked \u2014 enable them in your browser's site settings." }) : pushStatus === "subscribing" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Enabling\u2026" }) : /* @__PURE__ */ jsx("button", { onClick: subscribeToPush, className: "text-xs underline text-neutral-700", children: "Enable push notifications" }) })
               ] })
             ] }),
@@ -3326,7 +3340,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx(UsersAdminPanel, {})
         ] })
       ] : [
-        /* @__PURE__ */ jsx("section", { className: "grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 py-10 border-b border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "overview", className: "grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 py-10 border-b border-neutral-200", children: [
           /* @__PURE__ */ jsx("div", { className: "flex flex-col items-center md:items-start md:col-span-1", children: [
             /* @__PURE__ */ jsx(ReadinessDial, { score: readiness }),
             /* @__PURE__ */ jsx("div", { className: "mt-2 text-center md:text-left", children: [
@@ -3363,7 +3377,7 @@ Save anyway?`);
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${certificates.length} EGP certificates & CDs, individually` }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “EGP certificates & CDs” holding above. Monthly interest reconciles with the “EGP — certificate & fund income” line in section 08." }),
             /* @__PURE__ */ jsx(CertificateStatementUpload, { certificates, onApply: handleApplyCertificateStatement, canEdit }),
-            /* @__PURE__ */ jsx(CollapsibleSection, { label: "certificates", summary: `${certificates.length} certificates`, children: /* @__PURE__ */ jsx(CertificatesTable, { certificates: certificates }) })
+            /* @__PURE__ */ jsx(CollapsibleSection, { id: "certificates-section", label: "certificates", summary: `${certificates.length} certificates`, children: /* @__PURE__ */ jsx(CertificatesTable, { certificates: certificates }) })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
@@ -3453,14 +3467,14 @@ Save anyway?`);
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${loanFacilities.length} secured EGP facilities, individually` }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “Secured EGP loans” row above." }),
             /* @__PURE__ */ jsx(LoanStatementUpload, { facilities: loanFacilities, onApply: handleApplyLoanStatement, canEdit }),
-            /* @__PURE__ */ jsx(CollapsibleSection, { label: "facilities", summary: `${loanFacilities.length} facilities`, children: /* @__PURE__ */ jsx(LoanFacilitiesTable, { facilities: loanFacilities }) })
+            /* @__PURE__ */ jsx(CollapsibleSection, { id: "loan-facilities-section", label: "facilities", summary: `${loanFacilities.length} facilities`, children: /* @__PURE__ */ jsx(LoanFacilitiesTable, { facilities: loanFacilities }) })
           ] }),
           /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between pt-4 mt-4 border-t-2 border-neutral-900", children: [
             /* @__PURE__ */ jsx("span", { className: "text-sm font-serif italic text-neutral-700", children: "Net worth" }),
             /* @__PURE__ */ jsx("span", { className: "font-mono tabular-nums text-lg text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: netWorth, format: egp }) })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "properties-section", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "07", title: "Properties", dek: `${officeUnits.length} properties, ${egp(officeUnits.reduce((s, u) => s + u.totalPrice, 0))} full contract price — what's paid so far counts toward Total Assets above.` }),
           /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "Offices, a villa, an apartment, and a residential unit, all still being paid off in installments — not fully owned yet. The amount paid so far (not the full price) is counted as an asset, and updates automatically as installments get marked paid below." }),
           /* @__PURE__ */ jsx(OfficeDealUpload, { units: officeUnits, installments: officeInstallments, onApplyUnits: handleOfficeUnitsChange, onApplyInstallments: handleOfficeInstallmentsChange, canEdit }),
@@ -3471,7 +3485,7 @@ Save anyway?`);
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Works for any property below — detects the due date and which units it covers." }),
             /* @__PURE__ */ jsx(OfficeReceiptUpload, { installments: officeInstallments, units: officeUnits, payments: officeInstallmentPayments, onMarkPaid: handleSetOfficeInstallmentPayment, canEdit })
           ] }),
-          officeGroupUnitNames.length > 0 && /* @__PURE__ */ jsx(PropertyScheduleGroup, { title: "Office units — installment & maintenance schedule", unitNames: officeGroupUnitNames, units: officeUnits, installments: officeInstallments, installmentPayments: officeInstallmentPayments, onToggleInstallment: handleToggleOfficeInstallmentPayment, maintenance: officeMaintenance, maintenancePayments: officeMaintenancePayments, onToggleMaintenance: handleToggleOfficeMaintenancePayment, canEdit }),
+          officeGroupUnitNames.length > 0 && /* @__PURE__ */ jsx(PropertyScheduleGroup, { id: "office-units-schedule", title: "Office units — installment & maintenance schedule", unitNames: officeGroupUnitNames, units: officeUnits, installments: officeInstallments, installmentPayments: officeInstallmentPayments, onToggleInstallment: handleToggleOfficeInstallmentPayment, maintenance: officeMaintenance, maintenancePayments: officeMaintenancePayments, onToggleMaintenance: handleToggleOfficeMaintenancePayment, canEdit }),
           individualProperties.map((u) => {
             const paidSoFar = officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments);
             const remaining = Math.max(0, u.totalPrice - paidSoFar);
@@ -3480,7 +3494,7 @@ Save anyway?`);
             const unitNextDueAmount = unitNextDueRow ? unitNextDueRow.amount : 0;
             const unitDaysUntilDue = daysUntil(unitNextDueDate);
             const unitDueAlert = unitDaysUntilDue !== null && unitDaysUntilDue <= OFFICE_DUE_WARNING_DAYS ? { daysUntilDue: unitDaysUntilDue } : null;
-            return /* @__PURE__ */ jsx("div", { className: "mt-10 pt-8 border-t border-neutral-200", children: [
+            return /* @__PURE__ */ jsx("div", { id: `property-${domId(u.unit)}`, className: "mt-10 pt-8 border-t border-neutral-200", children: [
               /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: u.unit }),
               /* @__PURE__ */ jsx(PropertySummaryCard, { unit: u, onChangeField: (patch) => handlePropertyFieldChange(u.unit, patch), canEdit, paidSoFar, remaining }),
               /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 mb-4 ${unitDueAlert ? unitDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Next due ${fmtDate(unitNextDueDate)}${unitNextDueDate ? `, ${egp(unitNextDueAmount)}` : ""}${unitDueAlert ? unitDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(unitDueAlert.daysUntilDue)}d overdue` : ` — in ${unitDueAlert.daysUntilDue}d` : ""}.` }),
