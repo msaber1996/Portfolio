@@ -2630,6 +2630,18 @@ Save anyway?`);
     const officeDueAlert = officeDaysUntilDue !== null && officeDaysUntilDue <= OFFICE_DUE_WARNING_DAYS ? { date: officeNextDueDate, amount: officeNextDueAmount, daysUntilDue: officeDaysUntilDue } : null;
     const officeGroupUnitNames = useMemo(() => officeUnits.filter((u) => u.unit.startsWith("2A-D2-")).map((u) => u.unit), [officeUnits]);
     const individualProperties = useMemo(() => officeUnits.filter((u) => !u.unit.startsWith("2A-D2-")), [officeUnits]);
+    const officeNextDueLabel = useMemo(() => {
+      const units = Object.keys(nextOfficeInstallmentRow?.byUnit || {});
+      if (!units.length || units.every((u) => officeGroupUnitNames.includes(u))) return "Office installment";
+      if (units.length === 1) return `${units[0]} installment`;
+      return "Property installment";
+    }, [nextOfficeInstallmentRow, officeGroupUnitNames]);
+    const officeGroupSchedule = useMemo(() => filterScheduleForUnits(officeInstallments, officeGroupUnitNames), [officeInstallments, officeGroupUnitNames]);
+    const officeGroupNextDueRow = nextOfficeInstallment(officeGroupSchedule, officeInstallmentPayments);
+    const officeGroupNextDueDate = officeGroupNextDueRow ? officeGroupNextDueRow.date : null;
+    const officeGroupNextDueAmount = officeGroupNextDueRow ? officeGroupNextDueRow.amount : 0;
+    const officeGroupDaysUntilDue = daysUntil(officeGroupNextDueDate);
+    const officeGroupDueAlert = officeGroupDaysUntilDue !== null && officeGroupDaysUntilDue <= OFFICE_DUE_WARNING_DAYS ? { date: officeGroupNextDueDate, amount: officeGroupNextDueAmount, daysUntilDue: officeGroupDaysUntilDue } : null;
     const officePaidBreakdown = useMemo(() => officeUnits.map((u) => {
       const hasSchedule = officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
       const paid = hasSchedule ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0;
@@ -2642,7 +2654,7 @@ Save anyway?`);
       }
       if (officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate) {
         const amt = egp(officeDueAlert.amount);
-        list.push({ id: `office-${officeDueAlert.date}`, severity: officeDueAlert.daysUntilDue < 0 ? "danger" : "warning", text: officeDueAlert.daysUntilDue < 0 ? `Office installment ${amt} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)}d ago` : officeDueAlert.daysUntilDue === 0 ? `Office installment ${amt} is due today` : `Office installment ${amt} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue}d` });
+        list.push({ id: `office-${officeDueAlert.date}`, severity: officeDueAlert.daysUntilDue < 0 ? "danger" : "warning", text: officeDueAlert.daysUntilDue < 0 ? `${officeNextDueLabel} ${amt} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)}d ago` : officeDueAlert.daysUntilDue === 0 ? `${officeNextDueLabel} ${amt} is due today` : `${officeNextDueLabel} ${amt} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue}d` });
       }
       certificates.forEach((c, i) => {
         const d = daysUntil(c.maturityDate);
@@ -2655,7 +2667,7 @@ Save anyway?`);
         list.push({ id: `loan-${i}-${l.maturityDate}`, severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${l.label} matured ${fmtDate(l.maturityDate)}, ${Math.abs(d)}d ago` : `${l.label} matures ${fmtDate(l.maturityDate)}, in ${d}d` });
       });
       return list;
-    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, loanFacilities, certificates]);
+    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, officeNextDueLabel, loanFacilities, certificates]);
     useEffect(() => {
       if (typeof navigator === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
         setPushStatus("unsupported");
@@ -2989,7 +3001,7 @@ Save anyway?`);
   <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding balance</th><th class="num">Monthly installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${loanFacilities.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
 
   <h2>Office units</h2>
-  <p class="note">Still being paid off in installments per the payment schedule — what's been paid so far (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}.</p>
+  <p class="note">Still being paid off in installments per the payment schedule — what's been paid so far (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Next due ${fmtDate(officeGroupNextDueDate)}${officeGroupNextDueDate ? `, ${egp(officeGroupNextDueAmount)}` : ""}.</p>
   <table><tr><th>Unit</th><th>Size</th><th class="num">Parking</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining installments</th></tr>${officeUnitsRowsHtml}<tr><td><b>Total (${officeOnlyUnits.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(officeUnitsTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.advance)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.remaining)}</b></td></tr></table>
 
   <h2>Other properties</h2>
@@ -3058,8 +3070,8 @@ Save anyway?`);
       conversionRunningBalance,
       egpNet,
       usdNet,
-      officeNextDueDate,
-      officeNextDueAmount,
+      officeGroupNextDueDate,
+      officeGroupNextDueAmount,
       metalFundRows,
       metalPhysicalRows,
       metalOverall,
@@ -3201,7 +3213,7 @@ Save anyway?`);
       ] }) }),
       !showAdmin && officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate && /* @__PURE__ */ jsx("div", { className: `border-b-2 ${officeDueAlert.daysUntilDue < 0 ? "bg-red-50 border-red-400" : "bg-amber-50 border-amber-400"}`, children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
         /* @__PURE__ */ jsx("div", { className: `text-sm leading-relaxed ${officeDueAlert.daysUntilDue < 0 ? "text-red-900" : "text-amber-900"}`, children: [
-          /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Office installment — " }),
+          /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: `${officeNextDueLabel} — ` }),
           officeDueAlert.daysUntilDue < 0 ? `${egp(officeDueAlert.amount)} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)} day${Math.abs(officeDueAlert.daysUntilDue) === 1 ? "" : "s"} ago.` : officeDueAlert.daysUntilDue === 0 ? `${egp(officeDueAlert.amount)} is due today.` : `${egp(officeDueAlert.amount)} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue} day${officeDueAlert.daysUntilDue === 1 ? "" : "s"}.`
         ] }),
         /* @__PURE__ */ jsx("button", { onClick: () => setDismissedOfficeDueDate(officeDueAlert.date), className: `text-xs underline shrink-0 whitespace-nowrap ${officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700"}`, children: "Dismiss" })
@@ -3449,7 +3461,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600 mb-6 max-w-2xl", children: "Offices, a villa, an apartment, and a residential unit, all still being paid off in installments — not fully owned yet. The amount paid so far (not the full price) is counted as an asset, and updates automatically as installments get marked paid below." }),
           /* @__PURE__ */ jsx(OfficeDealUpload, { units: officeUnits, installments: officeInstallments, onApplyUnits: handleOfficeUnitsChange, onApplyInstallments: handleOfficeInstallmentsChange, canEdit }),
           /* @__PURE__ */ jsx(CollapsibleSection, { label: "office units", summary: `${officeGroupUnitNames.length} units`, children: /* @__PURE__ */ jsx(OfficeUnitsTable, { units: officeUnits.filter((u) => officeGroupUnitNames.includes(u.unit)), onChange: handleOfficeUnitsTableChange, canEdit, installments: officeInstallments, payments: officeInstallmentPayments }) }),
-          /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per each property's installment schedule. Next due ${fmtDate(officeNextDueDate)}${officeNextDueDate ? `, ${egp(officeNextDueAmount)}` : ""}${officeDueAlert ? officeDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeDueAlert.daysUntilDue)}d overdue` : ` — in ${officeDueAlert.daysUntilDue}d` : ""}.` }),
+          /* @__PURE__ */ jsx("p", { className: `text-xs mt-4 ${officeGroupDueAlert ? officeGroupDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700" : "text-neutral-500"}`, children: `Paid off per each property's installment schedule. Next due ${fmtDate(officeGroupNextDueDate)}${officeGroupNextDueDate ? `, ${egp(officeGroupNextDueAmount)}` : ""}${officeGroupDueAlert ? officeGroupDueAlert.daysUntilDue < 0 ? ` — ${Math.abs(officeGroupDueAlert.daysUntilDue)}d overdue` : ` — in ${officeGroupDueAlert.daysUntilDue}d` : ""}.` }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Upload a payment receipt" }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Works for any property below — detects the due date and which units it covers." }),
