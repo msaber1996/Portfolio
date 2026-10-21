@@ -2281,11 +2281,21 @@
   }
   function DailyPricingForm({ onSave, saving, defaults, navFields, liveRates, canEdit = true, isEditing = false }) {
     const [form, setForm] = useState(defaults);
-    useEffect(() => setForm(defaults), [defaults]);
-    const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
-    const handlePasteFill = (values) => setForm((f) => ({ ...f, ...values }));
-    const isChanged = (key) => String(form[key] ?? "") !== String(defaults[key] ?? "");
-    const ChangedMark = ({ fieldKey }) => isChanged(fieldKey) ? /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-0.5 text-emerald-700", title: "Changed from the pre-filled value", children: [
+    const [touchedFields, setTouchedFields] = useState(() => new Set(defaults.changedFields || []));
+    useEffect(() => {
+      setForm(defaults);
+      setTouchedFields(new Set(defaults.changedFields || []));
+    }, [defaults]);
+    const set = (key) => (e) => {
+      setForm((f) => ({ ...f, [key]: e.target.value }));
+      setTouchedFields((t) => new Set(t).add(key));
+    };
+    const handlePasteFill = (values) => {
+      setForm((f) => ({ ...f, ...values }));
+      setTouchedFields((t) => new Set([...t, ...Object.keys(values)]));
+    };
+    const isChanged = (key) => touchedFields.has(key);
+    const ChangedMark = ({ fieldKey }) => isChanged(fieldKey) ? /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-0.5 text-emerald-700", title: "Changed from the pre-filled value — stays marked after saving", children: [
       /* @__PURE__ */ jsx(Check, { size: 11, strokeWidth: 3 }),
       /* @__PURE__ */ jsx("span", { className: "text-[10px] uppercase tracking-wide", children: "changed" })
     ] }) : null;
@@ -2320,7 +2330,7 @@
         ] }, f.key))
       ] }),
       canEdit ? /* @__PURE__ */ jsx("div", { className: "px-4 pb-4 flex items-center gap-3", children: [
-        /* @__PURE__ */ jsx("button", { onClick: () => onSave(form), disabled: saving, className: "inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 disabled:opacity-50", children: [
+        /* @__PURE__ */ jsx("button", { onClick: () => onSave(form, Array.from(touchedFields)), disabled: saving, className: "inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 disabled:opacity-50", children: [
           saving ? /* @__PURE__ */ jsx(Loader2, { size: 14, className: "animate-spin" }) : isEditing ? /* @__PURE__ */ jsx(Check, { size: 14 }) : /* @__PURE__ */ jsx(Plus, { size: 14 }),
           saving ? "Saving" : isEditing ? "Save changes" : "Save today's entry"
         ] }),
@@ -2589,7 +2599,7 @@
       const alreadySavedToday = latest && latest.date === todayStr;
       const rate = !alreadySavedToday && liveRates?.rate ? liveRates.rate : base.rate;
       const gold = !alreadySavedToday && liveRates?.gold ? liveRates.gold : base.gold;
-      return { ...base, date: todayStr, rate, gold };
+      return { ...base, date: todayStr, rate, gold, changedFields: alreadySavedToday ? base.changedFields || [] : [] };
     }, [latest, liveRates]);
     const editingEntry = useMemo(() => editingDate ? history.find((e) => e.date === editingDate) : null, [editingDate, history]);
     const formDefaults = editingEntry || defaultsForForm;
@@ -2600,10 +2610,11 @@
       const lastDate = new Date(latest.date + "T00:00:00");
       return Math.round((todayMidnight - lastDate) / 864e5);
     }, [latest]);
-    const handleSaveDay = useCallback(async (form) => {
+    const handleSaveDay = useCallback(async (form, changedFields) => {
       const clean = { ...form };
       clean.rate = Number(clean.rate) || 0;
       clean.gold = Number(clean.gold) || 0;
+      clean.changedFields = changedFields || [];
       navFields.forEach((f) => {
         clean[f.key] = clean[f.key] === "" || clean[f.key] === void 0 ? void 0 : Number(clean[f.key]);
       });
