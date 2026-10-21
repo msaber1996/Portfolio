@@ -2284,6 +2284,11 @@
     useEffect(() => setForm(defaults), [defaults]);
     const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
     const handlePasteFill = (values) => setForm((f) => ({ ...f, ...values }));
+    const isChanged = (key) => String(form[key] ?? "") !== String(defaults[key] ?? "");
+    const ChangedMark = ({ fieldKey }) => isChanged(fieldKey) ? /* @__PURE__ */ jsx("span", { className: "inline-flex items-center gap-0.5 text-emerald-700", title: "Changed from the pre-filled value", children: [
+      /* @__PURE__ */ jsx(Check, { size: 11, strokeWidth: 3 }),
+      /* @__PURE__ */ jsx("span", { className: "text-[10px] uppercase tracking-wide", children: "changed" })
+    ] }) : null;
     return /* @__PURE__ */ jsx("div", { className: "border border-neutral-300", children: [
       /* @__PURE__ */ jsx("div", { className: "bg-neutral-900 text-white px-4 py-2 flex items-center justify-between", children: [
         /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide", children: isEditing ? "Editing entry" : "Today's update" }),
@@ -2293,15 +2298,24 @@
       canEdit && navFields.length > 0 && /* @__PURE__ */ jsx(NavPasteFill, { navFields, onFill: handlePasteFill }),
       /* @__PURE__ */ jsx("div", { className: "p-4 grid grid-cols-2 sm:grid-cols-4 gap-3", children: [
         /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
-          /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "USD / EGP rate" }),
+          /* @__PURE__ */ jsx("span", { className: "flex items-center gap-2", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "USD / EGP rate" }),
+            /* @__PURE__ */ jsx(ChangedMark, { fieldKey: "rate" })
+          ] }),
           /* @__PURE__ */ jsx("input", { type: "number", step: "0.01", value: form.rate, onChange: set("rate"), disabled: !canEdit, className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60" })
         ] }),
         /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
-          /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "Gold, EGP/gram" }),
+          /* @__PURE__ */ jsx("span", { className: "flex items-center gap-2", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "Gold, EGP/gram" }),
+            /* @__PURE__ */ jsx(ChangedMark, { fieldKey: "gold" })
+          ] }),
           /* @__PURE__ */ jsx("input", { type: "number", step: "1", value: form.gold, onChange: set("gold"), disabled: !canEdit, className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60" })
         ] }),
         navFields.map((f) => /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
-          /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: f.label }),
+          /* @__PURE__ */ jsx("span", { className: "flex items-center gap-2", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: f.label }),
+            /* @__PURE__ */ jsx(ChangedMark, { fieldKey: f.key })
+          ] }),
           /* @__PURE__ */ jsx("input", { type: "number", step: "0.0001", value: form[f.key] ?? "", onChange: set(f.key), disabled: !canEdit, className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60" })
         ] }, f.key))
       ] }),
