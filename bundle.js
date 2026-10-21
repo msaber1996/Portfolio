@@ -953,7 +953,10 @@
         const currentEgp = h.currency === "USD" ? current * rate : current;
         const investmentEgp = h.currency === "USD" ? h.investment * rate : h.investment;
         const gainPct = h.purchaseNav ? (totalReturnNav - h.purchaseNav) / h.purchaseNav * 100 : 0;
-        if (h.currency === "USD") {
+        if (h.navGroup === "azgold") {
+          goldCurrent += currentEgp;
+          goldInvestment += investmentEgp;
+        } else if (h.currency === "USD") {
           usdFundsCurrentUsd += current;
           usdFundsInvestmentUsd += h.investment;
         } else {
@@ -977,7 +980,12 @@
     const markedToMarket = egpFundsCurrent + usdFundsCurrentEgp + goldCurrent;
     const markedToMarketCost = egpFundsInvestment + usdFundsInvestmentUsd * rate + goldInvestment;
     const totalAssets = markedToMarket + fixedEgp;
-    return { ...entry, rate, gold: goldPrice, rows, markedToMarket, markedToMarketCost, gain: markedToMarket - markedToMarketCost, totalAssets };
+    const byCategory = {
+      gold: { current: goldCurrent, cost: goldInvestment },
+      egpFunds: { current: egpFundsCurrent, cost: egpFundsInvestment },
+      usdFunds: { current: usdFundsCurrentEgp, cost: usdFundsInvestmentUsd * rate }
+    };
+    return { ...entry, rate, gold: goldPrice, rows, markedToMarket, markedToMarketCost, gain: markedToMarket - markedToMarketCost, totalAssets, byCategory };
   }
   function useSortState(defaultKey, defaultDir = "desc") {
     const [sortKey, setSortKey] = useState(defaultKey);
@@ -3015,7 +3023,8 @@ Save anyway?`);
       };
       const individualPropertyRowsHtml = individualProperties.map((u) => `<tr><td>${u.unit}</td><td>${u.project || ""}</td><td>${u.size}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(officeUnitPaidSoFarDisplay(u))}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td><td>${unitNextDueText(u)}</td></tr>`).join("");
       const individualPropertyTotals = individualProperties.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, paid: s.paid + officeUnitPaidSoFarDisplay(u), remaining: s.remaining + officeUnitEffectiveRemaining(u) }), { totalPrice: 0, paid: 0, remaining: 0 });
-      const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td><td class="num mono">${d.markedToMarketCost ? pctStr(d.gain / d.markedToMarketCost * 100) : "—"}</td></tr>`).join("");
+      const catPctHtml = (cat) => cat && cat.cost ? pctStr((cat.current - cat.cost) / cat.cost * 100) : "—";
+      const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td><td class="num mono">${catPctHtml(d.byCategory?.gold)}</td><td class="num mono">${catPctHtml(d.byCategory?.usdFunds)}</td><td class="num mono">${catPctHtml(d.byCategory?.egpFunds)}</td></tr>`).join("");
       const metalFundRowsHtml = metalFundRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
       const metalPhysicalRowsHtml = metalPhysicalRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${(r.grams || 0).toLocaleString()}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
       const metalOverallGain = metalOverall.value - metalOverall.invested;
@@ -3146,7 +3155,7 @@ Save anyway?`);
 
   <h2>History</h2>
   ${analysisHtml}
-  <table><tr><th>Date</th><th class="num">Rate</th><th class="num">Gold</th><th class="num">Marked-to-market</th><th class="num">Gain / loss</th><th class="num">Gain / loss %</th></tr>${historyRowsHtml}</table>
+  <table><tr><th>Date</th><th class="num">Rate</th><th class="num">Gold</th><th class="num">Marked-to-market</th><th class="num">Gain / loss</th><th class="num">Gold %</th><th class="num">USD funds %</th><th class="num">EGP funds %</th></tr>${historyRowsHtml}</table>
 
   <div class="footer"><span>Figures as tracked in the working file. For internal review, not financial advice.</span><span>Generated ${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}</span></div>
 </body></html>`;
@@ -3790,16 +3799,22 @@ Save anyway?`);
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Gold" }),
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Marked-to-market" }),
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Gain / loss" }),
-              /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Gain / loss %" }),
+              /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Gold %" }),
+              /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "USD funds %" }),
+              /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "EGP funds %" }),
               canEdit && /* @__PURE__ */ jsx("th", { className: "py-2 px-3" })
             ] }) }),
-            /* @__PURE__ */ jsx("tbody", { children: [...computedHistory].reverse().map((d) => /* @__PURE__ */ jsx("tr", { className: `border-b border-neutral-100 ${d.date === editingDate ? "bg-neutral-50" : ""}`, children: [
+            /* @__PURE__ */ jsx("tbody", { children: [...computedHistory].reverse().map((d) => {
+              const catPct = (cat) => cat && cat.cost ? pctStr((cat.current - cat.cost) / cat.cost * 100) : "—";
+              return /* @__PURE__ */ jsx("tr", { className: `border-b border-neutral-100 ${d.date === editingDate ? "bg-neutral-50" : ""}`, children: [
               /* @__PURE__ */ jsx("td", { "data-label": "Date", className: "py-2 px-3 font-mono text-neutral-700", children: d.date }),
               /* @__PURE__ */ jsx("td", { "data-label": "Rate", className: "py-2 px-3 font-mono text-right text-neutral-700", children: fmt(d.rate, 2) }),
               /* @__PURE__ */ jsx("td", { "data-label": "Gold", className: "py-2 px-3 font-mono text-right text-neutral-700", children: fmt(d.gold) }),
               /* @__PURE__ */ jsx("td", { "data-label": "Marked-to-market", className: "py-2 px-3 font-mono text-right text-neutral-900", children: egp(d.markedToMarket) }),
               /* @__PURE__ */ jsx("td", { "data-label": "Gain / loss", className: `py-2 px-3 font-mono text-right ${d.gain >= 0 ? "text-neutral-900" : "text-neutral-500"}`, children: signedEgp(d.gain) }),
-              /* @__PURE__ */ jsx("td", { "data-label": "Gain / loss %", className: `py-2 px-3 font-mono text-right ${d.gain >= 0 ? "text-neutral-900" : "text-neutral-500"}`, children: d.markedToMarketCost ? pctStr(d.gain / d.markedToMarketCost * 100) : "—" }),
+              /* @__PURE__ */ jsx("td", { "data-label": "Gold %", className: "py-2 px-3 font-mono text-right text-neutral-700", children: catPct(d.byCategory?.gold) }),
+              /* @__PURE__ */ jsx("td", { "data-label": "USD funds %", className: "py-2 px-3 font-mono text-right text-neutral-700", children: catPct(d.byCategory?.usdFunds) }),
+              /* @__PURE__ */ jsx("td", { "data-label": "EGP funds %", className: "py-2 px-3 font-mono text-right text-neutral-700", children: catPct(d.byCategory?.egpFunds) }),
               canEdit && /* @__PURE__ */ jsx("td", { className: "py-2 px-3 text-right whitespace-nowrap", children: [
                 /* @__PURE__ */ jsx(RowEditButton, { onClick: () => {
                   setEditingDate(d.date);
@@ -3807,7 +3822,8 @@ Save anyway?`);
                 } }),
                 /* @__PURE__ */ jsx(RowDeleteButton, { onClick: () => handleDeleteDay(d.date) })
               ] })
-            ] }, d.date)) })
+            ] }, d.date);
+            }) })
           ] }) }) })
         ] }),
         /* @__PURE__ */ jsx("footer", { className: "py-10 border-t-2 border-neutral-900 text-xs text-neutral-500 flex justify-between", children: [
