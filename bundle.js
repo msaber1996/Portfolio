@@ -2279,7 +2279,7 @@
       ] }))
     ] });
   }
-  function DailyPricingForm({ onSave, saving, defaults, navFields, liveRates, canEdit = true, isEditing = false }) {
+  function DailyPricingForm({ onSave, saving, defaults, compareBase, navFields, liveRates, canEdit = true, isEditing = false }) {
     const [form, setForm] = useState(defaults);
     const [touchedFields, setTouchedFields] = useState(() => new Set(defaults.changedFields || []));
     useEffect(() => {
@@ -2299,6 +2299,23 @@
       /* @__PURE__ */ jsx(Check, { size: 11, strokeWidth: 3 }),
       /* @__PURE__ */ jsx("span", { className: "text-[10px] uppercase tracking-wide", children: "changed" })
     ] }) : null;
+    const changeDirection = (key) => {
+      if (!compareBase) return null;
+      const prev = Number(compareBase[key]);
+      const curRaw = form[key];
+      if (curRaw === void 0 || curRaw === null || curRaw === "") return null;
+      const cur = Number(curRaw);
+      if (!Number.isFinite(prev) || !Number.isFinite(cur)) return null;
+      if (cur > prev) return "up";
+      if (cur < prev) return "down";
+      return null;
+    };
+    const DirectionArrow = ({ fieldKey }) => {
+      const dir = changeDirection(fieldKey);
+      if (!dir) return null;
+      const Icon = dir === "up" ? ArrowUpRight : ArrowDownRight;
+      return /* @__PURE__ */ jsx("span", { className: `inline-flex items-center ${dir === "up" ? "text-emerald-700" : "text-red-600"}`, title: dir === "up" ? "Higher than the last saved entry" : "Lower than the last saved entry", children: /* @__PURE__ */ jsx(Icon, { size: 12, strokeWidth: 3 }) });
+    };
     return /* @__PURE__ */ jsx("div", { className: "border border-neutral-300", children: [
       /* @__PURE__ */ jsx("div", { className: "bg-neutral-900 text-white px-4 py-2 flex items-center justify-between", children: [
         /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide", children: isEditing ? "Editing entry" : "Today's update" }),
@@ -2310,6 +2327,7 @@
         /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ jsx("span", { className: "flex items-center gap-2", children: [
             /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "USD / EGP rate" }),
+            /* @__PURE__ */ jsx(DirectionArrow, { fieldKey: "rate" }),
             /* @__PURE__ */ jsx(ChangedMark, { fieldKey: "rate" })
           ] }),
           /* @__PURE__ */ jsx("input", { type: "number", step: "0.01", value: form.rate, onChange: set("rate"), disabled: !canEdit, className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60" })
@@ -2317,6 +2335,7 @@
         /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ jsx("span", { className: "flex items-center gap-2", children: [
             /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: "Gold, EGP/gram" }),
+            /* @__PURE__ */ jsx(DirectionArrow, { fieldKey: "gold" }),
             /* @__PURE__ */ jsx(ChangedMark, { fieldKey: "gold" })
           ] }),
           /* @__PURE__ */ jsx("input", { type: "number", step: "1", value: form.gold, onChange: set("gold"), disabled: !canEdit, className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60" })
@@ -2324,6 +2343,7 @@
         navFields.map((f) => /* @__PURE__ */ jsx("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ jsx("span", { className: "flex items-center gap-2", children: [
             /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-500", children: f.label }),
+            /* @__PURE__ */ jsx(DirectionArrow, { fieldKey: f.key }),
             /* @__PURE__ */ jsx(ChangedMark, { fieldKey: f.key })
           ] }),
           /* @__PURE__ */ jsx("input", { type: "number", step: "0.0001", value: form[f.key] ?? "", onChange: set(f.key), disabled: !canEdit, className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60" })
@@ -2603,6 +2623,15 @@
     }, [latest, liveRates]);
     const editingEntry = useMemo(() => editingDate ? history.find((e) => e.date === editingDate) : null, [editingDate, history]);
     const formDefaults = editingEntry || defaultsForForm;
+    const compareBase = useMemo(() => {
+      if (editingEntry) {
+        const idx = history.findIndex((e) => e.date === editingEntry.date);
+        return idx > 0 ? history[idx - 1] : null;
+      }
+      const todayStr = formDefaults.date;
+      const alreadySavedToday = latest && latest.date === todayStr;
+      return alreadySavedToday ? history[history.length - 2] || null : latest || null;
+    }, [editingEntry, history, latest, formDefaults]);
     const daysSinceLastEntry = useMemo(() => {
       if (!latest?.date) return null;
       const today = /* @__PURE__ */ new Date();
@@ -3850,7 +3879,7 @@ Save anyway?`);
             ] }),
             /* @__PURE__ */ jsx("button", { onClick: () => setEditingDate(null), className: "text-xs underline shrink-0", children: "Cancel" })
           ] }),
-          /* @__PURE__ */ jsx(DailyPricingForm, { onSave: handleSaveDay, saving, defaults: formDefaults, navFields, liveRates, canEdit, isEditing: !!editingEntry }),
+          /* @__PURE__ */ jsx(DailyPricingForm, { onSave: handleSaveDay, saving, defaults: formDefaults, compareBase, navFields, liveRates, canEdit, isEditing: !!editingEntry }),
           savedFlash && /* @__PURE__ */ jsx("div", { className: "mt-3 inline-flex items-center gap-2 text-xs text-neutral-600 border border-neutral-300 px-3 py-1.5", children: [
             /* @__PURE__ */ jsx(Check, { size: 13 }),
             " Saved to history"
