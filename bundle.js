@@ -2688,6 +2688,13 @@ Save anyway?`);
         { key: "egpFunds", label: "EGP funds", ...build("egpFunds") }
       ];
     }, [displayComputed]);
+    const wholePortfolio = useMemo(() => {
+      const totalInvested = ASSETS.reduce((s, a) => s + (a.investmentEgp ?? 0), 0);
+      const totalCurrent = totalAssets;
+      const totalProfit = totalCurrent - totalInvested;
+      const returnPct = totalInvested ? totalProfit / totalInvested * 100 : 0;
+      return { totalInvested, totalCurrent, totalProfit, returnPct };
+    }, [ASSETS, totalAssets]);
     const currentValueById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency === "USD" ? a.currentNative : a.value])), [ASSETS]);
     const currentValueCurrencyById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency])), [ASSETS]);
     const metalFundRows = useMemo(
@@ -3122,12 +3129,25 @@ Save anyway?`);
   <table><tr><th>Certificate</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Monthly interest</th><th>Opened</th><th>Matures</th></tr>${certificateRowsHtml}<tr><td><b>Total (${certificates.length})</b></td><td></td><td class="num mono"><b>${egp(certificateTotal)}</b></td><td class="num mono"><b>${egp(certificateMonthlyInterestTotal)}</b></td><td></td><td></td></tr></table>
   <p class="note">Total monthly interest across all certificates reconciles with the "EGP — certificate & fund income" line in the cash flow section below.</p>
 
+  <h2>Whole portfolio (everything, including certificates and properties)</h2>
+  <table>
+    <tr><td>We put in</td><td class="num mono">${egp(wholePortfolio.totalInvested)}</td></tr>
+    <tr><td>Worth now</td><td class="num mono">${egp(wholePortfolio.totalCurrent)}</td></tr>
+    <tr><td>We earned</td><td class="num mono">${signedEgp(wholePortfolio.totalProfit)}</td></tr>
+    <tr><td>At a return of</td><td class="num mono">${pctStr(wholePortfolio.returnPct)}</td></tr>
+  </table>
+
   <h2>Variable investments (funds, gold, Beltone — excludes certificates)</h2>
   <table>
     <tr><td>Total invested</td><td class="num mono">${egp(variableInvestments.totalInvested)}</td></tr>
     <tr><td>Duration tracked</td><td class="num mono">${variableInvestments.durationDays} day${variableInvestments.durationDays === 1 ? "" : "s"}</td></tr>
     <tr><td>Return</td><td class="num mono">${pctStr(variableInvestments.returnPct)}</td></tr>
     <tr><td>Total profit</td><td class="num mono">${signedEgp(variableInvestments.totalProfit)}</td></tr>
+  </table>
+  <p class="note">By category, current value (not what was invested) — these add up to total invested + total profit above, not to "Total invested" alone.</p>
+  <table>
+    <tr><th>Category</th><th class="num">Current value</th><th class="num">Return</th></tr>
+    ${variableInvestmentsByCategory.map((c) => `<tr><td>${c.label}</td><td class="num mono">${egp(c.current)}</td><td class="num mono">${pctStr(c.pct)}</td></tr>`).join("")}
   </table>
 
   <h2>Metal: funds vs physical</h2>
@@ -3230,6 +3250,8 @@ Save anyway?`);
       usdNet,
       officeGroupNextDueDate,
       officeGroupNextDueAmount,
+      wholePortfolio,
+      variableInvestmentsByCategory,
       metalFundRows,
       metalPhysicalRows,
       metalOverall,
@@ -3528,6 +3550,28 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-02", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "02", title: "What the assets are worth", dek: `${ASSETS.length} holdings, ${egp(totalAssets)} in total, priced ${asOfLabel}. Expand a row for its detail.` }),
+          /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-neutral-50 p-5", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Your whole portfolio, in plain terms" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Every holding, including certificates and properties — what's been put in, what it's worth now, and the profit in between." }),
+            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-2 sm:grid-cols-4 gap-6", children: [
+              /* @__PURE__ */ jsx("div", { children: [
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "We put in" }),
+                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: wholePortfolio.totalInvested, format: egp }) })
+              ] }),
+              /* @__PURE__ */ jsx("div", { children: [
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Worth now" }),
+                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: wholePortfolio.totalCurrent, format: egp }) })
+              ] }),
+              /* @__PURE__ */ jsx("div", { children: [
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "We earned" }),
+                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${wholePortfolio.totalProfit >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: wholePortfolio.totalProfit, format: signedEgp }) })
+              ] }),
+              /* @__PURE__ */ jsx("div", { children: [
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "At a return of" }),
+                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${wholePortfolio.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: wholePortfolio.returnPct, format: pctStr }) })
+              ] })
+            ] })
+          ] }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-neutral-50 p-5", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Your variable investments, in plain terms" }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Funds, gold, and Beltone — the holdings whose price moves day to day. Certificates (fixed principal) aren't included here." }),
