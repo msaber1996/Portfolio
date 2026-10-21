@@ -3552,8 +3552,10 @@ Save anyway?`);
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-3 gap-6 pt-4 mt-4 border-t border-neutral-200", children: variableInvestmentsByCategory.map((c) => /* @__PURE__ */ jsx("div", { children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: c.label }),
               /* @__PURE__ */ jsx("div", { className: "font-mono text-base mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.current, format: egp }) }),
+              /* @__PURE__ */ jsx("div", { className: "text-[10px] uppercase tracking-wide text-neutral-400 mt-0.5", children: "current value" }),
               /* @__PURE__ */ jsx("div", { className: `font-mono text-xs mt-0.5 ${c.pct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.pct, format: pctStr }) })
-            ] }, c.key)) })
+            ] }, c.key)) }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mt-3", children: `These three are current value, not what was invested — they add up to ${egp(variableInvestments.totalInvested + variableInvestments.totalProfit)} (you've put in + profit so far), not to "You've put in" alone.` })
           ] }),
           /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id), breakdown: a.id === "offices" ? officePaidBreakdown : null }, a.id)) })
         ] }),
