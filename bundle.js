@@ -3129,7 +3129,20 @@ Save anyway?`);
   .note { font-size:12.5px; color:#404040; line-height:1.6; margin:4px 0 12px; }
   .footer { font-size:10px; color:#A3A3A3; border-top:2px solid #171717; margin-top:28px; padding-top:10px; display:flex; justify-content:space-between; }
   .hint { font-size:11px; color:#A3A3A3; margin-top:2px; }
-  @media print { .no-print { display:none !important; } }
+  .toc { border:1px solid #E5E5E5; border-radius:6px; padding:14px 18px; margin:6px 0 28px; background:#fff; }
+  .toc-title { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#737373; margin-bottom:8px; }
+  .toc-list { columns:2; column-gap:24px; font-size:12.5px; list-style:none; margin:0; padding:0; }
+  .toc-list li { break-inside:avoid; margin-bottom:5px; }
+  .toc-list a { color:#171717; text-decoration:none; }
+  .toc-list a:hover { text-decoration:underline; }
+  @media print {
+    .no-print { display:none !important; }
+    .toc { border:none; padding:0; }
+    .toc-list { columns:1; }
+    h2 { page-break-after:avoid; break-after:avoid; }
+    table { page-break-inside:auto; }
+    tr { page-break-inside:avoid; break-inside:avoid; }
+  }
 </style></head>
 <body>
   <div class="no-print" style="background:#171717;color:#fff;padding:10px 16px;margin:-32px -40px 24px;display:flex;justify-content:space-between;align-items:center;">
@@ -3148,13 +3161,29 @@ Save anyway?`);
     <div><div class="stat-label">Leverage</div><div class="stat-value mono">${debtRatioPct.toFixed(1)}%</div></div>
   </div>
 
-  <h2>Holdings</h2>
+  <nav class="toc"><div class="toc-title">On this page</div><ul class="toc-list">
+    <li><a href="#r-holdings">Holdings</a></li>
+    <li><a href="#r-whole-portfolio">Whole portfolio</a></li>
+    <li><a href="#r-variable-investments">Variable investments</a></li>
+    <li><a href="#r-metal">Metal: funds vs physical</a></li>
+    <li><a href="#r-insights">Portfolio insights</a></li>
+    <li><a href="#r-by-currency">Investment, by currency</a></li>
+    <li><a href="#r-owed">What is owed</a></li>
+    <li><a href="#r-office-units">Office units</a></li>
+    <li><a href="#r-other-properties">Other properties</a></li>
+    <li><a href="#r-cash-flow">Monthly cash flow</a></li>
+    <li><a href="#r-conversions">Currency conversion history</a></li>
+    <li><a href="#r-ranking">Performance ranking</a></li>
+    <li><a href="#r-history">History</a></li>
+  </ul></nav>
+
+  <h2 id="r-holdings">Holdings</h2>
   <table><tr><th>Holding</th><th>Purchase date</th><th class="num">Purchase amount</th><th class="num">Bought at</th><th class="num">Now</th><th class="num">Gain</th><th class="num">Value</th><th class="num">% of total</th></tr>${rowsHtml}</table>
   <p class="note">The ${certificates.length} EGP certificates & CDs, individually — these roll up into the single "EGP certificates & CDs" holding above.</p>
   <table><tr><th>Certificate</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Monthly interest</th><th>Opened</th><th>Matures</th></tr>${certificateRowsHtml}<tr><td><b>Total (${certificates.length})</b></td><td></td><td class="num mono"><b>${egp(certificateTotal)}</b></td><td class="num mono"><b>${egp(certificateMonthlyInterestTotal)}</b></td><td></td><td></td></tr></table>
   <p class="note">Total monthly interest across all certificates reconciles with the "EGP — certificate & fund income" line in the cash flow section below.</p>
 
-  <h2>Whole portfolio (everything, including certificates and properties)</h2>
+  <h2 id="r-whole-portfolio">Whole portfolio (everything, including certificates and properties)</h2>
   <table>
     <tr><td>We put in</td><td class="num mono">${egp(wholePortfolio.totalInvested)}</td></tr>
     <tr><td>Worth now</td><td class="num mono">${egp(wholePortfolio.totalCurrent)}</td></tr>
@@ -3162,7 +3191,7 @@ Save anyway?`);
     <tr><td>At a return of</td><td class="num mono">${pctStr(wholePortfolio.returnPct)}</td></tr>
   </table>
 
-  <h2>Variable investments (funds, gold, Beltone — excludes certificates)</h2>
+  <h2 id="r-variable-investments">Variable investments (funds, gold, Beltone — excludes certificates)</h2>
   <table>
     <tr><td>Total invested</td><td class="num mono">${egp(variableInvestments.totalInvested)}</td></tr>
     <tr><td>Duration tracked</td><td class="num mono">${variableInvestments.durationDays} day${variableInvestments.durationDays === 1 ? "" : "s"}</td></tr>
@@ -3175,7 +3204,7 @@ Save anyway?`);
     ${variableInvestmentsByCategory.map((c) => `<tr><td>${c.label}</td><td class="num mono">${egp(c.cost)}</td><td class="num mono">${egp(c.current)}</td><td class="num mono">${pctStr(c.pct)}</td></tr>`).join("")}
   </table>
 
-  <h2>Metal: funds vs physical</h2>
+  <h2 id="r-metal">Metal: funds vs physical</h2>
   <table>
     <tr><td>Total invested</td><td class="num mono">${egp(metalOverall.invested)}</td></tr>
     <tr><td>Current value</td><td class="num mono">${egp(metalOverall.value)}</td></tr>
@@ -3186,11 +3215,11 @@ Save anyway?`);
   <p class="note">Physical gold</p>
   <table><tr><th>Holding</th><th class="num">Grams</th><th class="num">Invested</th><th class="num">Current value</th><th class="num">Gain</th><th>Purchased</th></tr>${metalPhysicalRowsHtml}</table>
 
-  <h2>Portfolio insights</h2>
+  <h2 id="r-insights">Portfolio insights</h2>
   <p class="note">Automatic observations from the numbers above — concentration, leverage, cash flow, and upcoming maturities.</p>
   ${portfolioInsights.length === 0 ? '<p class="note">No notable observations right now — nothing here looks out of the ordinary.</p>' : `<ul style="margin:0 0 12px;padding-left:18px;">${portfolioInsights.map((ins) => `<li class="note" style="margin:0 0 6px;"><b>${ins.severity === "notice" ? "Notice" : ins.severity === "good" ? "Good" : "Note"}:</b> ${ins.text}</li>`).join("")}</ul>`}
 
-  <h2>Investment, by currency</h2>
+  <h2 id="r-by-currency">Investment, by currency</h2>
   <table>
     <tr><td>Total invested in EGP</td><td class="num mono">${egp(totalEgpInvestment)}</td></tr>
     <tr><td>Total invested in USD</td><td class="num mono">${usd(totalUsdInvestment)}</td></tr>
@@ -3198,20 +3227,20 @@ Save anyway?`);
     <tr><td>Remaining in USD today</td><td class="num mono">${usd(conversionRunningBalance)}</td></tr>
   </table>
 
-  <h2>What is owed</h2>
+  <h2 id="r-owed">What is owed</h2>
   <table><tr><th>Facility</th><th class="num">Amount</th><th class="num">Monthly installment</th></tr>${loanRowsHtml}</table>
   <p class="note">The ${loanFacilities.length} secured EGP facilities, individually — these roll up into the single "Secured EGP loans" row above.</p>
   <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding balance</th><th class="num">Monthly installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${loanFacilities.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
 
-  <h2>Office units</h2>
+  <h2 id="r-office-units">Office units</h2>
   <p class="note">Still being paid off in installments per the payment schedule — what's been paid so far (${egp(officeUnitsTotals.advance)}) is counted toward Total Assets above. Next due ${fmtDate(officeGroupNextDueDate)}${officeGroupNextDueDate ? `, ${egp(officeGroupNextDueAmount)}` : ""}.</p>
   <table><tr><th>Unit</th><th>Size</th><th class="num">Parking</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining installments</th></tr>${officeUnitsRowsHtml}<tr><td><b>Total (${officeOnlyUnits.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(officeUnitsTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.advance)}</b></td><td class="num mono"><b>${egp(officeUnitsTotals.remaining)}</b></td></tr></table>
 
-  <h2>Other properties</h2>
+  <h2 id="r-other-properties">Other properties</h2>
   <p class="note">Each property has its own distinct payment schedule — what's been paid so far (${egp(individualPropertyTotals.paid)}) is counted toward Total Assets above.</p>
   <table><tr><th>Unit</th><th>Project</th><th>Type</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th><th>Next due</th></tr>${individualPropertyRowsHtml}<tr><td><b>Total (${individualProperties.length})</b></td><td></td><td></td><td class="num mono"><b>${egp(individualPropertyTotals.totalPrice)}</b></td><td class="num mono"><b>${egp(individualPropertyTotals.paid)}</b></td><td class="num mono"><b>${egp(individualPropertyTotals.remaining)}</b></td><td></td></tr></table>
 
-  <h2>Monthly cash flow</h2>
+  <h2 id="r-cash-flow">Monthly cash flow</h2>
   <table>
     <tr><td>EGP \u2014 certificate income</td><td class="num mono">${egp(cashFlow.egp.income)}</td></tr>
     <tr><td>EGP \u2014 loan installments</td><td class="num mono">${egp(cashFlow.egp.outflow)}</td></tr>
@@ -3222,7 +3251,7 @@ Save anyway?`);
     <tr><td><b>USD \u2014 net monthly ${usdNet >= 0 ? "surplus" : "deficit"}</b></td><td class="num mono"><b>${usd(usdNet)}</b></td></tr>
   </table>
 
-  <h2>Currency conversion history</h2>
+  <h2 id="r-conversions">Currency conversion history</h2>
   <table>
     <tr><td>Received from outside (transfers in)</td><td class="num mono">${usd(totalIncomingUsd)}</td></tr>
     <tr><td>Surrendered to EGP, USD</td><td class="num mono">${usd(conversionSummary.totalConvertedUsd)}</td></tr>
@@ -3231,11 +3260,11 @@ Save anyway?`);
   </table>
   <table><tr><th>Date</th><th>Type</th><th class="num">Amount, USD</th><th class="num">Running balance</th></tr>${convRowsHtml}</table>
 
-  <h2>Performance ranking, strongest to weakest</h2>
+  <h2 id="r-ranking">Performance ranking, strongest to weakest</h2>
   <p class="note">As of ${asOfLabel} — regenerate this report after any new day's entry to refresh the ranking.</p>
   <table><tr><th>Rank</th><th>Holding</th><th>Purchase date</th><th class="num">Purchase value</th><th class="num">Current value</th><th class="num">Net gain / loss</th><th class="num">Gain since purchase</th></tr>${performanceRankingRowsHtml}</table>
 
-  <h2>History</h2>
+  <h2 id="r-history">History</h2>
   ${analysisHtml}
   <table><tr><th>Date</th><th class="num">Rate</th><th class="num">Gold</th><th class="num">Marked-to-market</th><th class="num">Gain / loss</th><th class="num">Gold %</th><th class="num">USD funds %</th><th class="num">EGP funds %</th></tr>${historyRowsHtml}</table>
 
@@ -3342,7 +3371,20 @@ Save anyway?`);
   .num { text-align:right; }
   .note { font-size:12.5px; color:#404040; line-height:1.6; margin:4px 0 12px; }
   .footer { font-size:10px; color:#A3A3A3; border-top:2px solid #171717; margin-top:28px; padding-top:10px; display:flex; justify-content:space-between; }
-  @media print { .no-print { display:none !important; } }
+  .toc { border:1px solid #E5E5E5; border-radius:6px; padding:14px 18px; margin:6px 0 28px; background:#fff; }
+  .toc-title { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#737373; margin-bottom:8px; }
+  .toc-list { columns:2; column-gap:24px; font-size:12.5px; list-style:none; margin:0; padding:0; }
+  .toc-list li { break-inside:avoid; margin-bottom:5px; }
+  .toc-list a { color:#171717; text-decoration:none; }
+  .toc-list a:hover { text-decoration:underline; }
+  @media print {
+    .no-print { display:none !important; }
+    .toc { border:none; padding:0; }
+    .toc-list { columns:1; }
+    h2 { page-break-after:avoid; break-after:avoid; }
+    table { page-break-inside:auto; }
+    tr { page-break-inside:avoid; break-inside:avoid; }
+  }
 </style></head>
 <body>
   <div class="no-print" style="background:#171717;color:#fff;padding:10px 16px;margin:-32px -40px 24px;display:flex;justify-content:space-between;align-items:center;">
@@ -3360,28 +3402,38 @@ Save anyway?`);
   </div>
   <p class="note">For reference — variable investments (funds, gold, Beltone): ${egp(variableInvestments.totalInvested)} invested, ${egp(variableCurrentValue)} current value (${pctStr(variableInvestments.returnPct)}). Not a liability, shown here just as context against the totals above.</p>
 
-  <h2>Loans</h2>
+  <nav class="toc"><div class="toc-title">On this page</div><ul class="toc-list">
+    <li><a href="#l-loans">Loans</a></li>
+    <li><a href="#l-facilities">Secured EGP facilities</a></li>
+    <li><a href="#l-office-inst">Office units — installments</a></li>
+    <li><a href="#l-office-maint">Office units — maintenance</a></li>
+    <li><a href="#l-other-inst">Other properties — installments</a></li>
+    <li><a href="#l-other-maint">Other properties — maintenance</a></li>
+    <li><a href="#l-cash-flow">Monthly cash flow</a></li>
+  </ul></nav>
+
+  <h2 id="l-loans">Loans</h2>
   <table><tr><th>Loan</th><th>Currency</th><th class="num">Amount</th><th class="num">Installment</th></tr>${loanRowsHtml}<tr><td><b>Total</b></td><td></td><td class="num mono"><b>${egp(loansOutstanding)}</b></td><td></td></tr></table>
 
-  <h2>Secured EGP facilities, individually</h2>
+  <h2 id="l-facilities">Secured EGP facilities, individually</h2>
   <table><tr><th>Facility</th><th class="num">Rate</th><th class="num">Amount financed</th><th class="num">Outstanding</th><th class="num">Installment</th><th>Opened</th><th>Matures</th></tr>${loanFacilityRowsHtml}<tr><td><b>Total (${loanFacilities.length})</b></td><td></td><td class="num mono"><b>${egp(loanFacilityTotals.amountFinanced)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.outstanding)}</b></td><td class="num mono"><b>${egp(loanFacilityTotals.installment)}</b></td><td></td><td></td></tr></table>
 
-  <h2>Office units — remaining installments</h2>
+  <h2 id="l-office-inst">Office units — remaining installments</h2>
   <p class="note">Next due ${fmtDate(nextInstRow?.date)}${nextInstRow ? `, ${egp(nextInstRow.amount)}` : ""}.</p>
   <table><tr><th>Unit</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th></tr>${propRowsHtmlOffice}<tr><td><b>Total (${officeUnitsForLiab.length})</b></td><td class="num mono"><b>${egp(propTotalsOffice.totalPrice)}</b></td><td class="num mono"><b>${egp(propTotalsOffice.paid)}</b></td><td class="num mono"><b>${egp(propTotalsOffice.remaining)}</b></td></tr></table>
 
-  <h2>Office units — remaining maintenance</h2>
+  <h2 id="l-office-maint">Office units — remaining maintenance</h2>
   <p class="note">Not counted toward Total Assets, but is included in Total outstanding above.</p>
   <table><tr><th>Unit</th><th class="num">Total maintenance</th><th class="num">Paid</th><th class="num">Remaining</th></tr>${maintRowsHtmlOffice}<tr><td><b>Total (${propsWithMaintOffice.length})</b></td><td class="num mono"><b>${egp(maintTotalsOffice.total)}</b></td><td class="num mono"><b>${egp(maintTotalsOffice.paid)}</b></td><td class="num mono"><b>${egp(maintTotalsOffice.remaining)}</b></td></tr></table>
 
-  <h2>Other properties — remaining installments</h2>
+  <h2 id="l-other-inst">Other properties — remaining installments</h2>
   <table><tr><th>Unit</th><th>Project</th><th class="num">Total price</th><th class="num">Paid so far</th><th class="num">Remaining</th></tr>${propRowsHtmlIndividual}<tr><td><b>Total (${individualProperties.length})</b></td><td></td><td class="num mono"><b>${egp(propTotalsIndividual.totalPrice)}</b></td><td class="num mono"><b>${egp(propTotalsIndividual.paid)}</b></td><td class="num mono"><b>${egp(propTotalsIndividual.remaining)}</b></td></tr></table>
 
-  <h2>Other properties — remaining maintenance</h2>
+  <h2 id="l-other-maint">Other properties — remaining maintenance</h2>
   <p class="note">Not counted toward Total Assets, but is included in Total outstanding above.</p>
   <table><tr><th>Unit</th><th>Project</th><th class="num">Total maintenance</th><th class="num">Paid</th><th class="num">Remaining</th></tr>${maintRowsHtmlIndividual}<tr><td><b>Total (${propsWithMaintIndividual.length})</b></td><td></td><td class="num mono"><b>${egp(maintTotalsIndividual.total)}</b></td><td class="num mono"><b>${egp(maintTotalsIndividual.paid)}</b></td><td class="num mono"><b>${egp(maintTotalsIndividual.remaining)}</b></td></tr></table>
 
-  <h2>Monthly cash flow</h2>
+  <h2 id="l-cash-flow">Monthly cash flow</h2>
   <p class="note">Cash in (recurring monthly income) against cash out (loan installments, plus property installments &amp; maintenance averaged over the next 12 months).</p>
   <table>
     <tr><td>EGP — cash in (certificates)</td><td class="num mono">${egp(cashFlow.egp.income)}</td></tr>
