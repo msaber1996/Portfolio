@@ -1053,6 +1053,31 @@
       /* @__PURE__ */ jsx("div", { className: "skeleton-block", style: { height: 240, width: "100%" } })
     ] }) });
   }
+  var TOC_SECTIONS = [
+    { id: "overview", index: "—", title: "Overview" },
+    { id: "section-01", index: "01", title: "Holdings" },
+    { id: "section-02", index: "02", title: "What the assets are worth" },
+    { id: "section-03", index: "03", title: "Metal: funds vs physical" },
+    { id: "section-04", index: "04", title: "Portfolio insights" },
+    { id: "section-05", index: "05", title: "Investment, by currency" },
+    { id: "section-06", index: "06", title: "What is owed" },
+    { id: "properties-section", index: "07", title: "Properties" },
+    { id: "section-08", index: "08", title: "Monthly cash flow, by currency" },
+    { id: "section-09", index: "09", title: "Currency conversion history" },
+    { id: "section-10", index: "10", title: "Live markets" },
+    { id: "section-11", index: "11", title: "Economic news" },
+    { id: "daily-pricing-form", index: "12", title: "Today's pricing" },
+    { id: "section-13", index: "13", title: "History and analysis" }
+  ];
+  function TableOfContents() {
+    return /* @__PURE__ */ jsx("nav", { "aria-label": "Section index", className: "mt-10 mb-8 border border-neutral-300 bg-white", children: [
+      /* @__PURE__ */ jsx("div", { className: "px-5 py-3 border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500", children: "On this page" }),
+      /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-x-6 px-5 py-2", children: TOC_SECTIONS.map((s) => /* @__PURE__ */ jsx("button", { onClick: () => scrollToId(s.id), className: "flex items-baseline gap-3 w-full text-left py-2 group", children: [
+        /* @__PURE__ */ jsx("span", { className: "font-mono text-xs text-neutral-400 tabular-nums shrink-0", children: s.index }),
+        /* @__PURE__ */ jsx("span", { className: "text-sm text-neutral-700 group-hover:text-neutral-900 group-hover:underline", children: s.title })
+      ] }, s.id)) })
+    ] });
+  }
   function SectionHeading({ index, title, dek }) {
     return /* @__PURE__ */ jsx("div", { className: "mb-8 flex items-start gap-4 border-b border-neutral-200 pb-4", children: [
       /* @__PURE__ */ jsx("span", { className: "font-mono text-xs text-neutral-400 pt-1 tabular-nums", children: index }),
@@ -3455,6 +3480,7 @@ Save anyway?`);
           /* @__PURE__ */ jsx(UsersAdminPanel, {})
         ] })
       ] : [
+        /* @__PURE__ */ jsx(TableOfContents, {}),
         /* @__PURE__ */ jsx("section", { id: "overview", className: "grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 py-10 border-b border-neutral-200", children: [
           /* @__PURE__ */ jsx("div", { className: "flex flex-col items-center md:items-start md:col-span-1", children: [
             /* @__PURE__ */ jsx(ReadinessDial, { score: readiness }),
@@ -3485,7 +3511,7 @@ Save anyway?`);
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-01", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "01", title: "Holdings", dek: "Every fund, certificate, gold position, and cash balance. Edit any cell, or add a new row." }),
           /* @__PURE__ */ jsx(CollapsibleSection, { label: "holdings", summary: `${holdings.length} holdings, ${egp(totalAssets)}`, children: /* @__PURE__ */ jsx(HoldingsTable, { holdings, onChange: handleHoldingsChange, currentValueById, currentValueCurrencyById, canEdit }) }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
@@ -3500,7 +3526,7 @@ Save anyway?`);
             /* @__PURE__ */ jsx(CollapsibleSection, { id: "certificates-section", label: "certificates", summary: `${certificates.length} certificates`, children: /* @__PURE__ */ jsx(CertificatesTable, { certificates: certificates }) })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-02", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "02", title: "What the assets are worth", dek: `${ASSETS.length} holdings, ${egp(totalAssets)} in total, priced ${asOfLabel}. Expand a row for its detail.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-neutral-50 p-5", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Your variable investments, in plain terms" }),
@@ -3531,7 +3557,7 @@ Save anyway?`);
           ] }),
           /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id), breakdown: a.id === "offices" ? officePaidBreakdown : null }, a.id)) })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-03", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Metal: funds vs physical", dek: "Paper gold exposure (AZ Gold Fund) against the actual bars in hand, side by side." }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-white p-4 flex flex-wrap gap-x-8 gap-y-3", children: [
             /* @__PURE__ */ jsx("div", { children: [
@@ -3559,11 +3585,11 @@ Save anyway?`);
             /* @__PURE__ */ jsx(CollapsibleSection, { label: "physical gold", summary: `${metalPhysicalRows.length} holdings`, children: /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalPhysicalRows, showGrams: true }) })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-04", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Portfolio insights", dek: "Automatic observations from the numbers already on this site — concentration, leverage, cash flow, and upcoming maturities. Nothing to fill in." }),
           /* @__PURE__ */ jsx(PortfolioInsights, { insights: portfolioInsights, allocationRows })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-05", className: "py-10", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "Investment, by currency", dek: "What is actually committed in each currency, at cost \u2014 drawn live from the holdings list below." }),
           /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-8", children: [
             /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-5", children: [
@@ -3585,7 +3611,7 @@ Save anyway?`);
             " remains in USD today \u2014 see the conversion history in section 09."
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-06", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "06", title: "What is owed", dek: `${loans.length} loan line${loans.length === 1 ? "" : "s"}, ${egp(loansOutstanding)} outstanding — plus ${egp(propertiesOutstanding)} in remaining property installments & maintenance (see section 07), for ${egp(totalLiabilities)} total liabilities. Add or remove a loan freely.` }),
           /* @__PURE__ */ jsx(CollapsibleSection, { label: "loans", summary: `${loans.length} loan lines, ${egp(loansOutstanding)}`, children: /* @__PURE__ */ jsx(LoansTable, { loans, onChange: handleLoansChange, canEdit }) }),
           /* @__PURE__ */ jsx("div", { className: "mt-8", children: [
@@ -3627,7 +3653,7 @@ Save anyway?`);
             ] }, u.unit);
           })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-08", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "08", title: "Monthly cash flow, by currency", dek: "Certificate income measured against loan installments and property obligations, each currency on its own terms." }),
           /* @__PURE__ */ jsx("div", { className: "flex gap-2 mb-6", children: /* @__PURE__ */ jsx(Toggle, { options: [{ id: "egp", label: "EGP" }, { id: "usd", label: "USD" }], value: ccy, onChange: setCcy }) }),
           ccy === "egp" ? /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-4 gap-6", children: [
@@ -3647,7 +3673,7 @@ Save anyway?`);
             ] }), emphasis: true, sub: usdNet >= 0 ? "surplus" : "deficit" })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-09", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "09", title: "Currency conversion history", dek: "Every transfer in and every surrender to EGP, with a running USD balance." }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 grid grid-cols-2 sm:grid-cols-4 gap-6 border border-neutral-200 p-5", children: [
             /* @__PURE__ */ jsx("div", { children: [
@@ -3670,7 +3696,7 @@ Save anyway?`);
           ] }),
           /* @__PURE__ */ jsx(CollapsibleSection, { label: "conversion history", summary: `${conversions.length} transfers`, children: /* @__PURE__ */ jsx(ConversionsTable, { conversions, onChange: handleConversionsChange, canEdit }) })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-10", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "10", title: "Live markets", dek: "Gold, USD/EGP, oil, and the major indices — the leverage/FX alert (site banner, email, push) watches gold and USD/EGP; a separate 1% move alert watches the rest." }),
           /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [
             /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["Gold", "OANDA:XAUUSD|1D"]], height: 400, dark }),
@@ -3681,7 +3707,7 @@ Save anyway?`);
             /* @__PURE__ */ jsx(TradingViewWidget, { symbols: [["S&P 500", "FOREXCOM:SPXUSD|1D"], ["Nasdaq", "FOREXCOM:NSXUSD|1D"], ["Dow Jones", "FOREXCOM:DJI|1D"]], height: 300, dark })
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-11", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "11", title: "Economic news", dek: "Headlines likely to move the numbers above — the Egyptian pound, EGX, gold, and major global decisions (the Fed, interest rates). Refreshed automatically a few times a day." }),
           /* @__PURE__ */ jsx(NewsFeed, { newsFeed })
         ] }),
@@ -3705,7 +3731,7 @@ Save anyway?`);
             " Saved to history"
           ] })
         ] }),
-        /* @__PURE__ */ jsx("section", { className: "py-10 border-t border-neutral-200", children: [
+        /* @__PURE__ */ jsx("section", { id: "section-13", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "13", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
           computedHistory.length >= 2 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
