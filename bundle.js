@@ -2651,6 +2651,18 @@ Save anyway?`);
       const durationDays = firstComputed && latestComputed ? Math.max(0, Math.round((new Date(latestComputed.date + "T00:00:00") - new Date(firstComputed.date + "T00:00:00")) / 864e5)) : 0;
       return { totalInvested, totalProfit, returnPct, durationDays };
     }, [firstComputed, latestComputed, displayComputed]);
+    const variableInvestmentsByCategory = useMemo(() => {
+      const bc = displayComputed?.byCategory || {};
+      const build = (cat) => {
+        const c = bc[cat] || { current: 0, cost: 0 };
+        return { current: c.current, pct: c.cost ? (c.current - c.cost) / c.cost * 100 : 0 };
+      };
+      return [
+        { key: "gold", label: "Gold", ...build("gold") },
+        { key: "usdFunds", label: "USD funds", ...build("usdFunds") },
+        { key: "egpFunds", label: "EGP funds", ...build("egpFunds") }
+      ];
+    }, [displayComputed]);
     const currentValueById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency === "USD" ? a.currentNative : a.value])), [ASSETS]);
     const currentValueCurrencyById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency])), [ASSETS]);
     const metalFundRows = useMemo(
@@ -3510,7 +3522,12 @@ Save anyway?`);
                 /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Profit so far" }),
                 /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${variableInvestments.totalProfit >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: variableInvestments.totalProfit, format: signedEgp }) })
               ] })
-            ] })
+            ] }),
+            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-3 gap-6 pt-4 mt-4 border-t border-neutral-200", children: variableInvestmentsByCategory.map((c) => /* @__PURE__ */ jsx("div", { children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: c.label }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-base mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.current, format: egp }) }),
+              /* @__PURE__ */ jsx("div", { className: `font-mono text-xs mt-0.5 ${c.pct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.pct, format: pctStr }) })
+            ] }, c.key)) })
           ] }),
           /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id), breakdown: a.id === "offices" ? officePaidBreakdown : null }, a.id)) })
         ] }),
