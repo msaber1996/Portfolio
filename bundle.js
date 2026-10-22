@@ -983,7 +983,7 @@
     const byCategory = {
       gold: { current: goldCurrent, cost: goldInvestment },
       egpFunds: { current: egpFundsCurrent, cost: egpFundsInvestment },
-      usdFunds: { current: usdFundsCurrentEgp, cost: usdFundsInvestmentUsd * rate }
+      usdFunds: { current: usdFundsCurrentEgp, cost: usdFundsInvestmentUsd * rate, currentUsd: usdFundsCurrentUsd, costUsd: usdFundsInvestmentUsd }
     };
     return { ...entry, rate, gold: goldPrice, rows, markedToMarket, markedToMarketCost, gain: markedToMarket - markedToMarketCost, totalAssets, byCategory };
   }
@@ -2736,10 +2736,11 @@ Save anyway?`);
         const c = bc[cat] || { current: 0, cost: 0 };
         return { current: c.current, cost: c.cost, pct: c.cost ? (c.current - c.cost) / c.cost * 100 : 0 };
       };
+      const usdCat = bc.usdFunds || { current: 0, cost: 0, currentUsd: 0, costUsd: 0 };
       return [
-        { key: "gold", label: "Gold", ...build("gold") },
-        { key: "usdFunds", label: "USD funds", ...build("usdFunds") },
-        { key: "egpFunds", label: "EGP funds", ...build("egpFunds") }
+        { key: "gold", label: "Gold", currency: "EGP", ...build("gold") },
+        { key: "usdFunds", label: "USD funds", currency: "USD", ...build("usdFunds"), currentUsd: usdCat.currentUsd || 0, costUsd: usdCat.costUsd || 0 },
+        { key: "egpFunds", label: "EGP funds", currency: "EGP", ...build("egpFunds") }
       ];
     }, [displayComputed]);
     const wholePortfolio = useMemo(() => {
@@ -3227,10 +3228,10 @@ Save anyway?`);
     <tr><td>Return</td><td class="num mono">${pctStr(variableInvestments.returnPct)}</td></tr>
     <tr><td>Total profit</td><td class="num mono">${signedEgp(variableInvestments.totalProfit)}</td></tr>
   </table>
-  <p class="note">By category — "invested" adds up to "Total invested" above; "current value" adds up to total invested + total profit above.</p>
+  <p class="note">By category — "invested" adds up to "Total invested" above; "current value" adds up to total invested + total profit above. USD funds shown in dollars, converted at today's rate for the totals above.</p>
   <table>
     <tr><th>Category</th><th class="num">Invested</th><th class="num">Current value</th><th class="num">Return</th></tr>
-    ${variableInvestmentsByCategory.map((c) => `<tr><td>${c.label}</td><td class="num mono">${egp(c.cost)}</td><td class="num mono">${egp(c.current)}</td><td class="num mono">${pctStr(c.pct)}</td></tr>`).join("")}
+    ${variableInvestmentsByCategory.map((c) => `<tr><td>${c.label}</td><td class="num mono">${c.currency === "USD" ? usd(c.costUsd) : egp(c.cost)}</td><td class="num mono">${c.currency === "USD" ? usd(c.currentUsd) : egp(c.current)}</td><td class="num mono">${pctStr(c.pct)}</td></tr>`).join("")}
   </table>
 
   <h2 id="r-metal">Metal: funds vs physical</h2>
@@ -3702,12 +3703,12 @@ Save anyway?`);
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-3 gap-6 pt-4 mt-4 border-t border-neutral-200", children: variableInvestmentsByCategory.map((c) => /* @__PURE__ */ jsx("div", { children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: c.label }),
               /* @__PURE__ */ jsx("div", { className: "text-[10px] uppercase tracking-wide text-neutral-400 mt-1.5", children: "put in" }),
-              /* @__PURE__ */ jsx("div", { className: "font-mono text-sm text-neutral-700", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.cost, format: egp }) }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-sm text-neutral-700", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.currency === "USD" ? c.costUsd : c.cost, format: c.currency === "USD" ? usd : egp }) }),
               /* @__PURE__ */ jsx("div", { className: "text-[10px] uppercase tracking-wide text-neutral-400 mt-1.5", children: "now" }),
-              /* @__PURE__ */ jsx("div", { className: "font-mono text-base text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.current, format: egp }) }),
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-base text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.currency === "USD" ? c.currentUsd : c.current, format: c.currency === "USD" ? usd : egp }) }),
               /* @__PURE__ */ jsx("div", { className: `font-mono text-xs mt-1 ${c.pct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.pct, format: pctStr }) })
             ] }, c.key)) }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mt-3", children: `"Put in" per category adds up to "You've put in" above; "now" per category adds up to ${egp(variableInvestments.totalInvested + variableInvestments.totalProfit)} (you've put in + profit so far).` })
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mt-3", children: `"Put in" per category adds up to "You've put in" above; "now" per category adds up to ${egp(variableInvestments.totalInvested + variableInvestments.totalProfit)} (you've put in + profit so far) — USD funds shown in dollars, converted at today's rate for the totals above.` })
           ] }),
           /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id), breakdown: a.id === "offices" ? officePaidBreakdown : null }, a.id)) })
         ] }),
