@@ -2857,6 +2857,25 @@ Save anyway?`);
       const gain = value - invested;
       return { invested, value, gain, gainPct: invested ? gain / invested * 100 : 0 };
     }, [metalFundRows, metalPhysicalRows]);
+    const yearHoldings = useMemo(() => holdingsForYear(String(effectiveViewYear)), [holdingsForYear, effectiveViewYear]);
+    const yearMetalFundRows = useMemo(
+      () => yearAssets.filter((a) => yearHoldings.find((h) => h.id === a.id)?.navGroup === "azgold"),
+      [yearAssets, yearHoldings]
+    );
+    const yearMetalPhysicalRows = useMemo(
+      () => yearHoldings.filter((h) => h.type === "gold").map((h) => {
+        const a = yearAssets.find((x) => x.id === h.id);
+        return { ...h, value: a?.value ?? 0, gainPct: a?.gainPct ?? 0, investmentNative: h.investment };
+      }),
+      [yearHoldings, yearAssets]
+    );
+    const yearMetalOverall = useMemo(() => {
+      const rows = [...yearMetalFundRows, ...yearMetalPhysicalRows];
+      const invested = rows.reduce((s, r) => s + (r.investmentNative || 0), 0);
+      const value = rows.reduce((s, r) => s + (r.value || 0), 0);
+      const gain = value - invested;
+      return { invested, value, gain, gainPct: invested ? gain / invested * 100 : 0 };
+    }, [yearMetalFundRows, yearMetalPhysicalRows]);
     const allocationRows = useMemo(() => {
       const totals = {};
       REBALANCE_CATEGORIES.forEach((c) => totals[c.key] = 0);
@@ -3814,31 +3833,31 @@ Save anyway?`);
           /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id), breakdown: a.id === "offices" ? officePaidBreakdown : null }, a.id)) })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-03", className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Metal: funds vs physical", dek: "Paper gold exposure (AZ Gold Fund) against the actual bars in hand, side by side." }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "03", title: "Metal: funds vs physical", dek: isCurrentYearView ? "Paper gold exposure (AZ Gold Fund) against the actual bars in hand, side by side." : `As tracked through the end of ${effectiveViewYear} — paper gold exposure (AZ Gold Fund) against the actual bars in hand, side by side.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-white p-4 flex flex-wrap gap-x-8 gap-y-3", children: [
             /* @__PURE__ */ jsx("div", { children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Gold overall — invested" }),
-              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg text-neutral-900", children: egp(metalOverall.invested) })
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg text-neutral-900", children: egp(yearMetalOverall.invested) })
             ] }),
             /* @__PURE__ */ jsx("div", { children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Current value" }),
-              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg text-neutral-900", children: egp(metalOverall.value) })
+              /* @__PURE__ */ jsx("div", { className: "font-mono text-lg text-neutral-900", children: egp(yearMetalOverall.value) })
             ] }),
             /* @__PURE__ */ jsx("div", { children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Total gain / loss" }),
-              /* @__PURE__ */ jsx("div", { className: `font-mono text-lg ${metalOverall.gain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: [
-                signedEgp(metalOverall.gain),
-                /* @__PURE__ */ jsx("span", { className: "ml-2 text-sm", children: `(${pctStr(metalOverall.gainPct)})` })
+              /* @__PURE__ */ jsx("div", { className: `font-mono text-lg ${yearMetalOverall.gain >= 0 ? "text-emerald-700" : "text-red-700"}`, children: [
+                signedEgp(yearMetalOverall.gain),
+                /* @__PURE__ */ jsx("span", { className: "ml-2 text-sm", children: `(${pctStr(yearMetalOverall.gainPct)})` })
               ] })
             ] })
           ] }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: "Metal funds (paper gold)" }),
-            /* @__PURE__ */ jsx(CollapsibleSection, { label: "metal funds", summary: `${metalFundRows.length} funds`, children: /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalFundRows, showGrams: false }) })
+            /* @__PURE__ */ jsx(CollapsibleSection, { label: "metal funds", summary: `${yearMetalFundRows.length} funds`, children: /* @__PURE__ */ jsx(MetalRowsTable, { rows: yearMetalFundRows, showGrams: false }) })
           ] }),
           /* @__PURE__ */ jsx("div", { children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: "Physical gold" }),
-            /* @__PURE__ */ jsx(CollapsibleSection, { label: "physical gold", summary: `${metalPhysicalRows.length} holdings`, children: /* @__PURE__ */ jsx(MetalRowsTable, { rows: metalPhysicalRows, showGrams: true }) })
+            /* @__PURE__ */ jsx(CollapsibleSection, { label: "physical gold", summary: `${yearMetalPhysicalRows.length} holdings`, children: /* @__PURE__ */ jsx(MetalRowsTable, { rows: yearMetalPhysicalRows, showGrams: true }) })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-04", className: "py-10 border-t border-neutral-200", children: [
