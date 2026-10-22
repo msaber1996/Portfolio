@@ -2687,7 +2687,18 @@ Save anyway?`);
       const running = {};
       const lastNav = {};
       const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+      let prevYear = null;
       sorted.forEach((entry) => {
+        const entryYear = entry.date.slice(0, 4);
+        if (prevYear !== null && entryYear !== prevYear && yearCloses[prevYear]) {
+          Object.keys(running).forEach((g) => {
+            running[g] = 0;
+          });
+          Object.keys(lastNav).forEach((g) => {
+            delete lastNav[g];
+          });
+        }
+        prevYear = entryYear;
         const adj = {};
         accumulatingGroups.forEach((g) => {
           const raw = entry[g];
@@ -2703,7 +2714,7 @@ Save anyway?`);
         out[entry.date] = adj;
       });
       return out;
-    }, [history, accumulatingGroups]);
+    }, [history, accumulatingGroups, yearCloses]);
     const holdingsForYear = useMemo(() => {
       const cache = {};
       return (year) => {
