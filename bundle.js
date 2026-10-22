@@ -2421,6 +2421,7 @@
     const [officeMaintenance, setOfficeMaintenance] = useState(SEED_OFFICE_MAINTENANCE);
     const [officeMaintenancePayments, setOfficeMaintenancePayments] = useState({});
     const [newsFeed, setNewsFeed] = useState(SEED_NEWS_FEED);
+    const [yearCloses, setYearCloses] = useState({});
     const [conversions, setConversions] = useState(SEED_CONVERSIONS);
     const [history, setHistory] = useState([]);
     const [loadState, setLoadState] = useState("loading");
@@ -2443,7 +2444,7 @@
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp, nf] = await Promise.all([
+        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp, nf, yc] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
           loadJson("loanFacilities", SEED_LOAN_FACILITIES),
@@ -2455,7 +2456,8 @@
           loadJson("officeInstallmentPayments", {}),
           loadJson("officeMaintenance", SEED_OFFICE_MAINTENANCE),
           loadJson("officeMaintenancePayments", {}),
-          loadJson("newsFeed", SEED_NEWS_FEED)
+          loadJson("newsFeed", SEED_NEWS_FEED),
+          loadJson("yearCloses", {})
         ]);
         let dailyEntries = [];
         try {
@@ -2479,6 +2481,7 @@
           setOfficeMaintenance(om);
           setOfficeMaintenancePayments(omp);
           setNewsFeed(nf);
+          setYearCloses(yc || {});
           setLoadState("ready");
         }
       })();
@@ -2701,14 +2704,17 @@ Save anyway?`);
       });
       return out;
     }, [history, accumulatingGroups]);
-    const computedHistory = useMemo(() => history.map((e) => computeDay(e, holdings, navAdjustByDate[e.date])), [history, holdings, navAdjustByDate]);
-    const fundSeries = useMemo(() => holdings.filter((h) => h.type === "fund" && h.navGroup).map((holding) => {
-      const points = computedHistory.map((d) => {
-        const row = d.rows.find((r) => r.id === holding.id);
-        return { date: d.date, value: row ? row.gainPct : 0 };
-      });
-      return { key: holding.id, label: holding.label, points };
-    }), [holdings, computedHistory]);
+    const holdingsForYear = useMemo(() => {
+      const cache = {};
+      return (year) => {
+        if (cache[year]) return cache[year];
+        const close = yearCloses[year];
+        const result = close?.basis ? holdings.map((h) => close.basis[h.id] ? { ...h, ...close.basis[h.id] } : h) : holdings;
+        cache[year] = result;
+        return result;
+      };
+    }, [holdings, yearCloses]);
+    const computedHistory = useMemo(() => history.map((e) => computeDay(e, holdingsForYear(e.date.slice(0, 4)), navAdjustByDate[e.date])), [history, holdingsForYear, navAdjustByDate]);
     const latestComputed = computedHistory[computedHistory.length - 1];
     const firstComputed = computedHistory[0];
     const today = /* @__PURE__ */ new Date();
@@ -2750,6 +2756,76 @@ Save anyway?`);
       const returnPct = totalInvested ? totalProfit / totalInvested * 100 : 0;
       return { totalInvested, totalCurrent, totalProfit, returnPct };
     }, [ASSETS, totalAssets]);
+    const availableYears = useMemo(() => {
+      const ys = new Set(computedHistory.map((d) => Number(d.date.slice(0, 4))));
+      ys.add((/* @__PURE__ */ new Date()).getFullYear());
+      return Array.from(ys).sort((a, b) => b - a);
+    }, [computedHistory]);
+    const [viewYear, setViewYear] = useState(null);
+    const effectiveViewYear = viewYear ?? availableYears[0];
+    const isCurrentYearView = effectiveViewYear === availableYears[0];
+    const yearComputedHistory = useMemo(
+      () => computedHistory.filter((d) => Number(d.date.slice(0, 4)) === effectiveViewYear),
+      [computedHistory, effectiveViewYear]
+    );
+    const yearFirstComputed = yearComputedHistory[0];
+    const yearLatestComputed = isCurrentYearView ? displayComputed : yearComputedHistory[yearComputedHistory.length - 1];
+    const yearAssets = yearLatestComputed?.rows || [];
+    const yearPerformanceRanking = useMemo(
+      () => yearAssets.filter((a) => a.purchaseNav != null).sort((a, b) => b.gainPct - a.gainPct),
+      [yearAssets]
+    );
+    const yearVariableInvestments = useMemo(() => {
+      const totalInvested = yearLatestComputed?.markedToMarketCost || 0;
+      const totalProfit = yearLatestComputed?.gain || 0;
+      const returnPct = totalInvested ? totalProfit / totalInvested * 100 : 0;
+      const durationDays = yearFirstComputed && yearLatestComputed ? Math.max(0, Math.round((new Date(yearLatestComputed.date + "T00:00:00") - new Date(yearFirstComputed.date + "T00:00:00")) / 864e5)) : 0;
+      return { totalInvested, totalProfit, returnPct, durationDays };
+    }, [yearFirstComputed, yearLatestComputed]);
+    const yearVariableInvestmentsByCategory = useMemo(() => {
+      const bc = yearLatestComputed?.byCategory || {};
+      const build = (cat) => {
+        const c = bc[cat] || { current: 0, cost: 0 };
+        return { current: c.current, cost: c.cost, pct: c.cost ? (c.current - c.cost) / c.cost * 100 : 0 };
+      };
+      const usdCat = bc.usdFunds || { current: 0, cost: 0, currentUsd: 0, costUsd: 0 };
+      return [
+        { key: "gold", label: "Gold", currency: "EGP", ...build("gold") },
+        { key: "usdFunds", label: "USD funds", currency: "USD", ...build("usdFunds"), currentUsd: usdCat.currentUsd || 0, costUsd: usdCat.costUsd || 0 },
+        { key: "egpFunds", label: "EGP funds", currency: "EGP", ...build("egpFunds") }
+      ];
+    }, [yearLatestComputed]);
+    const yearWholePortfolio = useMemo(() => {
+      const totalInvested = yearAssets.reduce((s, a) => s + (a.investmentEgp ?? 0), 0);
+      const totalCurrent = yearLatestComputed?.totalAssets || 0;
+      const totalProfit = totalCurrent - totalInvested;
+      const returnPct = totalInvested ? totalProfit / totalInvested * 100 : 0;
+      return { totalInvested, totalCurrent, totalProfit, returnPct };
+    }, [yearAssets, yearLatestComputed]);
+    const yearAnalysis = useMemo(() => {
+      if (!yearFirstComputed || !yearLatestComputed || yearComputedHistory.length < 2) return null;
+      const changeVal = yearLatestComputed.markedToMarket - yearFirstComputed.markedToMarket;
+      const changePct = yearFirstComputed.markedToMarket ? changeVal / yearFirstComputed.markedToMarket * 100 : 0;
+      const firstByLabel = new Map(yearFirstComputed.rows.filter((r) => r.purchaseNav != null).map((r) => [r.label, r.gainPct]));
+      const movers = yearLatestComputed.rows.filter((r) => firstByLabel.has(r.label)).map((r) => ({ label: r.label, delta: r.gainPct - firstByLabel.get(r.label), last: r.gainPct }));
+      const byLevel = [...movers].sort((a, b) => b.last - a.last);
+      const strongest = byLevel[0];
+      const weakest = byLevel[byLevel.length - 1];
+      const byMomentum = [...movers].sort((a, b) => b.delta - a.delta);
+      const mostImproved = byMomentum[0];
+      const mostDeclined = byMomentum[byMomentum.length - 1];
+      const rateChangePct = yearFirstComputed.rate ? (yearLatestComputed.rate - yearFirstComputed.rate) / yearFirstComputed.rate * 100 : 0;
+      const goldChangePct = yearFirstComputed.gold ? (yearLatestComputed.gold - yearFirstComputed.gold) / yearFirstComputed.gold * 100 : 0;
+      const upDays = yearComputedHistory.slice(1).filter((d, i) => d.markedToMarket >= yearComputedHistory[i].markedToMarket).length;
+      return { days: yearComputedHistory.length, changeVal, changePct, rateChangePct, goldChangePct, upDays, totalDays: yearComputedHistory.length - 1, strongest, weakest, mostImproved, mostDeclined };
+    }, [yearComputedHistory, yearFirstComputed, yearLatestComputed]);
+    const yearFundSeries = useMemo(() => holdings.filter((h) => h.type === "fund" && h.navGroup).map((holding) => {
+      const points = yearComputedHistory.map((d) => {
+        const row = d.rows.find((r) => r.id === holding.id);
+        return { date: d.date, value: row ? row.gainPct : 0 };
+      });
+      return { key: holding.id, label: holding.label, points };
+    }), [holdings, yearComputedHistory]);
     const currentValueById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency === "USD" ? a.currentNative : a.value])), [ASSETS]);
     const currentValueCurrencyById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency])), [ASSETS]);
     const metalFundRows = useMemo(
@@ -3517,6 +3593,17 @@ Save anyway?`);
         /* @__PURE__ */ jsx("div", { className: "flex items-baseline justify-between font-mono text-xs uppercase tracking-wide text-neutral-500", children: [
           /* @__PURE__ */ jsx("span", { children: "Portfolio Review \u2014 No. 006" }),
           /* @__PURE__ */ jsx("div", { className: "flex items-baseline gap-3", children: [
+            availableYears.length > 1 && /* @__PURE__ */ jsx(
+              "select",
+              {
+                value: effectiveViewYear,
+                onChange: (e) => setViewYear(Number(e.target.value)),
+                "aria-label": "Viewing year",
+                title: "Switch between years — profit tracking resets to zero at the start of each year",
+                className: "border border-neutral-300 bg-white text-neutral-700 font-mono text-xs px-2 py-1 uppercase tracking-wide focus:outline-none focus:border-neutral-800",
+                children: availableYears.map((y) => /* @__PURE__ */ jsx("option", { value: y, children: y === availableYears[0] ? `${y} (current)` : y }, y))
+              }
+            ),
             role && role !== "owner" && /* @__PURE__ */ jsx("span", { className: `px-2 py-0.5 border ${canEdit ? "border-neutral-400 text-neutral-600" : "border-amber-400 text-amber-700 bg-amber-50"}`, children: role }),
             /* @__PURE__ */ jsx("span", { children: (/* @__PURE__ */ new Date()).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) })
           ] })
@@ -3658,24 +3745,27 @@ Save anyway?`);
         /* @__PURE__ */ jsx("section", { id: "section-02", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "02", title: "What the assets are worth", dek: `${ASSETS.length} holdings, ${egp(totalAssets)} in total, priced ${asOfLabel}. Expand a row for its detail.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-neutral-50 p-5", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Your whole portfolio, in plain terms" }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Every holding, including certificates and properties — what's been put in, what it's worth now, and the profit in between." }),
+            /* @__PURE__ */ jsx("div", { className: "flex items-baseline justify-between mb-1 gap-3 flex-wrap", children: [
+              /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "Your whole portfolio, in plain terms" }),
+              !isCurrentYearView && /* @__PURE__ */ jsx("span", { className: "text-[10px] uppercase tracking-wide text-neutral-400 border border-neutral-300 px-1.5 py-0.5", children: `${effectiveViewYear}, closed` })
+            ] }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: isCurrentYearView ? "Every holding, including certificates and properties — what's been put in, what it's worth now, and the profit in between." : `As tracked through the end of ${effectiveViewYear} — profit tracking reset to zero at the start of ${effectiveViewYear + 1}.` }),
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-2 sm:grid-cols-4 gap-6", children: [
               /* @__PURE__ */ jsx("div", { children: [
                 /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "We put in" }),
-                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: wholePortfolio.totalInvested, format: egp }) })
+                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearWholePortfolio.totalInvested, format: egp }) })
               ] }),
               /* @__PURE__ */ jsx("div", { children: [
                 /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Worth now" }),
-                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: wholePortfolio.totalCurrent, format: egp }) })
+                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearWholePortfolio.totalCurrent, format: egp }) })
               ] }),
               /* @__PURE__ */ jsx("div", { children: [
                 /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "We earned" }),
-                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${wholePortfolio.totalProfit >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: wholePortfolio.totalProfit, format: signedEgp }) })
+                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${yearWholePortfolio.totalProfit >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearWholePortfolio.totalProfit, format: signedEgp }) })
               ] }),
               /* @__PURE__ */ jsx("div", { children: [
                 /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "At a return of" }),
-                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${wholePortfolio.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: wholePortfolio.returnPct, format: pctStr }) })
+                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${yearWholePortfolio.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearWholePortfolio.returnPct, format: pctStr }) })
               ] })
             ] })
           ] }),
@@ -3685,22 +3775,22 @@ Save anyway?`);
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-2 sm:grid-cols-4 gap-6", children: [
               /* @__PURE__ */ jsx("div", { children: [
                 /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "You've put in" }),
-                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: variableInvestments.totalInvested, format: egp }) })
+                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearVariableInvestments.totalInvested, format: egp }) })
               ] }),
               /* @__PURE__ */ jsx("div", { children: [
                 /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Tracked for" }),
-                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: variableInvestments.durationDays, format: (v) => `${Math.round(v)} day${Math.round(v) === 1 ? "" : "s"}` }) })
+                /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearVariableInvestments.durationDays, format: (v) => `${Math.round(v)} day${Math.round(v) === 1 ? "" : "s"}` }) })
               ] }),
               /* @__PURE__ */ jsx("div", { children: [
                 /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Return so far" }),
-                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${variableInvestments.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: variableInvestments.returnPct, format: pctStr }) })
+                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${yearVariableInvestments.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearVariableInvestments.returnPct, format: pctStr }) })
               ] }),
               /* @__PURE__ */ jsx("div", { children: [
                 /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Profit so far" }),
-                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${variableInvestments.totalProfit >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: variableInvestments.totalProfit, format: signedEgp }) })
+                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${yearVariableInvestments.totalProfit >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearVariableInvestments.totalProfit, format: signedEgp }) })
               ] })
             ] }),
-            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-3 gap-6 pt-4 mt-4 border-t border-neutral-200", children: variableInvestmentsByCategory.map((c) => /* @__PURE__ */ jsx("div", { children: [
+            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-3 gap-6 pt-4 mt-4 border-t border-neutral-200", children: yearVariableInvestmentsByCategory.map((c) => /* @__PURE__ */ jsx("div", { children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: c.label }),
               /* @__PURE__ */ jsx("div", { className: "text-[10px] uppercase tracking-wide text-neutral-400 mt-1.5", children: "put in" }),
               /* @__PURE__ */ jsx("div", { className: "font-mono text-sm text-neutral-700", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.currency === "USD" ? c.costUsd : c.cost, format: c.currency === "USD" ? usd : egp }) }),
@@ -3708,7 +3798,7 @@ Save anyway?`);
               /* @__PURE__ */ jsx("div", { className: "font-mono text-base text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.currency === "USD" ? c.currentUsd : c.current, format: c.currency === "USD" ? usd : egp }) }),
               /* @__PURE__ */ jsx("div", { className: `font-mono text-xs mt-1 ${c.pct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: c.pct, format: pctStr }) })
             ] }, c.key)) }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mt-3", children: `"Put in" per category adds up to "You've put in" above; "now" per category adds up to ${egp(variableInvestments.totalInvested + variableInvestments.totalProfit)} (you've put in + profit so far) — USD funds shown in dollars, converted at today's rate for the totals above.` })
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mt-3", children: `"Put in" per category adds up to "You've put in" above; "now" per category adds up to ${egp(yearVariableInvestments.totalInvested + yearVariableInvestments.totalProfit)} (you've put in + profit so far) — USD funds shown in dollars, converted at today's rate for the totals above.` })
           ] }),
           /* @__PURE__ */ jsx("div", { children: ASSETS.map((a) => /* @__PURE__ */ jsx(LedgerRow, { item: a, total: totalAssets, isOpen: openAsset === a.id, onToggle: () => setOpenAsset(openAsset === a.id ? null : a.id), breakdown: a.id === "offices" ? officePaidBreakdown : null }, a.id)) })
         ] }),
@@ -3887,22 +3977,22 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-13", className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "13", title: "History and analysis", dek: `${computedHistory.length} day${computedHistory.length === 1 ? "" : "s"} on record, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` }),
-          /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
-          computedHistory.length >= 2 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Net worth vs. gold vs. USD/EGP, since ${firstComputed.date}` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "13", title: "History and analysis", dek: isCurrentYearView ? `${yearComputedHistory.length} day${yearComputedHistory.length === 1 ? "" : "s"} on record for ${effectiveViewYear}, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` : `${yearComputedHistory.length} day${yearComputedHistory.length === 1 ? "" : "s"} on record for ${effectiveViewYear} — this year is closed, profit tracking reset at the start of ${effectiveViewYear + 1}.` }),
+          /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: yearComputedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
+          yearComputedHistory.length >= 2 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Net worth vs. gold vs. USD/EGP, since ${yearFirstComputed.date}` }),
             /* @__PURE__ */ jsx(ComparisonChart, {
               series: [
-                { key: "networth", label: "Net worth (marked-to-market)", color: dark ? "#e5e5e5" : "#171717", points: computedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })) },
-                { key: "gold", label: "Gold, EGP/g", color: dark ? "#fbbf24" : "#B45309", points: computedHistory.map((d) => ({ date: d.date, value: d.gold })) },
-                { key: "usd", label: "USD/EGP", color: dark ? "#38bdf8" : "#0369A1", points: computedHistory.map((d) => ({ date: d.date, value: d.rate })) }
+                { key: "networth", label: "Net worth (marked-to-market)", color: dark ? "#e5e5e5" : "#171717", points: yearComputedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })) },
+                { key: "gold", label: "Gold, EGP/g", color: dark ? "#fbbf24" : "#B45309", points: yearComputedHistory.map((d) => ({ date: d.date, value: d.gold })) },
+                { key: "usd", label: "USD/EGP", color: dark ? "#38bdf8" : "#0369A1", points: yearComputedHistory.map((d) => ({ date: d.date, value: d.rate })) }
               ],
               labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
             })
           ] }),
-          fundSeries.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: "Return by fund, since purchase" }),
-            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4", children: fundSeries.map((f) => {
+          yearFundSeries.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Return by fund, since ${isCurrentYearView ? "purchase (or this year's reset)" : `the start of ${effectiveViewYear}`}` }),
+            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4", children: yearFundSeries.map((f) => {
               const lastVal = f.points[f.points.length - 1]?.value ?? 0;
               return /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-3", children: [
                 /* @__PURE__ */ jsx("div", { className: "flex items-baseline justify-between mb-1", children: [
@@ -3913,84 +4003,84 @@ Save anyway?`);
               ] }, f.key);
             }) })
           ] }),
-          performanceRanking.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
+          yearPerformanceRanking.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-1", children: "Performance ranking, strongest to weakest" }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mb-3", children: `As of ${asOfLabel} — updates automatically the moment a new day's entry is saved.` }),
-            /* @__PURE__ */ jsx(CollapsibleSection, { label: "performance ranking", summary: `${performanceRanking.length} ranked`, children: /* @__PURE__ */ jsx(PerformanceRankingTable, { rows: performanceRanking }) })
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mb-3", children: isCurrentYearView ? `As of ${asOfLabel} — updates automatically the moment a new day's entry is saved.` : `As of ${yearLatestComputed?.date || effectiveViewYear} — ${effectiveViewYear} is closed.` }),
+            /* @__PURE__ */ jsx(CollapsibleSection, { label: "performance ranking", summary: `${yearPerformanceRanking.length} ranked`, children: /* @__PURE__ */ jsx(PerformanceRankingTable, { rows: yearPerformanceRanking }) })
           ] }),
-          analysis && /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-8 mb-8", children: [
+          yearAnalysis && /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-8 mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4", children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-2", children: [
                 "Since ",
-                firstComputed.date
+                yearFirstComputed.date
               ] }),
               /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-700 leading-relaxed", children: [
                 "Over ",
-                analysis.days,
+                yearAnalysis.days,
                 " recorded days, the marked-to-market portion moved",
                 " ",
-                /* @__PURE__ */ jsx("span", { className: "font-mono", children: signedEgp(analysis.changeVal) }),
+                /* @__PURE__ */ jsx("span", { className: "font-mono", children: signedEgp(yearAnalysis.changeVal) }),
                 " (",
-                pctStr(analysis.changePct),
+                pctStr(yearAnalysis.changePct),
                 "). The FX rate moved ",
-                /* @__PURE__ */ jsx("span", { className: "font-mono", children: pctStr(analysis.rateChangePct) }),
+                /* @__PURE__ */ jsx("span", { className: "font-mono", children: pctStr(yearAnalysis.rateChangePct) }),
                 ", and gold moved",
                 " ",
-                /* @__PURE__ */ jsx("span", { className: "font-mono", children: pctStr(analysis.goldChangePct) }),
+                /* @__PURE__ */ jsx("span", { className: "font-mono", children: pctStr(yearAnalysis.goldChangePct) }),
                 " per gram. Value rose on ",
-                analysis.upDays,
+                yearAnalysis.upDays,
                 " of ",
-                analysis.totalDays,
+                yearAnalysis.totalDays,
                 " day-over-day steps."
               ] })
             ] }),
             /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4", children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-2", children: "Overall standing, since purchase" }),
-              analysis.strongest && /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-700 leading-relaxed", children: [
+              yearAnalysis.strongest && /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-700 leading-relaxed", children: [
                 /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Strongest:" }),
                 " ",
-                analysis.strongest.label,
+                yearAnalysis.strongest.label,
                 ", ",
-                pctStr(analysis.strongest.last),
+                pctStr(yearAnalysis.strongest.last),
                 "."
               ] }),
-              analysis.weakest && /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-700 leading-relaxed mt-2", children: [
+              yearAnalysis.weakest && /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-700 leading-relaxed mt-2", children: [
                 /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Weakest:" }),
                 " ",
-                analysis.weakest.label,
+                yearAnalysis.weakest.label,
                 ", ",
-                pctStr(analysis.weakest.last),
+                pctStr(yearAnalysis.weakest.last),
                 "."
               ] }),
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mt-4 mb-2", children: [
                 "Recent momentum, ",
-                firstComputed.date,
+                yearFirstComputed.date,
                 " to ",
-                latestComputed.date
+                yearLatestComputed.date
               ] }),
-              analysis.mostImproved && /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-700 leading-relaxed", children: [
+              yearAnalysis.mostImproved && /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-700 leading-relaxed", children: [
                 /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Most improved:" }),
                 " ",
-                analysis.mostImproved.label,
+                yearAnalysis.mostImproved.label,
                 ", ",
-                pctStr(analysis.mostImproved.delta),
+                pctStr(yearAnalysis.mostImproved.delta),
                 " over the period (now ",
-                pctStr(analysis.mostImproved.last),
+                pctStr(yearAnalysis.mostImproved.last),
                 " overall)."
               ] }),
-              analysis.mostDeclined && /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-700 leading-relaxed mt-2", children: [
+              yearAnalysis.mostDeclined && /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-700 leading-relaxed mt-2", children: [
                 /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: "Most declined:" }),
                 " ",
-                analysis.mostDeclined.label,
+                yearAnalysis.mostDeclined.label,
                 ", ",
-                pctStr(analysis.mostDeclined.delta),
+                pctStr(yearAnalysis.mostDeclined.delta),
                 " over the period (now ",
-                pctStr(analysis.mostDeclined.last),
+                pctStr(yearAnalysis.mostDeclined.last),
                 " overall)."
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ jsx(CollapsibleSection, { label: "daily history", summary: `${computedHistory.length} days`, children: /* @__PURE__ */ jsx("div", { className: "rtable border border-neutral-200 overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
+          /* @__PURE__ */ jsx(CollapsibleSection, { label: "daily history", summary: `${yearComputedHistory.length} days`, children: /* @__PURE__ */ jsx("div", { className: "rtable border border-neutral-200 overflow-x-auto", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
             /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
               /* @__PURE__ */ jsx("th", { className: "text-left py-2 px-3", children: "Date" }),
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "Rate" }),
@@ -4002,7 +4092,7 @@ Save anyway?`);
               /* @__PURE__ */ jsx("th", { className: "text-right py-2 px-3", children: "EGP funds %" }),
               canEdit && /* @__PURE__ */ jsx("th", { className: "py-2 px-3" })
             ] }) }),
-            /* @__PURE__ */ jsx("tbody", { children: [...computedHistory].reverse().map((d) => {
+            /* @__PURE__ */ jsx("tbody", { children: [...yearComputedHistory].reverse().map((d) => {
               const catPct = (cat) => cat && cat.cost ? pctStr((cat.current - cat.cost) / cat.cost * 100) : "—";
               return /* @__PURE__ */ jsx("tr", { className: `border-b border-neutral-100 ${d.date === editingDate ? "bg-neutral-50" : ""}`, children: [
               /* @__PURE__ */ jsx("td", { "data-label": "Date", className: "py-2 px-3 font-mono text-neutral-700", children: d.date }),

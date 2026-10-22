@@ -1,0 +1,102 @@
+name: Close the investment year and reset profit tracking
+
+# Runs once a year, just after midnight UTC on Jan 1. Snapshots the cost
+# basis (purchaseNav/investment/purchaseDate) that was in effect for the
+# outgoing year into yearCloses/{year} — so that year's daily history and
+# profit charts keep computing correctly forever, even after holdings
+# below get reset — then resets every fund and gold holding's
+# purchaseNav/investment to its value on the outgoing year's last tracked
+# day. Fixed-income holdings (certificates, properties, loans) aren't
+# touched — they don't track a profit, so there's nothing to reset.
+
+on:
+  schedule:
+    - cron: '5 0 1 1 *'
+  workflow_dispatch: {}
+
+jobs:
+  close-year:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Snapshot outgoing year's basis, reset holdings for the new year
+        run: |
+          set -euo pipefail
+
+          FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          ID_TOKEN=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
+            | jq -r '.idToken')
+
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to get a Firebase auth token, aborting without writing."
+            exit 1
+          fi
+
+          DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
+          NEW_YEAR=$(date -u +%Y)
+          OUT_YEAR=$((NEW_YEAR - 1))
+          NEW_DATE="${NEW_YEAR}-01-01"
+
+          EXISTING_CLOSE=$(curl -sf "${DB}/yearCloses/${OUT_YEAR}.json?auth=${ID_TOKEN}")
+          if [ "$EXISTING_CLOSE" != "null" ]; then
+            echo "yearCloses/${OUT_YEAR} already exists — year already closed, nothing to do."
+            exit 0
+          fi
+
+          ALL_DAILY=$(curl -sf "${DB}/daily.json?auth=${ID_TOKEN}")
+          LAST_DATE_IN_OUT_YEAR=$(echo "$ALL_DAILY" | jq -r --arg y "$OUT_YEAR" \
+            'if type == "object" then (keys | map(select(startswith($y))) | sort | .[-1] // empty) else empty end')
+
+          if [ -z "$LAST_DATE_IN_OUT_YEAR" ]; then
+            echo "No daily entry found for ${OUT_YEAR} — nothing to close."
+            exit 0
+          fi
+
+          HOLDINGS=$(curl -sf "${DB}/holdings.json?auth=${ID_TOKEN}")
+          echo "$HOLDINGS" > holdings.json
+          echo "$ALL_DAILY" | jq -c --arg d "$LAST_DATE_IN_OUT_YEAR" '.[$d]' > closing_entry.json
+
+          node -e '
+            const fs = require("fs");
+            const holdings = JSON.parse(fs.readFileSync("holdings.json", "utf8")) || [];
+            const entry = JSON.parse(fs.readFileSync("closing_entry.json", "utf8")) || {};
+            const newDate = process.argv[1];
+            const basis = {};
+            const newHoldings = holdings.map((h) => {
+              if (h.type === "fund") {
+                const navRaw = entry[h.navGroup];
+                if (navRaw === undefined || navRaw === null || navRaw === "") return h;
+                const nav = Number(navRaw);
+                if (!Number.isFinite(nav)) return h;
+                const current = h.purchaseNav ? (h.investment / h.purchaseNav) * nav : 0;
+                basis[h.id] = { purchaseNav: h.purchaseNav, investment: h.investment, purchaseDate: h.purchaseDate, currency: h.currency, type: h.type, navGroup: h.navGroup, label: h.label };
+                return { ...h, purchaseNav: nav, investment: current, purchaseDate: newDate };
+              }
+              if (h.type === "gold") {
+                const goldRaw = entry.gold;
+                if (goldRaw === undefined || goldRaw === null || goldRaw === "") return h;
+                const goldPrice = Number(goldRaw);
+                if (!Number.isFinite(goldPrice)) return h;
+                const current = (h.grams || 0) * goldPrice;
+                basis[h.id] = { purchaseNav: h.purchaseNav, investment: h.investment, purchaseDate: h.purchaseDate, currency: h.currency, type: h.type, grams: h.grams, label: h.label };
+                return { ...h, purchaseNav: goldPrice, investment: current, purchaseDate: newDate };
+              }
+              return h;
+            });
+            fs.writeFileSync("new_holdings.json", JSON.stringify(newHoldings));
+            fs.writeFileSync("basis.json", JSON.stringify(basis));
+          ' "$NEW_DATE"
+
+          YEAR_CLOSE_RECORD=$(jq -n \
+            --argjson year "$OUT_YEAR" \
+            --arg closingDate "$LAST_DATE_IN_OUT_YEAR" \
+            --arg closedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --slurpfile basis basis.json \
+            '{year: $year, closingDate: $closingDate, closedAt: $closedAt, basis: $basis[0]}')
+
+          curl -sf -X PUT -d "$YEAR_CLOSE_RECORD" "${DB}/yearCloses/${OUT_YEAR}.json?auth=${ID_TOKEN}" > /dev/null
+          curl -sf -X PUT -d @new_holdings.json "${DB}/holdings.json?auth=${ID_TOKEN}" > /dev/null
+
+          echo "Closed year ${OUT_YEAR} (basis as of ${LAST_DATE_IN_OUT_YEAR}), holdings reset for ${NEW_YEAR}."

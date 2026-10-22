@@ -21,7 +21,7 @@
 
     "holdings": {
       ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer' || root.child('roles').child(auth.uid).child('role').val() === 'service')",
-      ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor')"
+      ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'service')"
     },
     "loans": {
       ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer' || root.child('roles').child(auth.uid).child('role').val() === 'service')",
@@ -94,6 +94,11 @@
     },
 
     "newsFeed": {
+      ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer' || root.child('roles').child(auth.uid).child('role').val() === 'service')",
+      ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'service')"
+    },
+
+    "yearCloses": {
       ".read": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'editor' || root.child('roles').child(auth.uid).child('role').val() === 'viewer' || root.child('roles').child(auth.uid).child('role').val() === 'service')",
       ".write": "auth != null && (root.child('roles').child(auth.uid).child('role').val() === 'owner' || root.child('roles').child(auth.uid).child('role').val() === 'service')"
     }
