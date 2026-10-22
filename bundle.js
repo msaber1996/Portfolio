@@ -1069,6 +1069,25 @@
     { id: "daily-pricing-form", index: "12", title: "Today's pricing" },
     { id: "section-13", index: "13", title: "History and analysis" }
   ];
+  var CHART_RANGES = [
+    { key: "1M", days: 30 },
+    { key: "3M", days: 90 },
+    { key: "6M", days: 180 },
+    { key: "1Y", days: 365 },
+    { key: "5Y", days: 1825 },
+    { key: "All", days: null }
+  ];
+  function ChartRangeSelector({ value, onChange }) {
+    return /* @__PURE__ */ jsx("div", { className: "inline-flex items-center gap-0.5 border border-neutral-300 rounded-full p-1 bg-neutral-50", role: "group", "aria-label": "Chart range", children: CHART_RANGES.map((r) => /* @__PURE__ */ jsx(
+      "button",
+      {
+        onClick: () => onChange(r.key),
+        className: `text-xs px-3 py-1 rounded-full transition-colors ${value === r.key ? "bg-neutral-900 text-white" : "text-neutral-600 hover:text-neutral-800"}`,
+        children: r.key
+      },
+      r.key
+    )) });
+  }
   function TableOfContents() {
     return /* @__PURE__ */ jsx("nav", { "aria-label": "Section index", className: "mt-10 mb-8 border border-neutral-300 bg-white", children: [
       /* @__PURE__ */ jsx("div", { className: "px-5 py-3 border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500", children: "On this page" }),
@@ -2773,6 +2792,7 @@ Save anyway?`);
       return Array.from(ys).sort((a, b) => b - a);
     }, [computedHistory]);
     const [viewYear, setViewYear] = useState(null);
+    const [chartRange, setChartRange] = useState("All");
     const effectiveViewYear = viewYear ?? availableYears[0];
     const isCurrentYearView = effectiveViewYear === availableYears[0];
     const yearComputedHistory = useMemo(
@@ -2830,13 +2850,21 @@ Save anyway?`);
       const upDays = yearComputedHistory.slice(1).filter((d, i) => d.markedToMarket >= yearComputedHistory[i].markedToMarket).length;
       return { days: yearComputedHistory.length, changeVal, changePct, rateChangePct, goldChangePct, upDays, totalDays: yearComputedHistory.length - 1, strongest, weakest, mostImproved, mostDeclined };
     }, [yearComputedHistory, yearFirstComputed, yearLatestComputed]);
+    const chartHistory = useMemo(() => {
+      const range = CHART_RANGES.find((r) => r.key === chartRange);
+      if (!range || range.days == null || yearComputedHistory.length === 0) return yearComputedHistory;
+      const lastDate = new Date(yearComputedHistory[yearComputedHistory.length - 1].date + "T00:00:00");
+      const cutoff = new Date(lastDate);
+      cutoff.setDate(cutoff.getDate() - range.days);
+      return yearComputedHistory.filter((d) => new Date(d.date + "T00:00:00") >= cutoff);
+    }, [yearComputedHistory, chartRange]);
     const yearFundSeries = useMemo(() => holdings.filter((h) => h.type === "fund" && h.navGroup).map((holding) => {
-      const points = yearComputedHistory.map((d) => {
+      const points = chartHistory.map((d) => {
         const row = d.rows.find((r) => r.id === holding.id);
         return { date: d.date, value: row ? row.gainPct : 0 };
       });
       return { key: holding.id, label: holding.label, points };
-    }), [holdings, yearComputedHistory]);
+    }), [holdings, chartHistory]);
     const currentValueById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency === "USD" ? a.currentNative : a.value])), [ASSETS]);
     const currentValueCurrencyById = useMemo(() => Object.fromEntries(ASSETS.map((a) => [a.id, a.currency])), [ASSETS]);
     const metalFundRows = useMemo(
@@ -4008,14 +4036,18 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-13", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "13", title: "History and analysis", dek: isCurrentYearView ? `${yearComputedHistory.length} day${yearComputedHistory.length === 1 ? "" : "s"} on record for ${effectiveViewYear}, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` : `${yearComputedHistory.length} day${yearComputedHistory.length === 1 ? "" : "s"} on record for ${effectiveViewYear} — this year is closed, profit tracking reset at the start of ${effectiveViewYear + 1}.` }),
-          /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: yearComputedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
-          yearComputedHistory.length >= 2 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Net worth vs. gold vs. USD/EGP, since ${yearFirstComputed.date}` }),
+          /* @__PURE__ */ jsx("div", { className: "mb-4 flex items-center justify-between gap-3 flex-wrap", children: [
+            /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Chart range" }),
+            /* @__PURE__ */ jsx(ChartRangeSelector, { value: chartRange, onChange: setChartRange })
+          ] }),
+          /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: chartHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
+          chartHistory.length >= 2 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Net worth vs. gold vs. USD/EGP, since ${chartHistory[0].date}` }),
             /* @__PURE__ */ jsx(ComparisonChart, {
               series: [
-                { key: "networth", label: "Net worth (marked-to-market)", color: dark ? "#e5e5e5" : "#171717", points: yearComputedHistory.map((d) => ({ date: d.date, value: d.markedToMarket })) },
-                { key: "gold", label: "Gold, EGP/g", color: dark ? "#fbbf24" : "#B45309", points: yearComputedHistory.map((d) => ({ date: d.date, value: d.gold })) },
-                { key: "usd", label: "USD/EGP", color: dark ? "#38bdf8" : "#0369A1", points: yearComputedHistory.map((d) => ({ date: d.date, value: d.rate })) }
+                { key: "networth", label: "Net worth (marked-to-market)", color: dark ? "#e5e5e5" : "#171717", points: chartHistory.map((d) => ({ date: d.date, value: d.markedToMarket })) },
+                { key: "gold", label: "Gold, EGP/g", color: dark ? "#fbbf24" : "#B45309", points: chartHistory.map((d) => ({ date: d.date, value: d.gold })) },
+                { key: "usd", label: "USD/EGP", color: dark ? "#38bdf8" : "#0369A1", points: chartHistory.map((d) => ({ date: d.date, value: d.rate })) }
               ],
               labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
             })
