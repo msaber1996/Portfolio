@@ -2791,6 +2791,38 @@ Save anyway?`);
       ys.add((/* @__PURE__ */ new Date()).getFullYear());
       return Array.from(ys).sort((a, b) => b - a);
     }, [computedHistory]);
+    const periodReturns = useMemo(() => {
+      const todayRate = displayComputed?.rate || 0;
+      const wholePortfolioAt = (entry) => {
+        const totalInvested = (entry?.rows || []).reduce((s, a) => {
+          const native = a.investmentNative ?? 0;
+          return s + (a.currency === "USD" ? native * todayRate : native);
+        }, 0);
+        return { totalInvested, totalCurrent: entry?.totalAssets || 0 };
+      };
+      const buildPeriod = (baseEntry) => {
+        const base = wholePortfolioAt(baseEntry);
+        const totalInvested = base.totalInvested;
+        const totalCurrent = wholePortfolio.totalCurrent;
+        const totalProfit = totalCurrent - totalInvested;
+        const returnPct = totalInvested ? totalProfit / totalInvested * 100 : 0;
+        return { totalInvested, totalCurrent, totalProfit, returnPct };
+      };
+      if (!computedHistory.length) {
+        const zero = { totalInvested: 0, totalCurrent: 0, totalProfit: 0, returnPct: 0 };
+        return { ytd: zero, oneYear: zero, sinceInception: zero };
+      }
+      const currentYearStr = String(availableYears[0]);
+      const ytdFirstEntry = computedHistory.find((d) => d.date.slice(0, 4) === currentYearStr) || computedHistory[0];
+      const oneYearAgo = /* @__PURE__ */ new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const oneYearEntry = computedHistory.find((d) => new Date(d.date + "T00:00:00") >= oneYearAgo) || computedHistory[0];
+      return {
+        ytd: buildPeriod(ytdFirstEntry),
+        oneYear: buildPeriod(oneYearEntry),
+        sinceInception: buildPeriod(computedHistory[0])
+      };
+    }, [computedHistory, availableYears, wholePortfolio, displayComputed]);
     const [viewYear, setViewYear] = useState(null);
     const [chartRange, setChartRange] = useState("All");
     const effectiveViewYear = viewYear ?? availableYears[0];
@@ -3826,6 +3858,21 @@ Save anyway?`);
                 /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${yearWholePortfolio.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearWholePortfolio.returnPct, format: pctStr }) })
               ] })
             ] })
+          ] }),
+          /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-white p-5", children: [
+            /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Performance over time" }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Whole portfolio, including certificates and properties — how it's moved year to date, over the trailing year, and since tracking began." }),
+            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4", children: [
+              { label: "Year to date", stat: periodReturns.ytd },
+              { label: "1 year", stat: periodReturns.oneYear },
+              { label: "Since inception", stat: periodReturns.sinceInception }
+            ].map(({ label, stat }) => /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4 text-center", children: [
+              /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-2", children: label }),
+              /* @__PURE__ */ jsx("div", { className: `font-mono text-2xl inline-flex items-center gap-1.5 ${stat.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: [
+                /* @__PURE__ */ jsx(AnimatedNumber, { value: stat.returnPct, format: pctStr }),
+                stat.returnPct >= 0 ? /* @__PURE__ */ jsx(ArrowUpRight, { size: 20, strokeWidth: 2 }) : /* @__PURE__ */ jsx(ArrowDownRight, { size: 20, strokeWidth: 2 })
+              ] })
+            ] }, label)) })
           ] }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-neutral-50 p-5", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Your variable investments, in plain terms" }),
