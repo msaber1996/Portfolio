@@ -396,9 +396,13 @@
     return LAZY_SCRIPT_PROMISES[src];
   }
   var XLSX_CDN_URL = "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js";
+  var EXCELJS_CDN_URL = "https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js";
   var TESSERACT_CDN_URL = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/7.0.0/tesseract.min.js";
   function ensureXLSX() {
     return window.XLSX ? Promise.resolve() : loadScriptOnce(XLSX_CDN_URL);
+  }
+  function ensureExcelJS() {
+    return window.ExcelJS ? Promise.resolve() : loadScriptOnce(EXCELJS_CDN_URL);
   }
   function ensureTesseract() {
     return window.Tesseract ? Promise.resolve() : loadScriptOnce(TESSERACT_CDN_URL);
@@ -3341,82 +3345,147 @@ Save anyway?`);
       setTimeout(() => URL.revokeObjectURL(url), 2e3);
     }, [holdings, loans, conversions, history]);
     const handleExportExcel = useCallback(async () => {
-      await ensureXLSX();
-      if (!window.XLSX) {
+      await ensureExcelJS();
+      if (!window.ExcelJS) {
         window.alert("Spreadsheet export did not load — check your connection and try again.");
         return;
       }
-      const wb = window.XLSX.utils.book_new();
-      const addSheet = (name, rows) => {
-        const ws = window.XLSX.utils.json_to_sheet(rows);
-        window.XLSX.utils.book_append_sheet(wb, ws, name);
+      const MONEY_FMT = "#,##0";
+      const RATE_FMT = "#,##0.0000";
+      const PRICE_FMT = "#,##0.00";
+      const PCT_FMT = '0.0"%";−0.0"%"';
+      const wb = new window.ExcelJS.Workbook();
+      wb.creator = "Portfolio Readiness";
+      wb.created = /* @__PURE__ */ new Date();
+      const addSheet = (name, columns, rows) => {
+        const ws = wb.addWorksheet(name, { views: [{ state: "frozen", ySplit: 1 }] });
+        ws.columns = columns;
+        ws.addRows(rows);
+        const headerRow = ws.getRow(1);
+        headerRow.eachCell((cell) => {
+          cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF171717" } };
+          cell.alignment = { vertical: "middle" };
+        });
+        headerRow.height = 20;
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columns.length } };
+        for (let r = 2; r <= ws.rowCount; r++) {
+          if (r % 2 === 0) {
+            ws.getRow(r).eachCell((cell) => {
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F5F4" } };
+            });
+          }
+        }
       };
-      addSheet("Holdings", ASSETS.map((a) => ({
-        Holding: a.label,
-        "Purchase date": a.purchaseDate || "",
-        Currency: a.currency,
-        "Purchase amount": a.currency === "USD" ? a.investmentNative : a.investmentEgp,
-        "Bought at": a.purchaseNav,
-        Now: a.currentNav,
-        "Gain %": a.purchaseNav != null ? Math.round(a.gainPct * 10) / 10 : null,
-        "Value (EGP)": Math.round(a.value),
-        "% of total": totalAssets ? Math.round(a.value / totalAssets * 1e3) / 10 : 0
+      addSheet("Holdings", [
+        { header: "Holding", key: "label", width: 30 },
+        { header: "Purchase date", key: "purchaseDate", width: 14 },
+        { header: "Currency", key: "currency", width: 10 },
+        { header: "Purchase amount", key: "purchaseAmount", width: 18, style: { numFmt: MONEY_FMT } },
+        { header: "Bought at", key: "boughtAt", width: 14, style: { numFmt: RATE_FMT } },
+        { header: "Now", key: "now", width: 14, style: { numFmt: RATE_FMT } },
+        { header: "Gain %", key: "gainPct", width: 12, style: { numFmt: PCT_FMT } },
+        { header: "Value (EGP)", key: "value", width: 18, style: { numFmt: MONEY_FMT } },
+        { header: "% of total", key: "pctTotal", width: 12, style: { numFmt: PCT_FMT } }
+      ], ASSETS.map((a) => ({
+        label: a.label,
+        purchaseDate: a.purchaseDate || "",
+        currency: a.currency,
+        purchaseAmount: a.currency === "USD" ? a.investmentNative : a.investmentEgp,
+        boughtAt: a.purchaseNav,
+        now: a.currentNav,
+        gainPct: a.purchaseNav != null ? a.gainPct : null,
+        value: a.value,
+        pctTotal: totalAssets ? a.value / totalAssets * 100 : 0
       })));
-      addSheet("Daily history", computedHistory.map((d) => {
-        const catPct = (cat) => cat && cat.cost ? Math.round((cat.current - cat.cost) / cat.cost * 1e3) / 10 : null;
+      addSheet("Daily history", [
+        { header: "Date", key: "date", width: 14 },
+        { header: "Rate", key: "rate", width: 12, style: { numFmt: PRICE_FMT } },
+        { header: "Gold EGP/g", key: "gold", width: 14, style: { numFmt: PRICE_FMT } },
+        { header: "Marked to market", key: "mtm", width: 20, style: { numFmt: MONEY_FMT } },
+        { header: "Gain / loss", key: "gain", width: 18, style: { numFmt: MONEY_FMT } },
+        { header: "Gold %", key: "goldPct", width: 12, style: { numFmt: PCT_FMT } },
+        { header: "USD funds %", key: "usdPct", width: 14, style: { numFmt: PCT_FMT } },
+        { header: "EGP funds %", key: "egpPct", width: 14, style: { numFmt: PCT_FMT } }
+      ], computedHistory.map((d) => {
+        const catPct = (cat) => cat && cat.cost ? (cat.current - cat.cost) / cat.cost * 100 : null;
         return {
-          Date: d.date,
-          Rate: d.rate,
-          "Gold EGP/g": d.gold,
-          "Marked to market": Math.round(d.markedToMarket),
-          "Gain / loss": Math.round(d.gain),
-          "Gold %": catPct(d.byCategory?.gold),
-          "USD funds %": catPct(d.byCategory?.usdFunds),
-          "EGP funds %": catPct(d.byCategory?.egpFunds)
+          date: d.date,
+          rate: d.rate,
+          gold: d.gold,
+          mtm: d.markedToMarket,
+          gain: d.gain,
+          goldPct: catPct(d.byCategory?.gold),
+          usdPct: catPct(d.byCategory?.usdFunds),
+          egpPct: catPct(d.byCategory?.egpFunds)
         };
       }));
-      addSheet("Certificates", certificates.map((c) => ({
-        Certificate: c.label,
-        "Rate %": c.rate,
-        "Amount (EGP)": c.amount,
-        "Monthly interest": Math.round(c.amount * c.rate / 100 / 12),
-        Opened: c.openDate || "",
-        Matures: c.maturityDate || ""
+      addSheet("Certificates", [
+        { header: "Certificate", key: "label", width: 36 },
+        { header: "Rate %", key: "rate", width: 10, style: { numFmt: PCT_FMT } },
+        { header: "Amount (EGP)", key: "amount", width: 18, style: { numFmt: MONEY_FMT } },
+        { header: "Monthly interest", key: "interest", width: 18, style: { numFmt: MONEY_FMT } },
+        { header: "Opened", key: "opened", width: 14 },
+        { header: "Matures", key: "matures", width: 14 }
+      ], certificates.map((c) => ({
+        label: c.label,
+        rate: c.rate,
+        amount: c.amount,
+        interest: c.amount * c.rate / 100 / 12,
+        opened: c.openDate || "",
+        matures: c.maturityDate || ""
       })));
-      addSheet("Loans", loans.map((l) => ({
-        Loan: l.label,
-        Currency: l.currency,
-        Amount: l.amount,
-        "Monthly installment": l.installment
+      addSheet("Loans", [
+        { header: "Loan", key: "label", width: 30 },
+        { header: "Currency", key: "currency", width: 10 },
+        { header: "Amount", key: "amount", width: 18, style: { numFmt: MONEY_FMT } },
+        { header: "Monthly installment", key: "installment", width: 20, style: { numFmt: MONEY_FMT } }
+      ], loans.map((l) => ({ label: l.label, currency: l.currency, amount: l.amount, installment: l.installment })));
+      addSheet("Loan facilities", [
+        { header: "Facility", key: "label", width: 24 },
+        { header: "Rate %", key: "rate", width: 10, style: { numFmt: PCT_FMT } },
+        { header: "Amount financed", key: "financed", width: 18, style: { numFmt: MONEY_FMT } },
+        { header: "Outstanding", key: "outstanding", width: 18, style: { numFmt: MONEY_FMT } },
+        { header: "Monthly installment", key: "installment", width: 20, style: { numFmt: MONEY_FMT } },
+        { header: "Opened", key: "opened", width: 14 },
+        { header: "Matures", key: "matures", width: 14 }
+      ], loanFacilities.map((f) => ({
+        label: f.label,
+        rate: f.rate,
+        financed: f.amountFinanced,
+        outstanding: f.outstanding,
+        installment: f.installment,
+        opened: f.openDate || "",
+        matures: f.maturityDate || ""
       })));
-      addSheet("Loan facilities", loanFacilities.map((f) => ({
-        Facility: f.label,
-        "Rate %": f.rate,
-        "Amount financed": f.amountFinanced,
-        Outstanding: f.outstanding,
-        "Monthly installment": f.installment,
-        Opened: f.openDate || "",
-        Matures: f.maturityDate || ""
-      })));
-      addSheet("Office units", officeUnits.map((u) => {
+      addSheet("Office units", [
+        { header: "Unit", key: "unit", width: 18 },
+        { header: "Project", key: "project", width: 24 },
+        { header: "Total price (EGP)", key: "totalPrice", width: 18, style: { numFmt: MONEY_FMT } },
+        { header: "Paid so far", key: "paid", width: 16, style: { numFmt: MONEY_FMT } },
+        { header: "Remaining", key: "remaining", width: 16, style: { numFmt: MONEY_FMT } }
+      ], officeUnits.map((u) => {
         const hasSchedule = officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
         const paid = hasSchedule ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0;
         const remaining = hasSchedule ? Math.max(0, u.totalPrice - paid) : u.remaining || 0;
-        return {
-          Unit: u.unit,
-          Project: u.project || "",
-          "Total price (EGP)": u.totalPrice,
-          "Paid so far": Math.round(paid),
-          Remaining: Math.round(remaining)
-        };
+        return { unit: u.unit, project: u.project || "", totalPrice: u.totalPrice, paid, remaining };
       }));
-      addSheet("Conversions", conversionsWithRunning.map((c) => ({
-        Date: c.date,
-        Type: c.type,
-        "Amount (USD)": c.amountUsd,
-        "Running balance (USD)": Math.round(c.running)
-      })));
-      window.XLSX.writeFile(wb, `portfolio-export-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.xlsx`);
+      addSheet("Conversions", [
+        { header: "Date", key: "date", width: 14 },
+        { header: "Type", key: "type", width: 12 },
+        { header: "Amount (USD)", key: "amountUsd", width: 16, style: { numFmt: MONEY_FMT } },
+        { header: "Running balance (USD)", key: "running", width: 20, style: { numFmt: MONEY_FMT } }
+      ], conversionsWithRunning.map((c) => ({ date: c.date, type: c.type, amountUsd: c.amountUsd, running: c.running })));
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `portfolio-export-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2e3);
     }, [ASSETS, totalAssets, computedHistory, certificates, loans, loanFacilities, officeUnits, officeInstallments, officeInstallmentPayments, conversionsWithRunning]);
     const downloadReport = useCallback(() => {
       const rowsHtml = ASSETS.map((a2) => {
