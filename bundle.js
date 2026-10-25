@@ -2102,6 +2102,88 @@
       /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-x-6 gap-y-1 text-xs text-neutral-500 pt-4 border-t border-neutral-200", children: allocationRows.map((r) => /* @__PURE__ */ jsx("span", { children: `${r.label}: ${r.currentPct.toFixed(1)}%` }, r.key)) })
     ] });
   }
+  function RebalanceCard({ allocationRows, targets, totalAssets, onChange, canEdit }) {
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState({});
+    const hasTargets = REBALANCE_CATEGORIES.some((c) => targets[c.key] != null);
+    const startEditing = () => {
+      const seed = {};
+      REBALANCE_CATEGORIES.forEach((c) => {
+        seed[c.key] = targets[c.key] != null ? String(targets[c.key]) : "";
+      });
+      setDraft(seed);
+      setEditing(true);
+    };
+    const save = () => {
+      const next = {};
+      REBALANCE_CATEGORIES.forEach((c) => {
+        const n = Number(draft[c.key]);
+        if (draft[c.key] !== "" && Number.isFinite(n)) next[c.key] = n;
+      });
+      onChange(next);
+      setEditing(false);
+    };
+    if (editing) {
+      const draftSum = REBALANCE_CATEGORIES.reduce((s, c) => s + (Number(draft[c.key]) || 0), 0);
+      return /* @__PURE__ */ jsx("div", { className: "border border-neutral-300 bg-white p-4", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-3", children: "Set your target allocation" }),
+        /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: REBALANCE_CATEGORIES.map((c) => /* @__PURE__ */ jsx("label", { className: "flex items-center justify-between gap-3 text-sm text-neutral-700", children: [
+          /* @__PURE__ */ jsx("span", { children: c.label }),
+          /* @__PURE__ */ jsx("span", { className: "flex items-center gap-1", children: [
+            /* @__PURE__ */ jsx("input", { type: "number", step: "0.1", min: "0", max: "100", value: draft[c.key], onChange: (e) => setDraft((d) => ({ ...d, [c.key]: e.target.value })), className: "w-20 font-mono text-sm border border-neutral-300 px-2 py-1 text-right focus:outline-none focus:border-neutral-800" }),
+            /* @__PURE__ */ jsx("span", { className: "text-neutral-400 text-xs", children: "%" })
+          ] })
+        ] }, c.key)) }),
+        /* @__PURE__ */ jsx("p", { className: `text-xs mt-3 ${Math.abs(draftSum - 100) > 0.5 ? "text-amber-700" : "text-neutral-400"}`, children: `Targets add up to ${draftSum.toFixed(1)}%${Math.abs(draftSum - 100) > 0.5 ? " — usually these should add up to 100%" : ""}.` }),
+        /* @__PURE__ */ jsx("div", { className: "flex items-center gap-3 mt-3", children: [
+          /* @__PURE__ */ jsx("button", { onClick: save, className: "text-xs uppercase tracking-wide bg-neutral-900 text-white px-4 py-2 hover:bg-neutral-700 transition-colors", children: "Save targets" }),
+          /* @__PURE__ */ jsx("button", { onClick: () => setEditing(false), className: "text-xs uppercase tracking-wide text-neutral-500", children: "Cancel" })
+        ] })
+      ] });
+    }
+    if (!hasTargets) {
+      return canEdit ? /* @__PURE__ */ jsx("div", { className: "border border-neutral-300 bg-white p-4 flex items-center justify-between gap-3 flex-wrap", children: [
+        /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600", children: "No target allocation set — set one to see how far current holdings are from where you want them." }),
+        /* @__PURE__ */ jsx("button", { onClick: startEditing, className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors shrink-0", children: "Set targets" })
+      ] }) : null;
+    }
+    return /* @__PURE__ */ jsx("div", { className: "border border-neutral-300 bg-white p-4", children: [
+      /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between mb-3 gap-3 flex-wrap", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "Current vs. target allocation" }),
+        canEdit && /* @__PURE__ */ jsx("button", { onClick: startEditing, className: "text-xs uppercase tracking-wide text-neutral-500 underline", children: "Edit targets" })
+      ] }),
+      /* @__PURE__ */ jsx("div", { className: "rtable", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm", children: [
+        /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
+          /* @__PURE__ */ jsx("th", { className: "text-left py-2", children: "Category" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2", children: "Current" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2", children: "Target" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2", children: "Difference" }),
+          /* @__PURE__ */ jsx("th", { className: "text-right py-2", children: "Suggested move" })
+        ] }) }),
+        /* @__PURE__ */ jsx("tbody", { children: allocationRows.map((r) => {
+          const target = targets[r.key];
+          if (target == null) return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+            /* @__PURE__ */ jsx("td", { "data-label": "Category", className: "py-2", children: r.label }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Current", className: "py-2 text-right font-mono", children: `${r.currentPct.toFixed(1)}%` }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Target", className: "py-2 text-right font-mono text-neutral-400", children: "—" }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Difference", className: "py-2 text-right font-mono text-neutral-400", children: "—" }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Suggested move", className: "py-2 text-right font-mono text-neutral-400", children: "—" })
+          ] }, r.key);
+          const diff = r.currentPct - target;
+          const moveEgp = (target - r.currentPct) / 100 * totalAssets;
+          const overweight = diff > 0.5;
+          const underweight = diff < -0.5;
+          return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+            /* @__PURE__ */ jsx("td", { "data-label": "Category", className: "py-2", children: r.label }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Current", className: "py-2 text-right font-mono", children: `${r.currentPct.toFixed(1)}%` }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Target", className: "py-2 text-right font-mono text-neutral-700", children: `${target.toFixed(1)}%` }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Difference", className: `py-2 text-right font-mono ${overweight ? "text-amber-700" : underweight ? "text-amber-700" : "text-neutral-400"}`, children: `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}pp` }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Suggested move", className: `py-2 text-right font-mono ${overweight ? "text-red-700" : underweight ? "text-emerald-700" : "text-neutral-400"}`, children: overweight ? `Trim ${egp(Math.abs(moveEgp))}` : underweight ? `Add ${egp(Math.abs(moveEgp))}` : "On target" })
+          ] }, r.key);
+        }) })
+      ] }) })
+    ] });
+  }
   function CertificatesTable({ certificates }) {
     const [sortKey, sortDir, handleSort] = useSortState("amount");
     const [query, setQuery] = useState("");
@@ -2441,6 +2523,7 @@
     const [officeMaintenancePayments, setOfficeMaintenancePayments] = useState({});
     const [newsFeed, setNewsFeed] = useState(SEED_NEWS_FEED);
     const [yearCloses, setYearCloses] = useState({});
+    const [rebalanceTargets, setRebalanceTargets] = useState({});
     const [conversions, setConversions] = useState(SEED_CONVERSIONS);
     const [history, setHistory] = useState([]);
     const [loadState, setLoadState] = useState("loading");
@@ -2463,7 +2546,7 @@
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp, nf, yc] = await Promise.all([
+        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp, nf, yc, rt] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
           loadJson("loanFacilities", SEED_LOAN_FACILITIES),
@@ -2476,7 +2559,8 @@
           loadJson("officeMaintenance", SEED_OFFICE_MAINTENANCE),
           loadJson("officeMaintenancePayments", {}),
           loadJson("newsFeed", SEED_NEWS_FEED),
-          loadJson("yearCloses", {})
+          loadJson("yearCloses", {}),
+          loadJson("rebalanceTargets", {})
         ]);
         let dailyEntries = [];
         try {
@@ -2501,6 +2585,7 @@
           setOfficeMaintenancePayments(omp);
           setNewsFeed(nf);
           setYearCloses(yc || {});
+          setRebalanceTargets(rt || {});
           setLoadState("ready");
         }
       })();
@@ -2625,6 +2710,7 @@
       setTimeout(() => setSavedFlash(false), 1800);
     };
     const handleConversionsChange = (next) => debouncedSave("conversions", next, setConversions);
+    const handleRebalanceTargetsChange = (next) => debouncedSave("rebalanceTargets", next, setRebalanceTargets);
     const navFields = useMemo(() => {
       const seen = /* @__PURE__ */ new Map();
       holdings.filter((h) => h.type === "fund" && h.navGroup).forEach((h) => {
@@ -3936,8 +4022,9 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-04", className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Portfolio insights", dek: "Automatic observations from the numbers already on this site — concentration, leverage, cash flow, and upcoming maturities. Nothing to fill in." }),
-          /* @__PURE__ */ jsx(PortfolioInsights, { insights: portfolioInsights, allocationRows })
+          /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Portfolio insights", dek: "Automatic observations from the numbers already on this site — concentration, leverage, cash flow, and upcoming maturities. Optionally set a target allocation below to see how far you are from it." }),
+          /* @__PURE__ */ jsx(PortfolioInsights, { insights: portfolioInsights, allocationRows }),
+          /* @__PURE__ */ jsx("div", { className: "mt-6", children: /* @__PURE__ */ jsx(RebalanceCard, { allocationRows, targets: rebalanceTargets, totalAssets, onChange: handleRebalanceTargetsChange, canEdit }) })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-05", className: "py-10", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "Investment, by currency", dek: "What is actually committed in each currency, at cost \u2014 drawn live from the holdings list below." }),
