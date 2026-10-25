@@ -3375,21 +3375,21 @@ Save anyway?`);
       const individualPropertyRowsHtml = individualProperties.map((u) => `<tr><td>${u.unit}</td><td>${u.project || ""}</td><td>${u.size}</td><td class="num mono">${egp(u.totalPrice)}</td><td class="num mono">${egp(officeUnitPaidSoFarDisplay(u))}</td><td class="num mono">${egp(officeUnitEffectiveRemaining(u))}</td><td>${unitNextDueText(u)}</td></tr>`).join("");
       const individualPropertyTotals = individualProperties.reduce((s, u) => ({ totalPrice: s.totalPrice + u.totalPrice, paid: s.paid + officeUnitPaidSoFarDisplay(u), remaining: s.remaining + officeUnitEffectiveRemaining(u) }), { totalPrice: 0, paid: 0, remaining: 0 });
       const catPctHtml = (cat) => cat && cat.cost ? pctStr((cat.current - cat.cost) / cat.cost * 100) : "—";
-      const historyRowsHtml = [...computedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td><td class="num mono">${catPctHtml(d.byCategory?.gold)}</td><td class="num mono">${catPctHtml(d.byCategory?.usdFunds)}</td><td class="num mono">${catPctHtml(d.byCategory?.egpFunds)}</td></tr>`).join("");
-      const metalFundRowsHtml = metalFundRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
-      const metalPhysicalRowsHtml = metalPhysicalRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${(r.grams || 0).toLocaleString()}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
-      const metalOverallGain = metalOverall.value - metalOverall.invested;
-      const performanceRankingRowsHtml = performanceRanking.map((r, i) => {
+      const historyRowsHtml = [...yearComputedHistory].reverse().map((d) => `<tr><td>${d.date}</td><td class="num mono">${fmt(d.rate, 2)}</td><td class="num mono">${fmt(d.gold)}</td><td class="num mono">${egp(d.markedToMarket)}</td><td class="num mono">${signedEgp(d.gain)}</td><td class="num mono">${catPctHtml(d.byCategory?.gold)}</td><td class="num mono">${catPctHtml(d.byCategory?.usdFunds)}</td><td class="num mono">${catPctHtml(d.byCategory?.egpFunds)}</td></tr>`).join("");
+      const metalFundRowsHtml = yearMetalFundRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
+      const metalPhysicalRowsHtml = yearMetalPhysicalRows.map((r) => `<tr><td>${r.label}</td><td class="num mono">${(r.grams || 0).toLocaleString()}</td><td class="num mono">${egp(r.investmentNative || 0)}</td><td class="num mono">${egp(r.value || 0)}</td><td class="num mono">${pctStr(r.gainPct || 0)}</td><td>${fmtDate(r.purchaseDate)}</td></tr>`).join("");
+      const metalOverallGain = yearMetalOverall.value - yearMetalOverall.invested;
+      const performanceRankingRowsHtml = yearPerformanceRanking.map((r, i) => {
         const netGain = r.currentNative - r.investmentNative;
         const fmtNative = (n) => r.currency === "USD" ? usd(n) : egp(n);
         const signedNative = `${netGain >= 0 ? "+" : "−"}${fmtNative(Math.abs(netGain))}`;
         return `<tr><td class="mono">${i + 1}</td><td>${r.label}</td><td>${fmtDate(r.purchaseDate)}</td><td class="num mono">${fmtNative(r.investmentNative)}</td><td class="num mono">${r.currency === "USD" ? usd(r.currentNative) : egp(r.value)}</td><td class="num mono">${signedNative}</td><td class="num mono">${pctStr(r.gainPct)}</td></tr>`;
       }).join("");
-      const analysisHtml = analysis ? `
-      <h2>Since ${firstComputed.date} (${analysis.days} days)</h2>
-      <p class="note">Marked-to-market moved <b>${signedEgp(analysis.changeVal)}</b> (${pctStr(analysis.changePct)}). FX moved ${pctStr(analysis.rateChangePct)}; gold moved ${pctStr(analysis.goldChangePct)} per gram.
-      ${analysis.strongest ? `Strongest holding overall: <b>${analysis.strongest.label}</b> (${pctStr(analysis.strongest.last)}).` : ""}
-      ${analysis.weakest ? `Weakest: <b>${analysis.weakest.label}</b> (${pctStr(analysis.weakest.last)}).` : ""}</p>
+      const analysisHtml = yearAnalysis ? `
+      <h2>Since ${yearFirstComputed.date} (${yearAnalysis.days} days)</h2>
+      <p class="note">Marked-to-market moved <b>${signedEgp(yearAnalysis.changeVal)}</b> (${pctStr(yearAnalysis.changePct)}). FX moved ${pctStr(yearAnalysis.rateChangePct)}; gold moved ${pctStr(yearAnalysis.goldChangePct)} per gram.
+      ${yearAnalysis.strongest ? `Strongest holding overall: <b>${yearAnalysis.strongest.label}</b> (${pctStr(yearAnalysis.strongest.last)}).` : ""}
+      ${yearAnalysis.weakest ? `Weakest: <b>${yearAnalysis.weakest.label}</b> (${pctStr(yearAnalysis.weakest.last)}).` : ""}</p>
     ` : "";
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Portfolio Readiness \u2014 Report ${latest?.date || ""}</title>
 <style>
@@ -3443,9 +3443,12 @@ Save anyway?`);
     <div><div class="stat-label">Leverage</div><div class="stat-value mono">${debtRatioPct.toFixed(1)}%</div></div>
   </div>
 
+  ${!isCurrentYearView ? `<p class="note">Showing <b>${effectiveViewYear}</b> (closed) for the sections below that track yearly performance — that year's profit tracking reset to zero at the start of ${effectiveViewYear + 1}. The totals just above, and "Performance over time" below, are always today's live numbers.</p>` : ""}
+
   <nav class="toc"><div class="toc-title">On this page</div><ul class="toc-list">
     <li><a href="#r-holdings">Holdings</a></li>
     <li><a href="#r-whole-portfolio">Whole portfolio</a></li>
+    <li><a href="#r-performance">Performance over time</a></li>
     <li><a href="#r-variable-investments">Variable investments</a></li>
     <li><a href="#r-metal">Metal: funds vs physical</a></li>
     <li><a href="#r-insights">Portfolio insights</a></li>
@@ -3467,30 +3470,39 @@ Save anyway?`);
 
   <h2 id="r-whole-portfolio">Whole portfolio (everything, including certificates and properties)</h2>
   <table>
-    <tr><td>We put in</td><td class="num mono">${egp(wholePortfolio.totalInvested)}</td></tr>
-    <tr><td>Worth now</td><td class="num mono">${egp(wholePortfolio.totalCurrent)}</td></tr>
-    <tr><td>We earned</td><td class="num mono">${signedEgp(wholePortfolio.totalProfit)}</td></tr>
-    <tr><td>At a return of</td><td class="num mono">${pctStr(wholePortfolio.returnPct)}</td></tr>
+    <tr><td>We put in</td><td class="num mono">${egp(yearWholePortfolio.totalInvested)}</td></tr>
+    <tr><td>Worth now</td><td class="num mono">${egp(yearWholePortfolio.totalCurrent)}</td></tr>
+    <tr><td>We earned</td><td class="num mono">${signedEgp(yearWholePortfolio.totalProfit)}</td></tr>
+    <tr><td>At a return of</td><td class="num mono">${pctStr(yearWholePortfolio.returnPct)}</td></tr>
+  </table>
+
+  <h2 id="r-performance">Performance over time</h2>
+  <p class="note">Whole portfolio, including certificates and properties — always today's live numbers, independent of the year shown elsewhere in this report.</p>
+  <table>
+    <tr><th>Period</th><th class="num">Return</th></tr>
+    <tr><td>Year to date</td><td class="num mono">${pctStr(periodReturns.ytd.returnPct)}</td></tr>
+    <tr><td>1 year</td><td class="num mono">${pctStr(periodReturns.oneYear.returnPct)}</td></tr>
+    <tr><td>Since inception</td><td class="num mono">${pctStr(periodReturns.sinceInception.returnPct)}</td></tr>
   </table>
 
   <h2 id="r-variable-investments">Variable investments (funds, gold, Beltone — excludes certificates)</h2>
   <table>
-    <tr><td>Total invested</td><td class="num mono">${egp(variableInvestments.totalInvested)}</td></tr>
-    <tr><td>Duration tracked</td><td class="num mono">${variableInvestments.durationDays} day${variableInvestments.durationDays === 1 ? "" : "s"}</td></tr>
-    <tr><td>Return</td><td class="num mono">${pctStr(variableInvestments.returnPct)}</td></tr>
-    <tr><td>Total profit</td><td class="num mono">${signedEgp(variableInvestments.totalProfit)}</td></tr>
+    <tr><td>Total invested</td><td class="num mono">${egp(yearVariableInvestments.totalInvested)}</td></tr>
+    <tr><td>Duration tracked</td><td class="num mono">${yearVariableInvestments.durationDays} day${yearVariableInvestments.durationDays === 1 ? "" : "s"}</td></tr>
+    <tr><td>Return</td><td class="num mono">${pctStr(yearVariableInvestments.returnPct)}</td></tr>
+    <tr><td>Total profit</td><td class="num mono">${signedEgp(yearVariableInvestments.totalProfit)}</td></tr>
   </table>
   <p class="note">By category — "invested" adds up to "Total invested" above; "current value" adds up to total invested + total profit above. USD funds shown in dollars, converted at today's rate for the totals above.</p>
   <table>
     <tr><th>Category</th><th class="num">Invested</th><th class="num">Current value</th><th class="num">Return</th></tr>
-    ${variableInvestmentsByCategory.map((c) => `<tr><td>${c.label}</td><td class="num mono">${c.currency === "USD" ? usd(c.costUsd) : egp(c.cost)}</td><td class="num mono">${c.currency === "USD" ? usd(c.currentUsd) : egp(c.current)}</td><td class="num mono">${pctStr(c.pct)}</td></tr>`).join("")}
+    ${yearVariableInvestmentsByCategory.map((c) => `<tr><td>${c.label}</td><td class="num mono">${c.currency === "USD" ? usd(c.costUsd) : egp(c.cost)}</td><td class="num mono">${c.currency === "USD" ? usd(c.currentUsd) : egp(c.current)}</td><td class="num mono">${pctStr(c.pct)}</td></tr>`).join("")}
   </table>
 
   <h2 id="r-metal">Metal: funds vs physical</h2>
   <table>
-    <tr><td>Total invested</td><td class="num mono">${egp(metalOverall.invested)}</td></tr>
-    <tr><td>Current value</td><td class="num mono">${egp(metalOverall.value)}</td></tr>
-    <tr><td>Gain / loss</td><td class="num mono">${signedEgp(metalOverallGain)} (${pctStr(metalOverall.gainPct)})</td></tr>
+    <tr><td>Total invested</td><td class="num mono">${egp(yearMetalOverall.invested)}</td></tr>
+    <tr><td>Current value</td><td class="num mono">${egp(yearMetalOverall.value)}</td></tr>
+    <tr><td>Gain / loss</td><td class="num mono">${signedEgp(metalOverallGain)} (${pctStr(yearMetalOverall.gainPct)})</td></tr>
   </table>
   <p class="note">Gold funds</p>
   <table><tr><th>Holding</th><th class="num">Invested</th><th class="num">Current value</th><th class="num">Gain</th><th>Purchased</th></tr>${metalFundRowsHtml}</table>
@@ -3564,13 +3576,14 @@ Save anyway?`);
     }, [
       ASSETS,
       totalAssets,
-      performanceRanking,
+      yearPerformanceRanking,
       loans,
       conversionsWithRunning,
-      computedHistory,
-      analysis,
-      firstComputed,
-      variableInvestments,
+      yearComputedHistory,
+      yearAnalysis,
+      yearFirstComputed,
+      yearVariableInvestments,
+      periodReturns,
       latest,
       asOfLabel,
       readinessLabel,
@@ -3586,11 +3599,11 @@ Save anyway?`);
       usdNet,
       officeGroupNextDueDate,
       officeGroupNextDueAmount,
-      wholePortfolio,
-      variableInvestmentsByCategory,
-      metalFundRows,
-      metalPhysicalRows,
-      metalOverall,
+      yearWholePortfolio,
+      yearVariableInvestmentsByCategory,
+      yearMetalFundRows,
+      yearMetalPhysicalRows,
+      yearMetalOverall,
       loanFacilities,
       certificates,
       officeUnits,
@@ -3600,7 +3613,9 @@ Save anyway?`);
       portfolioInsights,
       cashFlow,
       officeGroupUnitNames,
-      individualProperties
+      individualProperties,
+      effectiveViewYear,
+      isCurrentYearView
     ]);
     const downloadLiabilitiesReport = useCallback(() => {
       const loanRowsHtml = loans.map((l) => {
