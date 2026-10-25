@@ -3340,6 +3340,84 @@ Save anyway?`);
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 2e3);
     }, [holdings, loans, conversions, history]);
+    const handleExportExcel = useCallback(async () => {
+      await ensureXLSX();
+      if (!window.XLSX) {
+        window.alert("Spreadsheet export did not load — check your connection and try again.");
+        return;
+      }
+      const wb = window.XLSX.utils.book_new();
+      const addSheet = (name, rows) => {
+        const ws = window.XLSX.utils.json_to_sheet(rows);
+        window.XLSX.utils.book_append_sheet(wb, ws, name);
+      };
+      addSheet("Holdings", ASSETS.map((a) => ({
+        Holding: a.label,
+        "Purchase date": a.purchaseDate || "",
+        Currency: a.currency,
+        "Purchase amount": a.currency === "USD" ? a.investmentNative : a.investmentEgp,
+        "Bought at": a.purchaseNav,
+        Now: a.currentNav,
+        "Gain %": a.purchaseNav != null ? Math.round(a.gainPct * 10) / 10 : null,
+        "Value (EGP)": Math.round(a.value),
+        "% of total": totalAssets ? Math.round(a.value / totalAssets * 1e3) / 10 : 0
+      })));
+      addSheet("Daily history", computedHistory.map((d) => {
+        const catPct = (cat) => cat && cat.cost ? Math.round((cat.current - cat.cost) / cat.cost * 1e3) / 10 : null;
+        return {
+          Date: d.date,
+          Rate: d.rate,
+          "Gold EGP/g": d.gold,
+          "Marked to market": Math.round(d.markedToMarket),
+          "Gain / loss": Math.round(d.gain),
+          "Gold %": catPct(d.byCategory?.gold),
+          "USD funds %": catPct(d.byCategory?.usdFunds),
+          "EGP funds %": catPct(d.byCategory?.egpFunds)
+        };
+      }));
+      addSheet("Certificates", certificates.map((c) => ({
+        Certificate: c.label,
+        "Rate %": c.rate,
+        "Amount (EGP)": c.amount,
+        "Monthly interest": Math.round(c.amount * c.rate / 100 / 12),
+        Opened: c.openDate || "",
+        Matures: c.maturityDate || ""
+      })));
+      addSheet("Loans", loans.map((l) => ({
+        Loan: l.label,
+        Currency: l.currency,
+        Amount: l.amount,
+        "Monthly installment": l.installment
+      })));
+      addSheet("Loan facilities", loanFacilities.map((f) => ({
+        Facility: f.label,
+        "Rate %": f.rate,
+        "Amount financed": f.amountFinanced,
+        Outstanding: f.outstanding,
+        "Monthly installment": f.installment,
+        Opened: f.openDate || "",
+        Matures: f.maturityDate || ""
+      })));
+      addSheet("Office units", officeUnits.map((u) => {
+        const hasSchedule = officeInstallments.some((row) => row.byUnit && u.unit in row.byUnit);
+        const paid = hasSchedule ? officeUnitPaidSoFar(u.unit, officeInstallments, officeInstallmentPayments) : u.advance || 0;
+        const remaining = hasSchedule ? Math.max(0, u.totalPrice - paid) : u.remaining || 0;
+        return {
+          Unit: u.unit,
+          Project: u.project || "",
+          "Total price (EGP)": u.totalPrice,
+          "Paid so far": Math.round(paid),
+          Remaining: Math.round(remaining)
+        };
+      }));
+      addSheet("Conversions", conversionsWithRunning.map((c) => ({
+        Date: c.date,
+        Type: c.type,
+        "Amount (USD)": c.amountUsd,
+        "Running balance (USD)": Math.round(c.running)
+      })));
+      window.XLSX.writeFile(wb, `portfolio-export-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.xlsx`);
+    }, [ASSETS, totalAssets, computedHistory, certificates, loans, loanFacilities, officeUnits, officeInstallments, officeInstallmentPayments, conversionsWithRunning]);
     const downloadReport = useCallback(() => {
       const rowsHtml = ASSETS.map((a2) => {
         const pct = totalAssets ? (a2.value / totalAssets * 100).toFixed(1) : "0.0";
@@ -3850,6 +3928,10 @@ Save anyway?`);
                 /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); downloadLiabilitiesReport(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
                   /* @__PURE__ */ jsx(FileDown, { size: 14 }),
                   " Download liabilities report"
+                ] }),
+                /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); handleExportExcel(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
+                  /* @__PURE__ */ jsx(FileDown, { size: 14 }),
+                  " Export to Excel"
                 ] }),
                 /* @__PURE__ */ jsx("button", { onClick: () => { setMenuOpen(false); handleExportBackup(); }, className: "flex items-center gap-2 px-4 py-2.5 text-xs uppercase tracking-wide text-neutral-700 hover:bg-neutral-100 transition-colors text-left border-t border-neutral-200", children: [
                   /* @__PURE__ */ jsx(FileDown, { size: 14 }),
