@@ -1074,6 +1074,7 @@
     { id: "section-13", index: "13", title: "History and analysis" }
   ];
   var CHART_RANGES = [
+    { key: "1W", days: 7 },
     { key: "1M", days: 30 },
     { key: "3M", days: 90 },
     { key: "6M", days: 180 },
