@@ -36,16 +36,18 @@ function cairoDateString(d) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 
-// Egyptian fund NAVs are typically published same-day or with one business
-// day's lag — allow up to 3 calendar days (covers a weekend) so a real,
-// just-lagged publication isn't rejected, but a stale/cached page the
-// model found from last week is.
+// Not every Egyptian fund publishes a NAV daily — a dry run against real
+// data found NBE's own official page quoting Fund 5's NAV "as of" 13 days
+// earlier, which is genuinely the latest NBE has published, not a stale
+// page. A tight few-day window rejected that alongside genuinely stale
+// month-old data, so the window is wide enough to admit a fund's normal
+// lower publish cadence while still catching clearly outdated pages.
 function isFreshEnough(asOfDate, todayStr) {
   if (!asOfDate || !/^\d{4}-\d{2}-\d{2}$/.test(asOfDate)) return false;
   const d1 = new Date(asOfDate + "T00:00:00Z");
   const d2 = new Date(todayStr + "T00:00:00Z");
   const days = Math.round((d2 - d1) / 86400000);
-  return days >= 0 && days <= 3;
+  return days >= 0 && days <= 21;
 }
 
 // One fund family at a time, with the web_search server tool — a focused
@@ -143,7 +145,7 @@ async function main() {
         console.log(`${f.label}: AI found ${nav} (${result.confidence}, as of ${result.asOfDate}) — ${result.note || ""}`);
       } else {
         carriedForwardGroups.push(f.label);
-        const why = !fresh ? `no fresh price found (asOfDate=${result.asOfDate || "none"}, needed within 3 days of ${todayCairo})`
+        const why = !fresh ? `no fresh price found (asOfDate=${result.asOfDate || "none"}, needed within 21 days of ${todayCairo})`
           : !withinBounds ? `moved more than 15% from ${prevNav} to ${result.nav}, needs a manual check`
           : `nav=${result.nav}, confidence=${result.confidence}`;
         console.log(`${f.label}: not used — ${why} — carried forward at ${prevNav}. ${result.note || ""}`);
