@@ -54,7 +54,9 @@ function renderDashboard(DATA) {
     setItem(k, v) { this._data[k] = String(v); },
     removeItem(k) { delete this._data[k]; },
   };
-  window.localStorage = global.localStorage;
+  // jsdom's own window.localStorage is a getter-only accessor property on
+  // some versions — plain assignment throws, so replace it with defineProperty.
+  Object.defineProperty(window, "localStorage", { value: global.localStorage, writable: true, configurable: true });
   window.fetch = () => Promise.resolve({ json: () => Promise.resolve({}) });
   delete window.PublicKeyCredential;
   delete window.Notification;
