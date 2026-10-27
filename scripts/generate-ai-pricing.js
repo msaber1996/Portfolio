@@ -76,7 +76,7 @@ Use null for "nav" if you cannot find a specific, dated, numeric NAV you're conf
       body: JSON.stringify({
         model: "claude-sonnet-5-5",
         max_tokens: 2000,
-        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 4 }],
+        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 6 }],
         messages,
       }),
     });
