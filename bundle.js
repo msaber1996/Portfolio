@@ -2103,7 +2103,7 @@
       info: "border-neutral-300 bg-neutral-50 text-neutral-700"
     };
     return /* @__PURE__ */ jsx("div", { children: [
-      aiInsight?.text && /* @__PURE__ */ jsx("div", { className: "mb-4 border border-neutral-300 bg-neutral-900 text-neutral-50 px-4 py-3", children: [
+      aiInsight?.text && /* @__PURE__ */ jsx("div", { className: "mb-4 border border-neutral-300 bg-neutral-900 text-white px-4 py-3", children: [
         /* @__PURE__ */ jsx("div", { className: "text-[10px] uppercase tracking-wide text-neutral-400 mb-1.5", children: `AI analysis · ${timeAgo(aiInsight.generatedAt)}` }),
         /* @__PURE__ */ jsx("p", { className: "text-sm leading-relaxed", children: aiInsight.text })
       ] }),
@@ -2169,7 +2169,7 @@
         /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "Current vs. target allocation" }),
         canEdit && !usingAiTargets && /* @__PURE__ */ jsx("button", { onClick: startEditing, className: "text-xs uppercase tracking-wide text-neutral-500 underline", children: "Edit targets" })
       ] }),
-      usingAiTargets && /* @__PURE__ */ jsx("div", { className: "mb-4 border border-neutral-300 bg-neutral-900 text-neutral-50 px-4 py-3", children: [
+      usingAiTargets && /* @__PURE__ */ jsx("div", { className: "mb-4 border border-neutral-300 bg-neutral-900 text-white px-4 py-3", children: [
         /* @__PURE__ */ jsx("div", { className: "text-[10px] uppercase tracking-wide text-neutral-400 mb-1.5", children: "AI-suggested target — not saved yet" }),
         aiSuggestedTargets.rationale && /* @__PURE__ */ jsx("p", { className: "text-sm leading-relaxed mb-3", children: aiSuggestedTargets.rationale }),
         canEdit && /* @__PURE__ */ jsx("div", { className: "flex items-center gap-4", children: [
