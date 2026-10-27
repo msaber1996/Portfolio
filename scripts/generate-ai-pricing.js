@@ -36,6 +36,18 @@ function cairoDateString(d) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 
+// Egyptian fund NAVs are typically published same-day or with one business
+// day's lag — allow up to 3 calendar days (covers a weekend) so a real,
+// just-lagged publication isn't rejected, but a stale/cached page the
+// model found from last week is.
+function isFreshEnough(asOfDate, todayStr) {
+  if (!asOfDate || !/^\d{4}-\d{2}-\d{2}$/.test(asOfDate)) return false;
+  const d1 = new Date(asOfDate + "T00:00:00Z");
+  const d2 = new Date(todayStr + "T00:00:00Z");
+  const days = Math.round((d2 - d1) / 86400000);
+  return days >= 0 && days <= 3;
+}
+
 // One fund family at a time, with the web_search server tool — a focused
 // single-fund query is far less likely to mix up NAVs across funds than
 // asking for all eight at once. Server tools resolve within the same
@@ -124,13 +136,17 @@ async function main() {
       const nav = Number(result.nav);
       const confident = result.confidence === "high" || result.confidence === "medium";
       const withinBounds = accumulatingGroups.has(f.key) || !prevNav || Math.abs((nav - prevNav) / prevNav) * 100 <= 15;
-      if (Number.isFinite(nav) && nav > 0 && confident && withinBounds) {
+      const fresh = isFreshEnough(result.asOfDate, todayCairo);
+      if (Number.isFinite(nav) && nav > 0 && confident && withinBounds && fresh) {
         entry[f.key] = nav;
         aiFilledGroups.push({ key: f.key, label: f.label, nav, asOfDate: result.asOfDate, note: result.note });
-        console.log(`${f.label}: AI found ${nav} (${result.confidence}, ${result.asOfDate || "no date"}) — ${result.note || ""}`);
+        console.log(`${f.label}: AI found ${nav} (${result.confidence}, as of ${result.asOfDate}) — ${result.note || ""}`);
       } else {
         carriedForwardGroups.push(f.label);
-        console.log(`${f.label}: not used (nav=${result.nav}, confidence=${result.confidence}, prev=${prevNav}) — carried forward. ${result.note || ""}`);
+        const why = !fresh ? `no fresh price found (asOfDate=${result.asOfDate || "none"}, needed within 3 days of ${todayCairo})`
+          : !withinBounds ? `moved more than 15% from ${prevNav} to ${result.nav}, needs a manual check`
+          : `nav=${result.nav}, confidence=${result.confidence}`;
+        console.log(`${f.label}: not used — ${why} — carried forward at ${prevNav}. ${result.note || ""}`);
       }
     } catch (e) {
       carriedForwardGroups.push(f.label);
