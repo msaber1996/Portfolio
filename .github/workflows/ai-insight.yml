@@ -1,0 +1,50 @@
+name: Generate AI portfolio insight
+
+# Runs after auto-daily-snapshot.yml (20:00 UTC) so today's entry always
+# exists by the time this fires, whether it was saved manually earlier in
+# the day or filled in by that fallback.
+
+on:
+  schedule:
+    - cron: '0 21 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install jsdom + react (used to render the dashboard against real data)
+        run: npm install --no-save jsdom@24 react@18 react-dom@18
+
+      - name: Sign in to Firebase, generate the insight, write it back
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          ID_TOKEN=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
+            | jq -r '.idToken')
+
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to get a Firebase auth token, aborting without writing."
+            exit 1
+          fi
+
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "ANTHROPIC_API_KEY secret is not set — add it in the repo's Settings > Secrets and variables > Actions, then re-run this workflow."
+            exit 1
+          fi
+
+          FIREBASE_DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com" \
+          FIREBASE_ID_TOKEN="$ID_TOKEN" \
+          node scripts/generate-ai-insight.js

@@ -2096,13 +2096,17 @@
       ] }) })
     ] }) });
   }
-  function PortfolioInsights({ insights, allocationRows }) {
+  function PortfolioInsights({ insights, allocationRows, aiInsight }) {
     const severityStyle = {
       notice: "border-amber-300 bg-amber-50 text-amber-900",
       good: "border-emerald-300 bg-emerald-50 text-emerald-900",
       info: "border-neutral-300 bg-neutral-50 text-neutral-700"
     };
     return /* @__PURE__ */ jsx("div", { children: [
+      aiInsight?.text && /* @__PURE__ */ jsx("div", { className: "mb-4 border border-neutral-300 bg-neutral-900 text-neutral-50 px-4 py-3", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-[10px] uppercase tracking-wide text-neutral-400 mb-1.5", children: `AI analysis · ${timeAgo(aiInsight.generatedAt)}` }),
+        /* @__PURE__ */ jsx("p", { className: "text-sm leading-relaxed", children: aiInsight.text })
+      ] }),
       insights.length === 0 ? /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-500", children: "No notable observations right now — nothing here looks out of the ordinary." }) : /* @__PURE__ */ jsx("div", { className: "space-y-2 mb-6", children: insights.map((ins, i) => /* @__PURE__ */ jsx("div", { className: `text-sm border px-3 py-2 ${severityStyle[ins.severity]}`, children: ins.text }, i)) }),
       /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-x-6 gap-y-1 text-xs text-neutral-500 pt-4 border-t border-neutral-200", children: allocationRows.map((r) => /* @__PURE__ */ jsx("span", { children: `${r.label}: ${r.currentPct.toFixed(1)}%` }, r.key)) })
     ] });
@@ -2527,6 +2531,7 @@
     const [officeMaintenance, setOfficeMaintenance] = useState(SEED_OFFICE_MAINTENANCE);
     const [officeMaintenancePayments, setOfficeMaintenancePayments] = useState({});
     const [newsFeed, setNewsFeed] = useState(SEED_NEWS_FEED);
+    const [aiInsight, setAiInsight] = useState(null);
     const [yearCloses, setYearCloses] = useState({});
     const [rebalanceTargets, setRebalanceTargets] = useState({});
     const [conversions, setConversions] = useState(SEED_CONVERSIONS);
@@ -2551,7 +2556,7 @@
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp, nf, yc, rt] = await Promise.all([
+        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp, nf, yc, rt, ai] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
           loadJson("loanFacilities", SEED_LOAN_FACILITIES),
@@ -2565,7 +2570,8 @@
           loadJson("officeMaintenancePayments", {}),
           loadJson("newsFeed", SEED_NEWS_FEED),
           loadJson("yearCloses", {}),
-          loadJson("rebalanceTargets", {})
+          loadJson("rebalanceTargets", {}),
+          loadJson("aiInsight", null)
         ]);
         let dailyEntries = [];
         try {
@@ -2589,6 +2595,7 @@
           setOfficeMaintenance(om);
           setOfficeMaintenancePayments(omp);
           setNewsFeed(nf);
+          setAiInsight(ai || null);
           setYearCloses(yc || {});
           setRebalanceTargets(rt || {});
           setLoadState("ready");
@@ -3660,6 +3667,7 @@ Save anyway?`);
   <table><tr><th>Holding</th><th class="num">Grams</th><th class="num">Invested</th><th class="num">Current value</th><th class="num">Gain</th><th>Purchased</th></tr>${metalPhysicalRowsHtml}</table>
 
   <h2 id="r-insights">Portfolio insights</h2>
+  ${aiInsight?.text ? `<p class="note"><b>AI analysis</b> (generated ${fmtDate(aiInsight.basedOnDate)}): ${aiInsight.text}</p>` : ""}
   <p class="note">Automatic observations from the numbers above — concentration, leverage, cash flow, and upcoming maturities.</p>
   ${portfolioInsights.length === 0 ? '<p class="note">No notable observations right now — nothing here looks out of the ordinary.</p>' : `<ul style="margin:0 0 12px;padding-left:18px;">${portfolioInsights.map((ins) => `<li class="note" style="margin:0 0 6px;"><b>${ins.severity === "notice" ? "Notice" : ins.severity === "good" ? "Good" : "Note"}:</b> ${ins.text}</li>`).join("")}</ul>`}
 
@@ -4192,7 +4200,7 @@ Save anyway?`);
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-04", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Portfolio insights", dek: "Automatic observations from the numbers already on this site — concentration, leverage, cash flow, and upcoming maturities. Optionally set a target allocation below to see how far you are from it." }),
-          /* @__PURE__ */ jsx(PortfolioInsights, { insights: portfolioInsights, allocationRows }),
+          /* @__PURE__ */ jsx(PortfolioInsights, { insights: portfolioInsights, allocationRows, aiInsight }),
           /* @__PURE__ */ jsx("div", { className: "mt-6", children: /* @__PURE__ */ jsx(RebalanceCard, { allocationRows, targets: rebalanceTargets, totalAssets, onChange: handleRebalanceTargetsChange, canEdit }) })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-05", className: "py-10", children: [
