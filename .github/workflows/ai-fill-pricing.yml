@@ -8,7 +8,12 @@ name: AI-fill today's fund pricing
 on:
   schedule:
     - cron: '0 17 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Log what would be written without saving it'
+        type: boolean
+        default: false
 
 jobs:
   fill:
@@ -45,4 +50,5 @@ jobs:
 
           FIREBASE_DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com" \
           FIREBASE_ID_TOKEN="$ID_TOKEN" \
+          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}" \
           node scripts/generate-ai-pricing.js

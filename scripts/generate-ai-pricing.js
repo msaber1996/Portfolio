@@ -141,6 +141,12 @@ async function main() {
   entry.aiFilledGroups = aiFilledGroups.map((g) => g.key);
   entry.changedFields = ["rate", "gold", ...aiFilledGroups.map((g) => g.key)];
 
+  if (process.env.DRY_RUN === "true") {
+    console.log(`DRY RUN — would write daily/${todayCairo}:`, JSON.stringify(entry, null, 2));
+    console.log(`AI-filled: [${aiFilledGroups.map((g) => g.label).join(", ") || "none"}], carried forward: [${carriedForwardGroups.join(", ") || "none"}]`);
+    return;
+  }
+
   const res = await fetch(`${DB}/daily/${todayCairo}.json?auth=${ID_TOKEN}`, {
     method: "PUT",
     body: JSON.stringify(entry),
