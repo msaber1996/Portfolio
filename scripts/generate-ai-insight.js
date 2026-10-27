@@ -22,10 +22,21 @@ if (!DB || !ID_TOKEN || !ANTHROPIC_API_KEY) {
   process.exit(1);
 }
 
+// Best-effort: the app's own loadJson() falls back to sane defaults for any
+// collection that comes back null, so one missing/denied collection (e.g. a
+// rules gap on a rarely-touched one) shouldn't take down the whole run.
 async function fetchJson(key) {
-  const res = await fetch(`${DB}/${key}.json?auth=${ID_TOKEN}`);
-  if (!res.ok) throw new Error(`Failed to fetch ${key}: ${res.status}`);
-  return res.json();
+  try {
+    const res = await fetch(`${DB}/${key}.json?auth=${ID_TOKEN}`);
+    if (!res.ok) {
+      console.warn(`Warning: failed to fetch ${key}: ${res.status} — continuing without it.`);
+      return null;
+    }
+    return await res.json();
+  } catch (e) {
+    console.warn(`Warning: failed to fetch ${key}: ${e.message} — continuing without it.`);
+    return null;
+  }
 }
 
 function renderDashboard(DATA) {
