@@ -170,37 +170,35 @@ ${context}`;
   return callClaude(prompt, 600);
 }
 
-// The six categories RebalanceCard already understands (REBALANCE_CATEGORIES
-// in bundle.js) — kept in sync by hand since the script doesn't import the
-// bundle's JS values directly, only its rendered DOM text.
-const REBALANCE_CATEGORY_KEYS = ["gold", "egpFunds", "usdFunds", "egpFixed", "usdFixed", "realEstate"];
+// Specific, holding-level guidance ("add to AZ Gold Fund", not "add 3% to
+// gold") — the context already includes each holding's name/weight/value
+// (it's part of the "What the assets are worth" section's rendered text),
+// so the model just needs to be told to use those exact names and nothing
+// else, and the result is validated against the real holding list below.
+async function suggestMoves(context, validLabels) {
+  const prompt = `You are a portfolio rebalancing assistant for a personal finance dashboard. Below is the dashboard's own rendered text, including a per-holding breakdown (name, % of portfolio, current value) plus leverage, liquidity, cash flow, and concentration observations. Based ONLY on this data, recommend 3 to 6 specific, concrete moves: which EXISTING holdings to add money to, and which to trim — naming each holding by its exact label as it appears in the data. Do not propose opening any new fund or holding that isn't already listed. Favor reducing concentration risk and improving liquidity where the data shows it's low, without inventing numbers not present in the data.
 
-async function suggestTargets(context) {
-  const prompt = `You are a portfolio rebalancing assistant for a personal finance dashboard. Below is the dashboard's own rendered text — current allocation percentages, debt/leverage, liquidity, cash flow, and concentration observations. Based ONLY on this data, propose a target allocation across exactly these six categories: gold, egpFunds, usdFunds, egpFixed, usdFixed, realEstate. The six target percentages must sum to 100. Favor reducing concentration risk, improving liquidity where the data shows it's low, and keeping leverage serviceable — but do not invent numbers not present in the data.
-
-Respond with ONLY a single JSON object, no markdown fences, no other text, in exactly this shape:
-{"gold": <number>, "egpFunds": <number>, "usdFunds": <number>, "egpFixed": <number>, "usdFixed": <number>, "realEstate": <number>, "rationale": "<one sentence explaining the overall direction of the change>"}
+Respond with ONLY a JSON array, no markdown fences, no other text, in exactly this shape:
+[{"holding": "<exact label from the data>", "action": "add", "reason": "<one short sentence>"}, {"holding": "<exact label from the data>", "action": "trim", "reason": "<one short sentence>"}]
 
 ${context}`;
-  const raw = await callClaude(prompt, 500);
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error(`Target-suggestion response had no JSON object: ${raw.slice(0, 300)}`);
+  const raw = await callClaude(prompt, 700);
+  const match = raw.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error(`Moves-suggestion response had no JSON array: ${raw.slice(0, 300)}`);
   let parsed;
   try {
     parsed = JSON.parse(match[0]);
   } catch (e) {
-    throw new Error(`Target-suggestion response wasn't valid JSON: ${e.message} — raw: ${raw.slice(0, 300)}`);
+    throw new Error(`Moves-suggestion response wasn't valid JSON: ${e.message} — raw: ${raw.slice(0, 300)}`);
   }
-  const targets = {};
-  for (const key of REBALANCE_CATEGORY_KEYS) {
-    const v = Number(parsed[key]);
-    if (!Number.isFinite(v)) throw new Error(`Target-suggestion response missing/invalid "${key}": ${JSON.stringify(parsed).slice(0, 300)}`);
-    targets[key] = Math.round(v * 10) / 10;
-  }
-  const sum = REBALANCE_CATEGORY_KEYS.reduce((s, k) => s + targets[k], 0);
-  if (Math.abs(sum - 100) > 5) throw new Error(`Target-suggestion percentages summed to ${sum}, not ~100: ${JSON.stringify(targets)}`);
-  targets.rationale = typeof parsed.rationale === "string" && parsed.rationale.trim() ? parsed.rationale.trim() : "";
-  return targets;
+  if (!Array.isArray(parsed)) throw new Error(`Moves-suggestion response wasn't a JSON array: ${raw.slice(0, 300)}`);
+  const validLabelSet = new Set(validLabels);
+  const moves = parsed
+    .filter((m) => m && typeof m.holding === "string" && (m.action === "add" || m.action === "trim") && validLabelSet.has(m.holding))
+    .map((m) => ({ holding: m.holding, action: m.action, reason: typeof m.reason === "string" ? m.reason.trim() : "" }))
+    .slice(0, 6);
+  if (!moves.length) throw new Error(`Moves-suggestion response had no valid moves against real holdings: ${raw.slice(0, 500)}`);
+  return moves;
 }
 
 async function main() {
@@ -227,18 +225,19 @@ async function main() {
 
   const text = await generateAnalysis(context);
 
-  // The target suggestion is a nice-to-have on top of the analysis text —
-  // if it fails (bad JSON, percentages that don't add up), still write the
+  // The moves suggestion is a nice-to-have on top of the analysis text — if
+  // it fails (bad JSON, no valid holdings matched), still write the
   // analysis rather than losing the whole run over a secondary feature.
-  let suggestedTargets = null;
+  let suggestedMoves = null;
   try {
-    suggestedTargets = await suggestTargets(context);
+    const validLabels = (Array.isArray(holdings) ? holdings : Object.values(holdings || {})).map((h) => h.label).filter(Boolean);
+    suggestedMoves = await suggestMoves(context, validLabels);
   } catch (e) {
-    console.warn(`Warning: target suggestion failed, continuing without it: ${e.message}`);
+    console.warn(`Warning: moves suggestion failed, continuing without it: ${e.message}`);
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const payload = { text, generatedAt: new Date().toISOString(), basedOnDate: today, suggestedTargets };
+  const payload = { text, generatedAt: new Date().toISOString(), basedOnDate: today, suggestedMoves };
 
   const res = await fetch(`${DB}/aiInsight.json?auth=${ID_TOKEN}`, {
     method: "PUT",

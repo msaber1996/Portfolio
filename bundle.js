@@ -2111,22 +2111,32 @@
       /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-x-6 gap-y-1 text-xs text-neutral-500 pt-4 border-t border-neutral-200", children: allocationRows.map((r) => /* @__PURE__ */ jsx("span", { children: `${r.label}: ${r.currentPct.toFixed(1)}%` }, r.key)) })
     ] });
   }
-  function RebalanceCard({ allocationRows, targets, totalAssets, onChange, canEdit, aiSuggestedTargets }) {
+  function AiSuggestedMoves({ moves, onSetOwnTargets, canEdit }) {
+    const actionStyle = {
+      add: "border-emerald-300 bg-emerald-50 text-emerald-900",
+      trim: "border-amber-300 bg-amber-50 text-amber-900"
+    };
+    return /* @__PURE__ */ jsx("div", { className: "border border-neutral-300 bg-white p-4", children: [
+      /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between mb-1 gap-3 flex-wrap", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "AI-suggested moves" }),
+        canEdit && /* @__PURE__ */ jsx("button", { onClick: onSetOwnTargets, className: "text-xs uppercase tracking-wide text-neutral-500 underline", children: "Set manual targets instead" })
+      ] }),
+      /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4", children: "Specific holdings to add to or trim, based on today's numbers — not saved anywhere, just a suggestion." }),
+      /* @__PURE__ */ jsx("div", { className: "space-y-2", children: moves.map((m, i) => /* @__PURE__ */ jsx("div", { className: `text-sm border px-3 py-2 ${actionStyle[m.action]}`, children: [
+        /* @__PURE__ */ jsx("span", { className: "font-semibold uppercase text-xs tracking-wide mr-2", children: m.action === "add" ? "Add" : "Trim" }),
+        /* @__PURE__ */ jsx("span", { className: "font-medium", children: m.holding }),
+        m.reason && /* @__PURE__ */ jsx("span", { className: "text-neutral-600", children: ` — ${m.reason}` })
+      ] }, i)) })
+    ] });
+  }
+  function RebalanceCard({ allocationRows, targets, totalAssets, onChange, canEdit, aiSuggestedMoves }) {
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState({});
     const hasTargets = REBALANCE_CATEGORIES.some((c) => targets[c.key] != null);
-    const usingAiTargets = !hasTargets && !!aiSuggestedTargets;
-    const effectiveTargets = hasTargets ? targets : usingAiTargets ? aiSuggestedTargets : targets;
-    const acceptAiTargets = () => {
-      const next = {};
-      REBALANCE_CATEGORIES.forEach((c) => { next[c.key] = aiSuggestedTargets[c.key]; });
-      onChange(next);
-    };
     const startEditing = () => {
       const seed = {};
       REBALANCE_CATEGORIES.forEach((c) => {
-        const base = usingAiTargets ? aiSuggestedTargets : targets;
-        seed[c.key] = base[c.key] != null ? String(base[c.key]) : "";
+        seed[c.key] = targets[c.key] != null ? String(targets[c.key]) : "";
       });
       setDraft(seed);
       setEditing(true);
@@ -2158,24 +2168,19 @@
         ] })
       ] });
     }
-    if (!hasTargets && !usingAiTargets) {
+    if (!hasTargets && aiSuggestedMoves?.length) {
+      return /* @__PURE__ */ jsx(AiSuggestedMoves, { moves: aiSuggestedMoves, onSetOwnTargets: startEditing, canEdit });
+    }
+    if (!hasTargets) {
       return canEdit ? /* @__PURE__ */ jsx("div", { className: "border border-neutral-300 bg-white p-4 flex items-center justify-between gap-3 flex-wrap", children: [
-        /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600", children: "No target allocation set — set one to see how far current holdings are from where you want them, or wait for an AI-suggested mix (generates daily)." }),
+        /* @__PURE__ */ jsx("p", { className: "text-sm text-neutral-600", children: "No target allocation set — set one to see how far current holdings are from where you want them, or wait for AI-suggested moves (generates daily)." }),
         /* @__PURE__ */ jsx("button", { onClick: startEditing, className: "text-xs uppercase tracking-wide border border-neutral-900 px-3 py-1.5 hover:bg-neutral-900 hover:text-white transition-colors shrink-0", children: "Set targets" })
       ] }) : null;
     }
     return /* @__PURE__ */ jsx("div", { className: "border border-neutral-300 bg-white p-4", children: [
       /* @__PURE__ */ jsx("div", { className: "flex items-center justify-between mb-3 gap-3 flex-wrap", children: [
         /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "Current vs. target allocation" }),
-        canEdit && !usingAiTargets && /* @__PURE__ */ jsx("button", { onClick: startEditing, className: "text-xs uppercase tracking-wide text-neutral-500 underline", children: "Edit targets" })
-      ] }),
-      usingAiTargets && /* @__PURE__ */ jsx("div", { className: "mb-4 border border-neutral-300 bg-neutral-900 text-white px-4 py-3", children: [
-        /* @__PURE__ */ jsx("div", { className: "text-[10px] uppercase tracking-wide text-neutral-400 mb-1.5", children: "AI-suggested target — not saved yet" }),
-        aiSuggestedTargets.rationale && /* @__PURE__ */ jsx("p", { className: "text-sm leading-relaxed mb-3", children: aiSuggestedTargets.rationale }),
-        canEdit && /* @__PURE__ */ jsx("div", { className: "flex items-center gap-4", children: [
-          /* @__PURE__ */ jsx("button", { onClick: acceptAiTargets, className: "text-xs uppercase tracking-wide bg-white text-neutral-900 px-3 py-1.5 hover:bg-neutral-200 transition-colors", children: "Use this" }),
-          /* @__PURE__ */ jsx("button", { onClick: startEditing, className: "text-xs uppercase tracking-wide text-neutral-300 underline", children: "Set your own instead" })
-        ] })
+        canEdit && /* @__PURE__ */ jsx("button", { onClick: startEditing, className: "text-xs uppercase tracking-wide text-neutral-500 underline", children: "Edit targets" })
       ] }),
       /* @__PURE__ */ jsx("div", { className: "rtable", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm", children: [
         /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-300 text-xs uppercase tracking-wide text-neutral-500", children: [
@@ -2186,7 +2191,7 @@
           /* @__PURE__ */ jsx("th", { className: "text-right py-2", children: "Suggested move" })
         ] }) }),
         /* @__PURE__ */ jsx("tbody", { children: allocationRows.map((r) => {
-          const target = effectiveTargets[r.key];
+          const target = targets[r.key];
           if (target == null) return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
             /* @__PURE__ */ jsx("td", { "data-label": "Category", className: "py-2", children: r.label }),
             /* @__PURE__ */ jsx("td", { "data-label": "Current", className: "py-2 text-right font-mono", children: `${r.currentPct.toFixed(1)}%` }),
@@ -4217,7 +4222,7 @@ Save anyway?`);
         /* @__PURE__ */ jsx("section", { id: "section-04", className: "py-10 border-t border-neutral-200", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "04", title: "Portfolio insights", dek: "Automatic observations from the numbers already on this site — concentration, leverage, cash flow, and upcoming maturities. Optionally set a target allocation below to see how far you are from it." }),
           /* @__PURE__ */ jsx(PortfolioInsights, { insights: portfolioInsights, allocationRows, aiInsight }),
-          /* @__PURE__ */ jsx("div", { className: "mt-6", children: /* @__PURE__ */ jsx(RebalanceCard, { allocationRows, targets: rebalanceTargets, totalAssets, onChange: handleRebalanceTargetsChange, canEdit, aiSuggestedTargets: aiInsight?.suggestedTargets || null }) })
+          /* @__PURE__ */ jsx("div", { className: "mt-6", children: /* @__PURE__ */ jsx(RebalanceCard, { allocationRows, targets: rebalanceTargets, totalAssets, onChange: handleRebalanceTargetsChange, canEdit, aiSuggestedMoves: aiInsight?.suggestedMoves || null }) })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-05", className: "py-10", children: [
           /* @__PURE__ */ jsx(SectionHeading, { index: "05", title: "Investment, by currency", dek: "What is actually committed in each currency, at cost \u2014 drawn live from the holdings list below." }),
