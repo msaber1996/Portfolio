@@ -147,7 +147,12 @@ ${context}`;
     },
     body: JSON.stringify({
       model: "claude-haiku-5-5",
-      max_tokens: 400,
+      max_tokens: 600,
+      // Thinking is adaptive (on) by default on Haiku 5.5 and draws from the
+      // same max_tokens budget as the visible reply — for a short, simple
+      // completion like this one it can burn the whole budget on thinking
+      // and leave no room for output text, so turn it off outright.
+      thinking: { type: "disabled" },
       output_config: { effort: "low" },
       messages: [{ role: "user", content: prompt }],
     }),
@@ -158,7 +163,7 @@ ${context}`;
   }
   const json = await res.json();
   const text = (json.content || []).map((b) => b.text || "").join("").trim();
-  if (!text) throw new Error("Anthropic API returned no text.");
+  if (!text) throw new Error(`Anthropic API returned no text. stop_reason=${json.stop_reason}, response=${JSON.stringify(json).slice(0, 800)}`);
   return text;
 }
 
