@@ -133,11 +133,7 @@ function buildContext() {
   return sections.filter(([, text]) => text).map(([label, text]) => `## ${label}\n${text}`).join("\n\n");
 }
 
-async function callClaude(context) {
-  const prompt = `You are writing a short, grounded analysis note for a personal finance dashboard. Below is the dashboard's own rendered text — headline totals, allocation mix, cash flow, and some rule-based observations it already shows. Using ONLY the numbers given, write 2-4 sentences of sharper commentary than the rule-based bullets: notice patterns across sections, put things in perspective, and point out anything worth attention. Do not invent numbers that aren't given. Do not repeat the rule-based bullets verbatim — add perspective. Plain prose, no markdown, no bullet points, no disclaimers about not being financial advice.
-
-${context}`;
-
+async function callClaude(prompt, maxTokens) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -147,7 +143,7 @@ ${context}`;
     },
     body: JSON.stringify({
       model: "claude-haiku-5-5",
-      max_tokens: 600,
+      max_tokens: maxTokens,
       // Thinking is adaptive (on) by default on Haiku 5.5 and draws from the
       // same max_tokens budget as the visible reply — for a short, simple
       // completion like this one it can burn the whole budget on thinking
@@ -165,6 +161,46 @@ ${context}`;
   const text = (json.content || []).map((b) => b.text || "").join("").trim();
   if (!text) throw new Error(`Anthropic API returned no text. stop_reason=${json.stop_reason}, response=${JSON.stringify(json).slice(0, 800)}`);
   return text;
+}
+
+async function generateAnalysis(context) {
+  const prompt = `You are writing a short, grounded analysis note for a personal finance dashboard. Below is the dashboard's own rendered text — headline totals, allocation mix, cash flow, and some rule-based observations it already shows. Using ONLY the numbers given, write 2-4 sentences of sharper commentary than the rule-based bullets: notice patterns across sections, put things in perspective, and point out anything worth attention. Do not invent numbers that aren't given. Do not repeat the rule-based bullets verbatim — add perspective. Plain prose, no markdown, no bullet points, no disclaimers about not being financial advice.
+
+${context}`;
+  return callClaude(prompt, 600);
+}
+
+// The six categories RebalanceCard already understands (REBALANCE_CATEGORIES
+// in bundle.js) — kept in sync by hand since the script doesn't import the
+// bundle's JS values directly, only its rendered DOM text.
+const REBALANCE_CATEGORY_KEYS = ["gold", "egpFunds", "usdFunds", "egpFixed", "usdFixed", "realEstate"];
+
+async function suggestTargets(context) {
+  const prompt = `You are a portfolio rebalancing assistant for a personal finance dashboard. Below is the dashboard's own rendered text — current allocation percentages, debt/leverage, liquidity, cash flow, and concentration observations. Based ONLY on this data, propose a target allocation across exactly these six categories: gold, egpFunds, usdFunds, egpFixed, usdFixed, realEstate. The six target percentages must sum to 100. Favor reducing concentration risk, improving liquidity where the data shows it's low, and keeping leverage serviceable — but do not invent numbers not present in the data.
+
+Respond with ONLY a single JSON object, no markdown fences, no other text, in exactly this shape:
+{"gold": <number>, "egpFunds": <number>, "usdFunds": <number>, "egpFixed": <number>, "usdFixed": <number>, "realEstate": <number>, "rationale": "<one sentence explaining the overall direction of the change>"}
+
+${context}`;
+  const raw = await callClaude(prompt, 500);
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error(`Target-suggestion response had no JSON object: ${raw.slice(0, 300)}`);
+  let parsed;
+  try {
+    parsed = JSON.parse(match[0]);
+  } catch (e) {
+    throw new Error(`Target-suggestion response wasn't valid JSON: ${e.message} — raw: ${raw.slice(0, 300)}`);
+  }
+  const targets = {};
+  for (const key of REBALANCE_CATEGORY_KEYS) {
+    const v = Number(parsed[key]);
+    if (!Number.isFinite(v)) throw new Error(`Target-suggestion response missing/invalid "${key}": ${JSON.stringify(parsed).slice(0, 300)}`);
+    targets[key] = Math.round(v * 10) / 10;
+  }
+  const sum = REBALANCE_CATEGORY_KEYS.reduce((s, k) => s + targets[k], 0);
+  if (Math.abs(sum - 100) > 5) throw new Error(`Target-suggestion percentages summed to ${sum}, not ~100: ${JSON.stringify(targets)}`);
+  targets.rationale = typeof parsed.rationale === "string" && parsed.rationale.trim() ? parsed.rationale.trim() : "";
+  return targets;
 }
 
 async function main() {
@@ -189,9 +225,20 @@ async function main() {
   const context = buildContext();
   if (!context) throw new Error("Rendered dashboard produced no extractable text — aborting without calling the AI.");
 
-  const text = await callClaude(context);
+  const text = await generateAnalysis(context);
+
+  // The target suggestion is a nice-to-have on top of the analysis text —
+  // if it fails (bad JSON, percentages that don't add up), still write the
+  // analysis rather than losing the whole run over a secondary feature.
+  let suggestedTargets = null;
+  try {
+    suggestedTargets = await suggestTargets(context);
+  } catch (e) {
+    console.warn(`Warning: target suggestion failed, continuing without it: ${e.message}`);
+  }
+
   const today = new Date().toISOString().slice(0, 10);
-  const payload = { text, generatedAt: new Date().toISOString(), basedOnDate: today };
+  const payload = { text, generatedAt: new Date().toISOString(), basedOnDate: today, suggestedTargets };
 
   const res = await fetch(`${DB}/aiInsight.json?auth=${ID_TOKEN}`, {
     method: "PUT",
