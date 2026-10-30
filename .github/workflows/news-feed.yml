@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Fetch RSS feeds, push headlines to Firebase
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           set -euo pipefail
 
@@ -110,6 +112,45 @@ jobs:
           ')
 
           echo "$NEWS_JSON" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{const j=JSON.parse(d);console.log(`Fetched ${j.items.length} headlines.`);})'
+
+          # Translate the English headlines to Arabic in one batched call (cheap:
+          # one request, ~15-20 short titles) so the whole feed reads in Arabic —
+          # the English original is kept alongside for reference/linking out.
+          # Falls back to leaving English titles untranslated if the API call
+          # fails for any reason, rather than losing the headlines entirely.
+          NEWS_JSON=$(echo "$NEWS_JSON" | ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" node -e '
+            let input = "";
+            process.stdin.on("data", (c) => input += c);
+            process.stdin.on("end", async () => {
+              const data = JSON.parse(input);
+              const enItems = data.items.filter((it) => it.lang === "en");
+              if (!enItems.length || !process.env.ANTHROPIC_API_KEY) {
+                console.log(JSON.stringify(data));
+                return;
+              }
+              try {
+                const prompt = `Translate each of these English news headlines into natural, concise Arabic (Modern Standard Arabic, news-style, as it would appear on an Arabic finance news site). Respond with ONLY a JSON array of strings, same order, same length as the input, no markdown fences, no other text.\n\n${JSON.stringify(enItems.map((it) => it.title))}`;
+                const res = await fetch("https://api.anthropic.com/v1/messages", {
+                  method: "POST",
+                  headers: { "content-type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+                  body: JSON.stringify({ model: "claude-haiku-5-5", max_tokens: 2000, thinking: { type: "disabled" }, messages: [{ role: "user", content: prompt }] }),
+                });
+                if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+                const json = await res.json();
+                const text = (json.content || []).map((b) => b.text || "").join("").trim();
+                const match = text.match(/\[[\s\S]*\]/);
+                if (!match) throw new Error("no JSON array in response");
+                const translated = JSON.parse(match[0]);
+                if (!Array.isArray(translated) || translated.length !== enItems.length) throw new Error("translated array length mismatch");
+                let i = 0;
+                data.items = data.items.map((it) => it.lang === "en" ? { ...it, titleEn: it.title, title: translated[i++] } : it);
+                console.error(`Translated ${enItems.length} English headline(s).`);
+              } catch (e) {
+                console.error(`Translation failed, leaving English headlines as-is: ${e.message}`);
+              }
+              console.log(JSON.stringify(data));
+            });
+          ')
 
           DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
           echo "$NEWS_JSON" > news.json
