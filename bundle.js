@@ -2214,9 +2214,33 @@
       ] }) })
     ] });
   }
-  function CertificatesTable({ certificates }) {
+  function VariableRateBump({ certificates, onChange }) {
+    const [open, setOpen] = useState(false);
+    const [newRate, setNewRate] = useState("");
+    const variableCerts = certificates.filter((c) => c.label.toLowerCase().includes("variable"));
+    if (!variableCerts.length) return null;
+    const apply = () => {
+      const n = Number(newRate);
+      if (!Number.isFinite(n)) return;
+      onChange(certificates.map((c) => c.label.toLowerCase().includes("variable") ? { ...c, rate: n } : c));
+      setNewRate("");
+      setOpen(false);
+    };
+    if (!open) {
+      return /* @__PURE__ */ jsx("button", { onClick: () => setOpen(true), className: "mb-3 text-xs uppercase tracking-wide border border-neutral-300 px-3 py-1.5 hover:border-neutral-600 transition-colors", children: `Update all ${variableCerts.length} variable-rate certificate${variableCerts.length === 1 ? "" : "s"} (corridor change)` });
+    }
+    return /* @__PURE__ */ jsx("div", { className: "mb-3 border border-neutral-300 bg-neutral-50 p-3 flex items-center gap-3 flex-wrap", children: [
+      /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-600", children: `New rate for all ${variableCerts.length} "variable" certificate${variableCerts.length === 1 ? "" : "s"} (currently ${Array.from(new Set(variableCerts.map((c) => c.rate))).join(", ")}%):` }),
+      /* @__PURE__ */ jsx("input", { type: "number", step: "0.1", value: newRate, onChange: (e) => setNewRate(e.target.value), autoFocus: true, className: "w-24 font-mono text-sm border border-neutral-300 px-2 py-1 text-right focus:outline-none focus:border-neutral-800" }),
+      /* @__PURE__ */ jsx("span", { className: "text-neutral-400 text-xs", children: "%" }),
+      /* @__PURE__ */ jsx("button", { onClick: apply, disabled: newRate === "", className: "text-xs uppercase tracking-wide bg-neutral-900 text-white px-3 py-1.5 hover:bg-neutral-700 transition-colors disabled:opacity-50", children: "Apply" }),
+      /* @__PURE__ */ jsx("button", { onClick: () => { setOpen(false); setNewRate(""); }, className: "text-xs uppercase tracking-wide text-neutral-500", children: "Cancel" })
+    ] });
+  }
+  function CertificatesTable({ certificates, onChange, canEdit = true }) {
     const [sortKey, sortDir, handleSort] = useSortState("amount");
     const [query, setQuery] = useState("");
+    const update = (idx, patch) => onChange(certificates.map((c, i) => i === idx ? { ...c, ...patch } : c));
     const total = certificates.reduce((s, c) => s + c.amount, 0);
     const totalMonthlyInterest = certificates.reduce((s, c) => s + c.amount * c.rate / 100 / 12, 0);
     const maturedCount = certificates.filter((c) => { const d = daysUntil(c.maturityDate); return d !== null && d < 0; }).length;
@@ -2228,6 +2252,7 @@
         maturedCount > 0 && `${maturedCount} certificate${maturedCount === 1 ? "" : "s"} already past maturity. `,
         maturingSoonCount > 0 && `${maturingSoonCount} maturing within ${MATURITY_WARNING_DAYS} days.`
       ] }),
+      canEdit && /* @__PURE__ */ jsx(VariableRateBump, { certificates, onChange }),
       certificates.length > 5 && /* @__PURE__ */ jsx(TableSearch, { value: query, onChange: setQuery, placeholder: "Filter certificates…" }),
       query.trim() && sorted.length === 0 && /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-400 mb-3", children: "No certificates match that filter." }),
       /* @__PURE__ */ jsx("div", { className: "rtable overflow-x-auto sm:[mask-image:none]", children: /* @__PURE__ */ jsx("table", { className: "w-full text-sm sm:min-w-max", children: [
@@ -2243,9 +2268,10 @@
           const days = daysUntil(c.maturityDate);
           const matured = days !== null && days < 0;
           const maturingSoon = days !== null && days >= 0 && days <= MATURITY_WARNING_DAYS;
+          const idx = certificates.indexOf(c);
           return /* @__PURE__ */ jsx("tr", { className: `border-b border-neutral-100 ${matured ? "bg-red-50" : maturingSoon ? "bg-amber-50" : ""}`, children: [
             /* @__PURE__ */ jsx("td", { "data-label": "Certificate", className: "py-1.5 pr-3 font-mono text-xs", children: c.label }),
-            /* @__PURE__ */ jsx("td", { "data-label": "Rate %", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: c.rate.toFixed(2) }),
+            /* @__PURE__ */ jsx("td", { "data-label": "Rate %", className: "py-1.5 pr-3 w-20", children: /* @__PURE__ */ jsx(Cell, { type: "number", align: "right", value: c.rate, onChange: (v) => update(idx, { rate: Number(v) || 0 }), readOnly: !canEdit }) }),
             /* @__PURE__ */ jsx("td", { "data-label": "Amount", className: "py-1.5 pr-3 text-right font-mono tabular-nums", children: egp(c.amount) }),
             /* @__PURE__ */ jsx("td", { "data-label": "Monthly interest", className: "py-1.5 pr-3 text-right font-mono tabular-nums text-neutral-500", children: egp(c.amount * c.rate / 100 / 12) }),
             /* @__PURE__ */ jsx("td", { "data-label": "Opened", className: "py-1.5 pr-3 text-neutral-500", children: fmtDate(c.openDate) }),
@@ -2645,6 +2671,7 @@
     }, []);
     const handleHoldingsChange = (next) => debouncedSave("holdings", next, setHoldings);
     const handleLoansChange = (next) => debouncedSave("loans", next, setLoans);
+    const handleCertificatesChange = (next) => debouncedSave("certificates", next, setCertificates);
     const handleOfficeUnitsChange = (next) => debouncedSave("officeUnits", next, setOfficeUnits);
     const handleOfficeUnitsTableChange = (nextOfficeOnly) => {
       const others = officeUnits.filter((u) => !officeGroupUnitNames.includes(u.unit));
@@ -4113,7 +4140,7 @@ Save anyway?`);
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: `The ${certificates.length} EGP certificates & CDs, individually` }),
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "For reference — these roll up into the single “EGP certificates & CDs” holding above. Monthly interest reconciles with the “EGP — certificate & fund income” line in section 08." }),
             /* @__PURE__ */ jsx(CertificateStatementUpload, { certificates, onApply: handleApplyCertificateStatement, canEdit }),
-            /* @__PURE__ */ jsx(CollapsibleSection, { id: "certificates-section", label: "certificates", summary: `${certificates.length} certificates`, children: /* @__PURE__ */ jsx(CertificatesTable, { certificates: certificates }) })
+            /* @__PURE__ */ jsx(CollapsibleSection, { id: "certificates-section", label: "certificates", summary: `${certificates.length} certificates`, children: /* @__PURE__ */ jsx(CertificatesTable, { certificates, onChange: handleCertificatesChange, canEdit }) })
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-02", className: "py-10 border-t border-neutral-200", children: [
