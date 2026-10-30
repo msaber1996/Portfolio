@@ -18,7 +18,7 @@ jobs:
           # Three buckets: high-volume Arabic/Egypt coverage, curated English
           # Egypt-business coverage, and global market-moving news (Fed, gold).
           fetch_feed() {
-            curl -sf -G "https://news.google.com/rss/search" \
+            curl -sfL -G "https://news.google.com/rss/search" \
               --data-urlencode "q=$1" \
               --data-urlencode "hl=$2" --data-urlencode "gl=$3" --data-urlencode "ceid=$3:$2" \
               -A "Mozilla/5.0" --max-time 20
@@ -26,7 +26,7 @@ jobs:
 
           AR_EGYPT=$(fetch_feed '("البورصة المصرية" OR "البنك المركزي المصري" OR "سعر الذهب" OR "سعر الفائدة" OR "الجنيه المصري") when:2d' ar EG || echo "")
           EN_EGYPT=$(fetch_feed '("Egyptian pound" OR "Egypt economy" OR "Central Bank of Egypt" OR EGX stock) when:4d' en-US US || echo "")
-          EN_GLOBAL=$(fetch_feed '("Federal Reserve" rate decision OR "gold price" record high OR "interest rate decision") when:2d' en-US US || echo "")
+          EN_GLOBAL=$(fetch_feed '("Federal Reserve" rate decision OR gold price OR "interest rate decision") when:2d' en-US US || echo "")
 
           echo "$AR_EGYPT" > ar_egypt.xml
           echo "$EN_EGYPT" > en_egypt.xml
