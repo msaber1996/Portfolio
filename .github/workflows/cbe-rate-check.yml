@@ -1,0 +1,54 @@
+name: Track CBE overnight deposit rate for variable certificates
+
+# Cron fires weekly, but the script itself only actually looks anything up
+# (and spends anything) roughly every 6 weeks — see check-cbe-rate.js.
+# When the rate has moved, every "variable"-labeled certificate shifts by
+# the same delta automatically, no confirmation needed.
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Log what would change without saving it'
+        type: boolean
+        default: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Sign in to Firebase, check the CBE rate, update certificates if it moved
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          ID_TOKEN=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
+            | jq -r '.idToken')
+
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to get a Firebase auth token, aborting without writing."
+            exit 1
+          fi
+
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "ANTHROPIC_API_KEY secret is not set — add it in the repo's Settings > Secrets and variables > Actions, then re-run this workflow."
+            exit 1
+          fi
+
+          FIREBASE_DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com" \
+          FIREBASE_ID_TOKEN="$ID_TOKEN" \
+          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}" \
+          node scripts/check-cbe-rate.js
