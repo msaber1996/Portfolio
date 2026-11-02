@@ -1232,7 +1232,9 @@
       o.id
     )) });
   }
-  function TrendChart({ points, labelFn }) {
+  function TrendChart({ points, labelFn, valueFn }) {
+    const [hoverIdx, setHoverIdx] = useState(null);
+    const svgRef = useRef(null);
     if (points.length < 2) {
       return /* @__PURE__ */ jsx("div", { className: "text-sm text-neutral-400 py-12 text-center border border-dashed border-neutral-300", children: "Add a second day to see a trend line." });
     }
@@ -1244,21 +1246,58 @@
     const y = (v) => padT + (1 - (v - min) / range) * (h - padT - padB);
     const path = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p.value)}`).join(" ");
     const gridLines = 4;
-    return /* @__PURE__ */ jsx("svg", { viewBox: `0 0 ${w} ${h}`, className: "w-full h-auto", children: [
-      Array.from({ length: gridLines + 1 }, (_, i) => {
-        const gy = padT + i / gridLines * (h - padT - padB);
-        const val = max - i / gridLines * range;
-        return /* @__PURE__ */ jsx("g", { children: [
-          /* @__PURE__ */ jsx("line", { className: "chart-grid-line", x1: padL, y1: gy, x2: w - padR, y2: gy, stroke: "#E5E5E5", strokeWidth: "1" }),
-          /* @__PURE__ */ jsx("text", { className: "chart-grid-label", x: padL - 8, y: gy + 3, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", fontFamily: "ui-monospace, monospace", children: fmt(val) })
-        ] }, i);
-      }),
-      /* @__PURE__ */ jsx("path", { className: "chart-line", d: path, fill: "none", stroke: "#171717", strokeWidth: "2" }),
-      points.map((p, i) => (points.length <= 20 || i === points.length - 1) && /* @__PURE__ */ jsx("circle", { className: "chart-dot", cx: x(i), cy: y(p.value), r: i === points.length - 1 ? 4 : 2.5, fill: "#171717" }, i)),
-      points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { className: "chart-axis-label", x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
-    ] });
+    const fmtValue = valueFn || fmt;
+    const indexFromClientX = (clientX) => {
+      const svg = svgRef.current;
+      if (!svg) return null;
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width) return null;
+      const relX = (clientX - rect.left) / rect.width * w;
+      const idx = Math.round((relX - padL) / (w - padL - padR) * (points.length - 1));
+      return Math.max(0, Math.min(points.length - 1, idx));
+    };
+    const tooltipW = 92, tooltipH = 34;
+    const activeX = hoverIdx != null ? x(hoverIdx) : null;
+    const activeY = hoverIdx != null ? y(points[hoverIdx].value) : null;
+    const flip = activeX != null && activeX + 10 + tooltipW > w - padR;
+    const boxX = activeX != null ? (flip ? activeX - 10 - tooltipW : activeX + 10) : 0;
+    const boxY = activeY != null ? Math.max(padT, Math.min(activeY - tooltipH / 2, h - padB - tooltipH)) : 0;
+    return /* @__PURE__ */ jsx(
+      "svg",
+      {
+        ref: svgRef,
+        viewBox: `0 0 ${w} ${h}`,
+        className: "w-full h-auto",
+        onMouseMove: (e) => setHoverIdx(indexFromClientX(e.clientX)),
+        onMouseLeave: () => setHoverIdx(null),
+        onTouchStart: (e) => setHoverIdx(indexFromClientX(e.touches[0].clientX)),
+        onTouchMove: (e) => setHoverIdx(indexFromClientX(e.touches[0].clientX)),
+        children: [
+          Array.from({ length: gridLines + 1 }, (_, i) => {
+            const gy = padT + i / gridLines * (h - padT - padB);
+            const val = max - i / gridLines * range;
+            return /* @__PURE__ */ jsx("g", { children: [
+              /* @__PURE__ */ jsx("line", { className: "chart-grid-line", x1: padL, y1: gy, x2: w - padR, y2: gy, stroke: "#E5E5E5", strokeWidth: "1" }),
+              /* @__PURE__ */ jsx("text", { className: "chart-grid-label", x: padL - 8, y: gy + 3, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", fontFamily: "ui-monospace, monospace", children: fmt(val) })
+            ] }, i);
+          }),
+          /* @__PURE__ */ jsx("path", { className: "chart-line", d: path, fill: "none", stroke: "#171717", strokeWidth: "2" }),
+          points.map((p, i) => (points.length <= 20 || i === points.length - 1) && /* @__PURE__ */ jsx("circle", { className: "chart-dot", cx: x(i), cy: y(p.value), r: i === points.length - 1 ? 4 : 2.5, fill: "#171717" }, i)),
+          points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { className: "chart-axis-label", x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`)),
+          hoverIdx != null && /* @__PURE__ */ jsx("g", { pointerEvents: "none", children: [
+            /* @__PURE__ */ jsx("line", { x1: activeX, y1: padT, x2: activeX, y2: h - padB, stroke: "#9CA3AF", strokeWidth: "1", strokeDasharray: "3 3" }),
+            /* @__PURE__ */ jsx("circle", { cx: activeX, cy: activeY, r: "5", fill: "#171717", stroke: "#fff", strokeWidth: "1.5" }),
+            /* @__PURE__ */ jsx("rect", { x: boxX, y: boxY, width: tooltipW, height: tooltipH, rx: "4", fill: "#171717", fillOpacity: "0.94" }),
+            /* @__PURE__ */ jsx("text", { x: boxX + 8, y: boxY + 14, fontSize: "9", fill: "#D4D4D4", fontFamily: "ui-monospace, monospace", children: labelFn(points[hoverIdx].date) }),
+            /* @__PURE__ */ jsx("text", { x: boxX + 8, y: boxY + 27, fontSize: "11", fontWeight: "600", fill: "#fff", fontFamily: "ui-monospace, monospace", children: fmtValue(points[hoverIdx].value) })
+          ] })
+        ]
+      }
+    );
   }
   function ComparisonChart({ series, labelFn }) {
+    const [hoverIdx, setHoverIdx] = useState(null);
+    const svgRef = useRef(null);
     const normalized = series.map((s) => {
       const first = s.points[0]?.value;
       if (!first) return { ...s, pct: s.points.map(() => 0) };
@@ -1275,23 +1314,60 @@
     const x = (i) => padL + i / (points.length - 1) * (w - padL - padR);
     const y = (v) => padT + (1 - (v - min) / range) * (h - padT - padB);
     const gridLines = 4;
+    const indexFromClientX = (clientX) => {
+      const svg = svgRef.current;
+      if (!svg) return null;
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width) return null;
+      const relX = (clientX - rect.left) / rect.width * w;
+      const idx = Math.round((relX - padL) / (w - padL - padR) * (points.length - 1));
+      return Math.max(0, Math.min(points.length - 1, idx));
+    };
+    const maxLineLen = Math.max(...normalized.map((s) => `${s.label}: +000.0%`.length));
+    const tooltipW = Math.min(300, Math.max(130, maxLineLen * 5 + 24)), lineH = 13, tooltipH = 16 + normalized.length * lineH;
+    const activeX = hoverIdx != null ? x(hoverIdx) : null;
+    const flip = activeX != null && activeX + 10 + tooltipW > w - padR;
+    const boxX = activeX != null ? Math.max(2, Math.min((flip ? activeX - 10 - tooltipW : activeX + 10), w - tooltipW - 2)) : 0;
+    const boxY = padT;
     return /* @__PURE__ */ jsx("div", { children: [
-      /* @__PURE__ */ jsx("svg", { viewBox: `0 0 ${w} ${h}`, className: "w-full h-auto", children: [
-        Array.from({ length: gridLines + 1 }, (_, i) => {
-          const gy = padT + i / gridLines * (h - padT - padB);
-          const val = max - i / gridLines * range;
-          return /* @__PURE__ */ jsx("g", { children: [
-            /* @__PURE__ */ jsx("line", { className: "chart-grid-line", x1: padL, y1: gy, x2: w - padR, y2: gy, stroke: "#E5E5E5", strokeWidth: "1" }),
-            /* @__PURE__ */ jsx("text", { className: "chart-grid-label", x: padL - 6, y: gy + 3, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", fontFamily: "ui-monospace, monospace", children: `${val.toFixed(0)}%` })
-          ] }, i);
-        }),
-        normalized.map((s) => {
-          const path = s.pct.map((v, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(v)}`).join(" ");
-          return /* @__PURE__ */ jsx("path", { d: path, fill: "none", stroke: s.color, strokeWidth: "2" }, s.key);
-        }),
-        normalized.map((s) => /* @__PURE__ */ jsx("circle", { cx: x(s.pct.length - 1), cy: y(s.pct[s.pct.length - 1]), r: 3.5, fill: s.color }, `dot-${s.key}`)),
-        points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { className: "chart-axis-label", x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`))
-      ] }),
+      /* @__PURE__ */ jsx(
+        "svg",
+        {
+          ref: svgRef,
+          viewBox: `0 0 ${w} ${h}`,
+          className: "w-full h-auto",
+          onMouseMove: (e) => setHoverIdx(indexFromClientX(e.clientX)),
+          onMouseLeave: () => setHoverIdx(null),
+          onTouchStart: (e) => setHoverIdx(indexFromClientX(e.touches[0].clientX)),
+          onTouchMove: (e) => setHoverIdx(indexFromClientX(e.touches[0].clientX)),
+          children: [
+            Array.from({ length: gridLines + 1 }, (_, i) => {
+              const gy = padT + i / gridLines * (h - padT - padB);
+              const val = max - i / gridLines * range;
+              return /* @__PURE__ */ jsx("g", { children: [
+                /* @__PURE__ */ jsx("line", { className: "chart-grid-line", x1: padL, y1: gy, x2: w - padR, y2: gy, stroke: "#E5E5E5", strokeWidth: "1" }),
+                /* @__PURE__ */ jsx("text", { className: "chart-grid-label", x: padL - 6, y: gy + 3, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", fontFamily: "ui-monospace, monospace", children: `${val.toFixed(0)}%` })
+              ] }, i);
+            }),
+            normalized.map((s) => {
+              const path = s.pct.map((v, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(v)}`).join(" ");
+              return /* @__PURE__ */ jsx("path", { d: path, fill: "none", stroke: s.color, strokeWidth: "2" }, s.key);
+            }),
+            normalized.map((s) => /* @__PURE__ */ jsx("circle", { cx: x(s.pct.length - 1), cy: y(s.pct[s.pct.length - 1]), r: 3.5, fill: s.color }, `dot-${s.key}`)),
+            points.map((p, i) => (i === 0 || i === points.length - 1 || points.length <= 8) && /* @__PURE__ */ jsx("text", { className: "chart-axis-label", x: x(i), y: h - 8, textAnchor: "middle", fontSize: "9", fill: "#737373", fontFamily: "ui-monospace, monospace", children: labelFn(p.date) }, `lbl-${i}`)),
+            hoverIdx != null && /* @__PURE__ */ jsx("g", { pointerEvents: "none", children: [
+              /* @__PURE__ */ jsx("line", { x1: activeX, y1: padT, x2: activeX, y2: h - padB, stroke: "#9CA3AF", strokeWidth: "1", strokeDasharray: "3 3" }),
+              normalized.map((s) => /* @__PURE__ */ jsx("circle", { cx: activeX, cy: y(s.pct[hoverIdx]), r: "4", fill: s.color, stroke: "#fff", strokeWidth: "1.2" }, `hoverdot-${s.key}`)),
+              /* @__PURE__ */ jsx("rect", { x: boxX, y: boxY, width: tooltipW, height: tooltipH, rx: "4", fill: "#171717", fillOpacity: "0.94" }),
+              /* @__PURE__ */ jsx("text", { x: boxX + 8, y: boxY + 13, fontSize: "9", fill: "#D4D4D4", fontFamily: "ui-monospace, monospace", children: labelFn(points[hoverIdx].date) }),
+              normalized.map((s, si) => /* @__PURE__ */ jsx("g", { children: [
+                /* @__PURE__ */ jsx("circle", { cx: boxX + 11, cy: boxY + 13 + lineH * (si + 1) - 3, r: "3", fill: s.color }),
+                /* @__PURE__ */ jsx("text", { x: boxX + 19, y: boxY + 13 + lineH * (si + 1), fontSize: "9.5", fill: "#fff", fontFamily: "ui-monospace, monospace", children: `${s.label}: ${pctStr(s.pct[hoverIdx])}` })
+              ] }, `tt-${s.key}`))
+            ] })
+          ]
+        }
+      ),
       /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-x-5 gap-y-1.5 mt-3", children: normalized.map((s) => /* @__PURE__ */ jsx("div", { className: "flex items-center gap-1.5 text-xs text-neutral-600", children: [
         /* @__PURE__ */ jsx("span", { className: "inline-block w-2.5 h-2.5 rounded-full", style: { backgroundColor: s.color } }),
         s.label,
@@ -4399,7 +4475,7 @@ Save anyway?`);
             /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Chart range" }),
             /* @__PURE__ */ jsx(ChartRangeSelector, { value: chartRange, onChange: setChartRange })
           ] }),
-          /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: chartHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) }) }),
+          /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: chartHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), valueFn: egp }) }),
           chartHistory.length >= 2 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
             /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Net worth vs. gold vs. USD/EGP, since ${chartHistory[0].date}` }),
             /* @__PURE__ */ jsx(ComparisonChart, {
@@ -4420,7 +4496,7 @@ Save anyway?`);
                   /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-600 truncate", children: f.label }),
                   /* @__PURE__ */ jsx("span", { className: `font-mono text-xs tabular-nums ${lastVal >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(lastVal) })
                 ] }),
-                /* @__PURE__ */ jsx(TrendChart, { points: f.points, labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) })
+                /* @__PURE__ */ jsx(TrendChart, { points: f.points, labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), valueFn: pctStr })
               ] }, f.key);
             }) })
           ] }),
