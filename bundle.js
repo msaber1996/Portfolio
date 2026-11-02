@@ -1113,29 +1113,7 @@
   }
   function AnimatedNumber({ value, format }) {
     const [display, setDisplay] = useState(0);
-    const [started, setStarted] = useState(false);
-    const ref = useRef(null);
     useEffect(() => {
-      if (started) return;
-      const el = ref.current;
-      if (!el || typeof IntersectionObserver === "undefined") {
-        setStarted(true);
-        return;
-      }
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting) {
-            setStarted(true);
-            observer.disconnect();
-          }
-        },
-        { threshold: 0.4 }
-      );
-      observer.observe(el);
-      return () => observer.disconnect();
-    }, [started]);
-    useEffect(() => {
-      if (!started) return;
       let raf;
       const duration = 400;
       const start = Date.now();
@@ -1148,8 +1126,8 @@
       };
       raf = requestAnimationFrame(tick);
       return () => cancelAnimationFrame(raf);
-    }, [started, value]);
-    return /* @__PURE__ */ jsx("span", { ref, children: format(display) });
+    }, [value]);
+    return /* @__PURE__ */ jsx("span", { children: format(display) });
   }
   function Stat({ label, value, sub, emphasis }) {
     return /* @__PURE__ */ jsx("div", { className: "border-t border-neutral-200 pt-3 pb-1 min-w-0", children: [
