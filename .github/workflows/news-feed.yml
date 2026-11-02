@@ -46,6 +46,8 @@ jobs:
             exit 1
           fi
 
+          DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
+
           NEWS_JSON=$(node -e '
             const fs = require("fs");
 
@@ -113,23 +115,43 @@ jobs:
 
           echo "$NEWS_JSON" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{const j=JSON.parse(d);console.log(`Fetched ${j.items.length} headlines.`);})'
 
-          # Translate the English headlines to Arabic in one batched call (cheap:
-          # one request, ~15-20 short titles) so the whole feed reads in Arabic —
-          # the English original is kept alongside for reference/linking out.
-          # Falls back to leaving English titles untranslated if the API call
-          # fails for any reason, rather than losing the headlines entirely.
+          # Translate the English headlines to Arabic — but only the ones we
+          # haven't already translated. Google News returns heavily overlapping
+          # headlines run-to-run (this job runs every 6h), so without a cache
+          # we'd keep re-paying to translate the same articles. Reuse translations
+          # from the currently-live newsFeed (keyed by the English original)
+          # before calling the API, and only send genuinely new headlines.
+          curl -sf "${DB}/newsFeed.json?auth=${ID_TOKEN}" > existing_news.json || echo '{}' > existing_news.json
+
           NEWS_JSON=$(echo "$NEWS_JSON" | ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" node -e '
+            const fs = require("fs");
             let input = "";
             process.stdin.on("data", (c) => input += c);
             process.stdin.on("end", async () => {
               const data = JSON.parse(input);
+              let cache = {};
+              try {
+                const existing = JSON.parse(fs.readFileSync("existing_news.json", "utf8") || "{}");
+                for (const it of existing.items || []) {
+                  if (it.titleEn && it.title) cache[it.titleEn] = it.title;
+                }
+              } catch {}
+
               const enItems = data.items.filter((it) => it.lang === "en");
-              if (!enItems.length || !process.env.ANTHROPIC_API_KEY) {
+              const toTranslate = enItems.filter((it) => !cache[it.title]);
+              let reused = 0;
+              data.items = data.items.map((it) => {
+                if (it.lang === "en" && cache[it.title]) { reused++; return { ...it, titleEn: it.title, title: cache[it.title] }; }
+                return it;
+              });
+
+              if (!toTranslate.length || !process.env.ANTHROPIC_API_KEY) {
+                if (reused) console.error(`Reused ${reused} cached translation(s), nothing new to translate.`);
                 console.log(JSON.stringify(data));
                 return;
               }
               try {
-                const prompt = `Translate each of these English news headlines into natural, concise Arabic (Modern Standard Arabic, news-style, as it would appear on an Arabic finance news site). Respond with ONLY a JSON array of strings, same order, same length as the input, no markdown fences, no other text.\n\n${JSON.stringify(enItems.map((it) => it.title))}`;
+                const prompt = `Translate each of these English news headlines into natural, concise Arabic (Modern Standard Arabic, news-style, as it would appear on an Arabic finance news site). Respond with ONLY a JSON array of strings, same order, same length as the input, no markdown fences, no other text.\n\n${JSON.stringify(toTranslate.map((it) => it.title))}`;
                 const res = await fetch("https://api.anthropic.com/v1/messages", {
                   method: "POST",
                   headers: { "content-type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
@@ -141,18 +163,18 @@ jobs:
                 const match = text.match(/\[[\s\S]*\]/);
                 if (!match) throw new Error("no JSON array in response");
                 const translated = JSON.parse(match[0]);
-                if (!Array.isArray(translated) || translated.length !== enItems.length) throw new Error("translated array length mismatch");
-                let i = 0;
-                data.items = data.items.map((it) => it.lang === "en" ? { ...it, titleEn: it.title, title: translated[i++] } : it);
-                console.error(`Translated ${enItems.length} English headline(s).`);
+                if (!Array.isArray(translated) || translated.length !== toTranslate.length) throw new Error("translated array length mismatch");
+                const freshMap = {};
+                toTranslate.forEach((it, i) => { freshMap[it.title] = translated[i]; });
+                data.items = data.items.map((it) => it.lang === "en" && freshMap[it.title] ? { ...it, titleEn: it.title, title: freshMap[it.title] } : it);
+                console.error(`Translated ${toTranslate.length} new headline(s), reused ${reused} cached.`);
               } catch (e) {
-                console.error(`Translation failed, leaving English headlines as-is: ${e.message}`);
+                console.error(`Translation failed, leaving ${toTranslate.length} new headline(s) as-is: ${e.message}`);
               }
               console.log(JSON.stringify(data));
             });
           ')
 
-          DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
           echo "$NEWS_JSON" > news.json
           curl -sf -X PUT -d @news.json "${DB}/newsFeed.json?auth=${ID_TOKEN}" > /dev/null
           echo "Wrote newsFeed."
