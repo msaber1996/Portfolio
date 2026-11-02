@@ -2729,6 +2729,13 @@
       };
     }, []);
     useEffect(() => {
+      if (!db) return;
+      const ref = db.ref("liveRates");
+      const onValueChange = (snap) => setLiveRates(snap.val());
+      ref.on("value", onValueChange);
+      return () => ref.off("value", onValueChange);
+    }, []);
+    useEffect(() => {
       if (!isOwner || !db) return;
       const ref = db.ref("roles");
       const onValueChange = (snap) => {
