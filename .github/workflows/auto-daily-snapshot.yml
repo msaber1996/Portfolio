@@ -56,13 +56,17 @@ jobs:
             exit 1
           fi
 
+          # Reset changedFields to just rate/gold (the only fields this actually
+          # refreshes) instead of carrying forward $last's array — otherwise every
+          # fund it carries forward unchanged keeps showing a stale "CHANGED" badge
+          # in the UI forever, re-copied day after day.
           NEW_ENTRY=$(echo "$ALL_DAILY" | jq \
             --arg last "$LAST_DATE" \
             --arg date "$TODAY" \
             --argjson rate "$RATE" \
             --argjson gold "$GOLD" \
             --arg updatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            '.[$last] + {date: $date, rate: $rate, gold: $gold, autoSaved: true, updatedAt: $updatedAt}')
+            '.[$last] + {date: $date, rate: $rate, gold: $gold, autoSaved: true, updatedAt: $updatedAt, changedFields: ["rate", "gold"]}')
 
           curl -sf -X PUT -d "$NEW_ENTRY" "${DB}/daily/${TODAY}.json?auth=${ID_TOKEN}" > /dev/null
           echo "Wrote daily/${TODAY}, fund NAVs carried forward from ${LAST_DATE}: $NEW_ENTRY"
