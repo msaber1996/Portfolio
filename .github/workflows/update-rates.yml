@@ -13,8 +13,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          RATE=$(curl -sf "https://open.er-api.com/v6/latest/USD" | jq -r '.rates.EGP')
-          GOLD_USD_OZ=$(curl -sf "https://api.gold-api.com/price/XAU" | jq -r '.price')
+          # --retry-all-errors covers transient DNS/connection blips too (not just
+          # HTTP 5xx/timeouts), which matter more now that this runs every 6h.
+          RATE=$(curl -sf --retry 3 --retry-delay 3 --retry-all-errors "https://open.er-api.com/v6/latest/USD" | jq -r '.rates.EGP')
+          GOLD_USD_OZ=$(curl -sf --retry 3 --retry-delay 3 --retry-all-errors "https://api.gold-api.com/price/XAU" | jq -r '.price')
 
           if [ -z "$RATE" ] || [ "$RATE" = "null" ] || [ -z "$GOLD_USD_OZ" ] || [ "$GOLD_USD_OZ" = "null" ]; then
             echo "Missing rate or gold price from upstream API, aborting without writing."
@@ -32,7 +34,7 @@ jobs:
           # Not part of any holding, so not counted in leverage — tracked purely
           # for the "Live markets" section and its own threshold alert.
           fetch_yahoo() {
-            curl -sf "https://query1.finance.yahoo.com/v8/finance/chart/$1?interval=1d&range=1d" \
+            curl -sf --retry 3 --retry-delay 3 --retry-all-errors "https://query1.finance.yahoo.com/v8/finance/chart/$1?interval=1d&range=1d" \
               -H "User-Agent: Mozilla/5.0" | jq -r '.chart.result[0].meta.regularMarketPrice // empty'
           }
           OIL=$(fetch_yahoo "CL=F" || echo "")
@@ -46,7 +48,7 @@ jobs:
           FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
           # Dedicated low-privilege account (role: "service" in /roles), scoped by
           # the database rules to just the paths this workflow and its siblings need.
-          ID_TOKEN=$(curl -sf -X POST \
+          ID_TOKEN=$(curl -sf --retry 3 --retry-delay 3 --retry-all-errors -X POST \
             -H "Content-Type: application/json" \
             -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
             "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
@@ -59,7 +61,7 @@ jobs:
 
           DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com"
 
-          curl -sf -X PUT \
+          curl -sf --retry 3 --retry-delay 3 --retry-all-errors -X PUT \
             -d "{\"rate\": ${RATE}, \"gold\": ${GOLD_EGP_GRAM}, \"updatedAt\": \"${TS}\"}" \
             "${DB}/liveRates.json?auth=${ID_TOKEN}"
 
@@ -76,7 +78,7 @@ jobs:
           # Non-fatal: liveRates (the important write) already succeeded above,
           # so don't let a marketHistory failure (e.g. rules not republished
           # yet) mark the whole run red.
-          if curl -sf -X PUT -d "$MARKET_JSON" "${DB}/marketHistory/${TODAY}.json?auth=${ID_TOKEN}" > /dev/null; then
+          if curl -sf --retry 3 --retry-delay 3 --retry-all-errors -X PUT -d "$MARKET_JSON" "${DB}/marketHistory/${TODAY}.json?auth=${ID_TOKEN}" > /dev/null; then
             echo "Wrote marketHistory/${TODAY}: $MARKET_JSON"
           else
             echo "Could not write marketHistory/${TODAY} (rules not republished yet?) — liveRates was still updated fine."
