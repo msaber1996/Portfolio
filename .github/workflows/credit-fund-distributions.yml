@@ -1,0 +1,39 @@
+name: Credit NBE fund distributions to cash holding
+
+# Recomputes the cumulative cash paid out by "accumulating" funds (NAV drops
+# on distribution dates) from the full daily history, and sets the dedicated
+# cash holding (e.g. "NBE fund distributions received") to that exact total.
+# No external API, just Firebase reads/writes — safe to run daily.
+
+on:
+  schedule:
+    - cron: '0 21 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  credit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Credit distributions
+        run: |
+          set -euo pipefail
+
+          FIREBASE_API_KEY="AIzaSyCTbnNaSbxN57izkccidiiPh2WLInyc-hI"
+          ID_TOKEN=$(curl -sf --retry 3 --retry-delay 3 --retry-all-errors -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"email":"rates-bot@portfolio.local","password":"o7TM8sgbx3sEqTRi92DgtsUL","returnSecureToken":true}' \
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}" \
+            | jq -r '.idToken')
+
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "Failed to get a Firebase auth token, aborting."
+            exit 1
+          fi
+
+          FIREBASE_DB="https://portfolio-8ac1d-default-rtdb.firebaseio.com" FIREBASE_ID_TOKEN="$ID_TOKEN" node scripts/credit-fund-distributions.js
