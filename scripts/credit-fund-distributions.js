@@ -50,21 +50,6 @@ const DIST_HOLDING = {
   nbe4: { id: "nbeDist", label: "NBE fund distributions received" },
 };
 
-// NAV-drop detection only sees a distribution if the recorded daily NAV
-// actually drops on the right day — if nobody updates "Today's pricing" that
-// day (the auto-daily-snapshot fallback just carries the old value forward),
-// the payout is invisible to it. Confirmed case: the real 1 Nov 2026
-// distribution (157,700 EGP, per the actual bank/fund notice) never showed
-// up as a drop because nbe4's NAV was flat 30 Oct - 1 Nov, then simply
-// resumed climbing — so it's added here by hand on top of the computed
-// total. Add future ones the same way whenever a real notice doesn't match
-// an actual recorded NAV drop.
-const MANUAL_ADJUSTMENTS = {
-  nbe4: [
-    { date: "2026-11-01", amount: 157700, note: "confirmed distribution notice; daily NAV wasn't updated that day so the drop-detector missed it" },
-  ],
-};
-
 function cumulativeDistributedCash(dailyHistory, navGroup, units) {
   const dates = Object.keys(dailyHistory).sort();
   let lastNav;
@@ -84,6 +69,14 @@ function cumulativeDistributedCash(dailyHistory, navGroup, units) {
 async function main() {
   const holdings = await fetchJson("holdings");
   const daily = await fetchJson("daily");
+  // NAV-drop detection only sees a distribution if the recorded daily NAV
+  // actually drops on the right day — if nobody updates "Today's pricing"
+  // that day (the auto-daily-snapshot fallback just carries the old value
+  // forward), the payout is invisible to it. distAdjustments holds confirmed
+  // real payouts (per the actual notice) that the drop-detector missed, keyed
+  // by navGroup — the same collection the dashboard's own gain% calc reads,
+  // so both stay consistent. Add future ones there, not here.
+  const distAdjustments = (await fetchJson("distAdjustments")) || {};
 
   if (!Array.isArray(holdings)) {
     console.error("holdings is not an array, aborting without writing.");
@@ -110,7 +103,7 @@ async function main() {
     }
     const units = h.investment / h.purchaseNav;
     const fromNavDrops = cumulativeDistributedCash(daily, h.navGroup, units);
-    const manual = (MANUAL_ADJUSTMENTS[h.navGroup] || []).reduce((s, a) => s + a.amount, 0);
+    const manual = (distAdjustments[h.navGroup] || []).reduce((s, a) => s + (a.amount || 0), 0);
     const total = Math.round(fromNavDrops + manual);
     const dist = DIST_HOLDING[h.navGroup];
     const existing = nextHoldings.find((x) => x.id === dist.id);

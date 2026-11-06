@@ -2635,6 +2635,7 @@
     const [aiInsight, setAiInsight] = useState(null);
     const [yearCloses, setYearCloses] = useState({});
     const [rebalanceTargets, setRebalanceTargets] = useState({});
+    const [distAdjustments, setDistAdjustments] = useState({});
     const [conversions, setConversions] = useState(SEED_CONVERSIONS);
     const [history, setHistory] = useState([]);
     const [loadState, setLoadState] = useState("loading");
@@ -2657,7 +2658,7 @@
     useEffect(() => {
       let cancelled = false;
       (async () => {
-        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp, nf, yc, rt, ai] = await Promise.all([
+        const [h, l, lf, cert, c, lr, ou, oi, oip, om, omp, nf, yc, rt, ai, da] = await Promise.all([
           loadJson("holdings", SEED_HOLDINGS),
           loadJson("loans", SEED_LOANS),
           loadJson("loanFacilities", SEED_LOAN_FACILITIES),
@@ -2672,7 +2673,8 @@
           loadJson("newsFeed", SEED_NEWS_FEED),
           loadJson("yearCloses", {}),
           loadJson("rebalanceTargets", {}),
-          loadJson("aiInsight", null)
+          loadJson("aiInsight", null),
+          loadJson("distAdjustments", {})
         ]);
         let dailyEntries = [];
         try {
@@ -2699,6 +2701,7 @@
           setAiInsight(ai || null);
           setYearCloses(yc || {});
           setRebalanceTargets(rt || {});
+          setDistAdjustments(da || {});
           setLoadState("ready");
         }
       })();
@@ -2840,6 +2843,13 @@
       return Array.from(seen.entries()).map(([key, label]) => ({ key, label }));
     }, [holdings]);
     const accumulatingGroups = useMemo(() => Array.from(new Set(holdings.filter((h) => h.type === "fund" && h.accumulating).map((h) => h.navGroup))), [holdings]);
+    const unitsByGroup = useMemo(() => {
+      const out = {};
+      holdings.filter((h) => h.type === "fund" && h.accumulating && h.purchaseNav).forEach((h) => {
+        out[h.navGroup] = (out[h.navGroup] || 0) + h.investment / h.purchaseNav;
+      });
+      return out;
+    }, [holdings]);
     const latest = history[history.length - 1];
     const defaultsForForm = useMemo(() => {
       const base = latest || { date: "2026-07-30", rate: 51.1, gold: 6800 };
@@ -2912,6 +2922,7 @@ Save anyway?`);
       const out = {};
       const running = {};
       const lastNav = {};
+      const appliedManual = {};
       const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
       let prevYear = null;
       sorted.forEach((entry) => {
@@ -2922,6 +2933,9 @@ Save anyway?`);
           });
           Object.keys(lastNav).forEach((g) => {
             delete lastNav[g];
+          });
+          Object.keys(appliedManual).forEach((g) => {
+            appliedManual[g] = 0;
           });
         }
         prevYear = entryYear;
@@ -2935,12 +2949,24 @@ Save anyway?`);
             }
             lastNav[g] = navNum;
           }
+          // Distributions the NAV-drop detection above missed (e.g. nobody
+          // updated the fund's price on the actual payout date) — confirmed
+          // against the real notice and recorded in cash EGP, converted here
+          // to NAV points so it folds into the same running adjustment.
+          const manualList = distAdjustments[g] || [];
+          let i = appliedManual[g] || 0;
+          while (i < manualList.length && manualList[i].date <= entry.date) {
+            const units = unitsByGroup[g];
+            if (units) running[g] = (running[g] || 0) + manualList[i].amount / units;
+            i++;
+          }
+          appliedManual[g] = i;
           adj[g] = running[g] || 0;
         });
         out[entry.date] = adj;
       });
       return out;
-    }, [history, accumulatingGroups, yearCloses]);
+    }, [history, accumulatingGroups, yearCloses, distAdjustments, unitsByGroup]);
     const holdingsForYear = useMemo(() => {
       const cache = {};
       return (year) => {
