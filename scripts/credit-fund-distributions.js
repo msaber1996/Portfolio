@@ -76,7 +76,12 @@ async function main() {
   // real payouts (per the actual notice) that the drop-detector missed, keyed
   // by navGroup — the same collection the dashboard's own gain% calc reads,
   // so both stay consistent. Add future ones there, not here.
-  const distAdjustments = (await fetchJson("distAdjustments")) || {};
+  let distAdjustments = {};
+  try {
+    distAdjustments = (await fetchJson("distAdjustments")) || {};
+  } catch (e) {
+    console.warn(`Could not read distAdjustments (${e.message}), proceeding with NAV-drop-detected distributions only.`);
+  }
 
   if (!Array.isArray(holdings)) {
     console.error("holdings is not an array, aborting without writing.");
