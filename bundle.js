@@ -3797,11 +3797,12 @@ Save anyway?`);
   <p class="note">Total monthly interest across all certificates reconciles with the "EGP — certificate & fund income" line in the cash flow section below.</p>
 
   <h2 id="r-whole-portfolio">Whole portfolio (everything, including certificates and properties)</h2>
+  <p class="note">Value minus cost only. Fixed lines are carried at cost and income received is not included, so this is not a total return.</p>
   <table>
     <tr><td>We put in</td><td class="num mono">${egp(yearWholePortfolio.totalInvested)}</td></tr>
     <tr><td>Worth now</td><td class="num mono">${egp(yearWholePortfolio.totalCurrent)}</td></tr>
-    <tr><td>We earned</td><td class="num mono">${signedEgp(yearWholePortfolio.totalProfit)}</td></tr>
-    <tr><td>At a return of</td><td class="num mono">${pctStr(yearWholePortfolio.returnPct)}</td></tr>
+    <tr><td>Value minus cost</td><td class="num mono">${signedEgp(yearWholePortfolio.totalProfit)}</td></tr>
+    <tr><td>Change vs cost</td><td class="num mono">${pctStr(yearWholePortfolio.returnPct)}</td></tr>
   </table>
 
   <h2 id="r-performance">Performance over time</h2>
@@ -4267,7 +4268,7 @@ Save anyway?`);
               /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900", children: "Your whole portfolio, in plain terms" }),
               !isCurrentYearView && /* @__PURE__ */ jsx("span", { className: "text-[10px] uppercase tracking-wide text-neutral-400 border border-neutral-300 px-1.5 py-0.5", children: `${effectiveViewYear}, closed` })
             ] }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: isCurrentYearView ? "Every holding, including certificates and properties — what's been put in, what it's worth now, and the profit in between." : `As tracked through the end of ${effectiveViewYear} — profit tracking reset to zero at the start of ${effectiveViewYear + 1}.` }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: isCurrentYearView ? "Every holding, including certificates and properties — what's been put in, what it's worth now, and the difference. Fixed lines are carried at cost and income received is not included, so this is not a total return." : `As tracked through the end of ${effectiveViewYear} — profit tracking reset to zero at the start of ${effectiveViewYear + 1}.` }),
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-2 sm:grid-cols-4 gap-6", children: [
               /* @__PURE__ */ jsx("div", { children: [
                 /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "We put in" }),
@@ -4278,11 +4279,11 @@ Save anyway?`);
                 /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearWholePortfolio.totalCurrent, format: egp }) })
               ] }),
               /* @__PURE__ */ jsx("div", { children: [
-                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "We earned" }),
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Value minus cost" }),
                 /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${yearWholePortfolio.totalProfit >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearWholePortfolio.totalProfit, format: signedEgp }) })
               ] }),
               /* @__PURE__ */ jsx("div", { children: [
-                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "At a return of" }),
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Change vs cost" }),
                 /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${yearWholePortfolio.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearWholePortfolio.returnPct, format: pctStr }) })
               ] })
             ] })
