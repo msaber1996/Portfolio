@@ -27,6 +27,19 @@
   })();
 </script>
 
+<!-- Set lang/dir before first paint from the same "lang" key the bundle reads,
+     so Arabic loads right-to-left without a flash of the wrong direction. -->
+<script>
+  (function () {
+    try {
+      var lang = localStorage.getItem("lang") === "ar" ? "ar" : "en";
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+    } catch (e) {}
+  })();
+</script>
+
+
 <!-- React, loaded as plain global scripts so the bundle below doesn't need to include it -->
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -201,6 +214,25 @@
   html.dark .skeleton-block { background: #232323; }
   .installment-alert-dialog { width: min(34rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); margin: auto; overflow-y: auto; border-radius: 0.5rem; box-shadow: 0 20px 60px #0005; }
   .installment-alert-dialog::backdrop { background: #0009; }
+
+  /* Arabic / RTL support: swap text alignment and horizontal spacing, use an Arabic-capable font */
+  html[lang="ar"] body, html[lang="ar"] .font-sans, html[lang="ar"] .font-serif { font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", Arial, sans-serif; }
+  html[dir="rtl"] .text-left { text-align: right; }
+  html[dir="rtl"] .text-right { text-align: left; }
+  html[dir="rtl"] .ml-1 { margin-left: 0; margin-right: 0.25rem; }
+  html[dir="rtl"] .ml-2 { margin-left: 0; margin-right: 0.5rem; }
+  html[dir="rtl"] .mr-1 { margin-right: 0; margin-left: 0.25rem; }
+  html[dir="rtl"] .mr-2 { margin-right: 0; margin-left: 0.5rem; }
+  html[dir="rtl"] .mr-4 { margin-right: 0; margin-left: 1rem; }
+  html[dir="rtl"] .-mr-3 { margin-right: 0; margin-left: -0.75rem; }
+  html[dir="rtl"] .pl-3 { padding-left: 0; padding-right: 0.75rem; }
+  html[dir="rtl"] .pl-7 { padding-left: 0; padding-right: 1.75rem; }
+  html[dir="rtl"] .pr-3 { padding-right: 0; padding-left: 0.75rem; }
+  html[dir="rtl"] details summary { text-align: right; }
+  @media (min-width: 768px) {
+    html[dir="rtl"] .md\:text-left { text-align: right; }
+    html[dir="rtl"] .md\:text-right { text-align: left; }
+  }
 </style>
 </head>
 <body>
@@ -217,7 +249,7 @@
   </div>
 </div>
 <!-- bump ?v= on every bundle.js change, or Safari keeps serving the cached old copy -->
-<script src="bundle-165.js?v=165"></script>
+<script src="bundle-166.js?v=166"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
