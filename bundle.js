@@ -1222,7 +1222,7 @@
     if (points.length < 2) {
       return /* @__PURE__ */ jsx("div", { className: "text-sm text-neutral-400 py-12 text-center border border-dashed border-neutral-300", children: "Add a second day to see a trend line." });
     }
-    const w = 720, h = 220, padL = 56, padR = 16, padT = 16, padB = 28;
+    const w = 720, h = 220, padL = 84, padR = 16, padT = 16, padB = 28;
     const values = points.map((p) => p.value);
     const min = Math.min(...values), max = Math.max(...values);
     const range = max - min || 1;
