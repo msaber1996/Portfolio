@@ -962,7 +962,9 @@
         const current = h.purchaseNav ? h.investment / h.purchaseNav * nav : 0;
         const currentEgp = h.currency === "USD" ? current * rate : current;
         const investmentEgp = h.currency === "USD" ? h.investment * rate : h.investment;
-        const gainPct = h.purchaseNav ? (totalReturnNav - h.purchaseNav) / h.purchaseNav * 100 : 0;
+        const gainPct = h.purchaseNav ? (nav - h.purchaseNav) / h.purchaseNav * 100 : 0;
+        const gainWithPayoutsPct = h.purchaseNav ? (totalReturnNav - h.purchaseNav) / h.purchaseNav * 100 : 0;
+        const priceFallback = !(navRaw !== void 0 && navRaw !== "");
         if (h.navGroup === "azgold") {
           goldCurrent += currentEgp;
           goldInvestment += investmentEgp;
@@ -973,7 +975,7 @@
           egpFundsCurrent += current;
           egpFundsInvestment += h.investment;
         }
-        rows.push({ id: h.id, label: h.label, value: currentEgp, currency: h.currency, currentNative: current, investmentNative: h.investment, note: `${h.currency} fund, ${pctStr(gainPct)} since purchase`, gainPct, purchaseNav: h.purchaseNav, currentNav: nav, purchaseDate: h.purchaseDate, investmentEgp });
+        rows.push({ id: h.id, label: h.label, value: currentEgp, currency: h.currency, currentNative: current, investmentNative: h.investment, note: h.accumulating ? `${h.currency} fund, price change ${pctStr(gainPct)} since purchase. Excludes cash payouts; payout and income records are incomplete, so this is not a return.` : `${h.currency} fund, ${pctStr(gainPct)} since purchase${priceFallback ? " (price missing for this day, valued at cost)" : ""}`, gainPct, gainWithPayoutsPct, priceFallback, purchaseNav: h.purchaseNav, currentNav: nav, purchaseDate: h.purchaseDate, investmentEgp });
       } else if (h.type === "gold") {
         const current = goldPrice * (h.grams || 0);
         goldCurrent += current;
@@ -983,7 +985,7 @@
       } else {
         const val = h.currency === "USD" ? h.investment * rate : h.investment;
         fixedEgp += val;
-        rows.push({ id: h.id, label: h.label, value: val, currency: h.currency, currentNative: h.investment, investmentNative: h.investment, note: "Fixed principal", gainPct: 0, purchaseNav: null, currentNav: null, purchaseDate: h.purchaseDate, investmentEgp: val });
+        rows.push({ id: h.id, label: h.label, value: val, currency: h.currency, currentNative: h.investment, investmentNative: h.investment, note: h.id === "nbeDist" ? "Recorded total of fund distributions received. It mixes notice-confirmed and inferred amounts, may count one payout twice, and is cash already received, not a verified current holding. Included in totals at the recorded amount." : "Fixed principal", unverified: h.id === "nbeDist", gainPct: 0, purchaseNav: null, currentNav: null, purchaseDate: h.purchaseDate, investmentEgp: val });
       }
     });
     const usdFundsCurrentEgp = usdFundsCurrentUsd * rate;
@@ -995,7 +997,7 @@
       egpFunds: { current: egpFundsCurrent, cost: egpFundsInvestment },
       usdFunds: { current: usdFundsCurrentEgp, cost: usdFundsInvestmentUsd * rate, currentUsd: usdFundsCurrentUsd, costUsd: usdFundsInvestmentUsd }
     };
-    return { ...entry, rate, gold: goldPrice, rows, markedToMarket, markedToMarketCost, gain: markedToMarket - markedToMarketCost, totalAssets, byCategory };
+    return { ...entry, fallbackCount: rows.filter((r) => r.priceFallback).length, rate, gold: goldPrice, rows, markedToMarket, markedToMarketCost, gain: markedToMarket - markedToMarketCost, totalAssets, byCategory };
   }
   function useSortState(defaultKey, defaultDir = "desc") {
     const [sortKey, setSortKey] = useState(defaultKey);
@@ -2132,7 +2134,7 @@
         showGrams && /* @__PURE__ */ jsx(SortTh, { label: "Grams", sortKey: "grams", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
         /* @__PURE__ */ jsx(SortTh, { label: "Invested", sortKey: "investmentNative", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
         /* @__PURE__ */ jsx(SortTh, { label: "Current value", sortKey: "value", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
-        /* @__PURE__ */ jsx(SortTh, { label: "Gain / loss", sortKey: "gainPct", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
+        /* @__PURE__ */ jsx(SortTh, { label: "Price change", sortKey: "gainPct", activeKey: sortKey, dir: sortDir, onSort: handleSort, align: "right" }),
         /* @__PURE__ */ jsx(SortTh, { label: "Purchased", sortKey: "purchaseDate", activeKey: sortKey, dir: sortDir, onSort: handleSort })
       ] }) }),
       /* @__PURE__ */ jsx("tbody", { children: sorted.map((r) => /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
@@ -2367,7 +2369,7 @@
         /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Purchase value" }),
         /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Current value" }),
         /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Net gain / loss" }),
-        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Gain since purchase" })
+        /* @__PURE__ */ jsx("th", { className: "text-right py-2 pr-3", children: "Price change since purchase (excl. income)" })
       ] }) }),
       /* @__PURE__ */ jsx("tbody", { children: rows.map((r, i) => {
         const netGain = r.currentNative - r.investmentNative;
@@ -3015,6 +3017,8 @@ Save anyway?`);
     }, [holdings, yearCloses]);
     const computedHistory = useMemo(() => history.map((e) => computeDay(e, holdingsForYear(e.date.slice(0, 4)), navAdjustByDate[e.date])), [history, holdingsForYear, navAdjustByDate]);
     const latestComputed = computedHistory[computedHistory.length - 1];
+    const fallbackQuotes = computedHistory.reduce((n, d) => n + (d.fallbackCount || 0), 0);
+    const ADDITIONS_ONLY_NOTE = "Adjusted for additions only (cost of holdings added after the start day). No sales or withdrawals are recorded and none are handled.";
     const firstComputed = computedHistory[0];
     const today = /* @__PURE__ */ new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -3027,6 +3031,7 @@ Save anyway?`);
     const asOfLabel = isLivePreview ? `${todayStr} (live)` : latestComputed?.date || "";
     const ASSETS = displayComputed?.rows || [];
     const totalAssets = displayComputed?.totalAssets || 0;
+    const distLine = (displayComputed?.rows || []).find((r) => r.id === "nbeDist");
     const performanceRanking = useMemo(() => ASSETS.filter((a) => a.purchaseNav != null).sort((a, b) => b.gainPct - a.gainPct), [ASSETS]);
     const variableInvestments = useMemo(() => {
       const totalInvested = displayComputed?.markedToMarketCost || 0;
@@ -3715,7 +3720,7 @@ Save anyway?`);
       }).join("");
       const analysisHtml = yearAnalysis ? `
       <h2>Since ${yearFirstComputed.date} (${yearAnalysis.days} days)</h2>
-      <p class="note">Marked-to-market moved <b>${signedEgp(yearAnalysis.changeVal)}</b> (${pctStr(yearAnalysis.changePct)}). FX moved ${pctStr(yearAnalysis.rateChangePct)}; gold moved ${pctStr(yearAnalysis.goldChangePct)} per gram.
+      <p class="note">Marked-to-market moved <b>${signedEgp(yearAnalysis.changeVal)}</b> (${pctStr(yearAnalysis.changePct)}). FX moved ${pctStr(yearAnalysis.rateChangePct)}; gold moved ${pctStr(yearAnalysis.goldChangePct)} per gram. Funds and gold only. ${ADDITIONS_ONLY_NOTE} ${fallbackQuotes ? fallbackQuotes + " holding-day prices are missing and valued at cost." : "No missing fund prices on the recorded days."}
       ${yearAnalysis.strongest ? `Strongest holding overall: <b>${yearAnalysis.strongest.label}</b> (${pctStr(yearAnalysis.strongest.last)}).` : ""}
       ${yearAnalysis.weakest ? `Weakest: <b>${yearAnalysis.weakest.label}</b> (${pctStr(yearAnalysis.weakest.last)}).` : ""}</p>
     ` : "";
@@ -3770,6 +3775,7 @@ Save anyway?`);
     <div><div class="stat-label">Net worth</div><div class="stat-value mono">${egp(netWorth)}</div></div>
     <div><div class="stat-label">Leverage</div><div class="stat-value mono">${debtRatioPct.toFixed(1)}%</div></div>
   </div>
+  ${ASSETS.find((a) => a.id === "nbeDist") ? `<p class="note">Total assets include ${egp(ASSETS.find((a) => a.id === "nbeDist").value)} of "NBE fund distributions received" at the recorded amount. It mixes notice-confirmed and inferred payouts, may count one payout twice, and is cash already received, so it is not a verified current holding. Total assets without it: ${egp(totalAssets - ASSETS.find((a) => a.id === "nbeDist").value)}.</p>` : ""}
 
   ${!isCurrentYearView ? `<p class="note">Showing <b>${effectiveViewYear}</b> (closed) for the sections below that track yearly performance — that year's profit tracking reset to zero at the start of ${effectiveViewYear + 1}. The totals just above, and "Performance over time" below, are always today's live numbers.</p>` : ""}
 
@@ -3806,7 +3812,7 @@ Save anyway?`);
   </table>
 
   <h2 id="r-performance">Performance over time</h2>
-  <p class="note">Insufficient data: a period return needs dated additions, income received and period-start values for every holding.</p>
+  <p class="note">${analysis ? `Funds and gold since ${firstComputed.date} (${analysis.days} days recorded, so year to date and 1 year are the same figure): <b>${pctStr(analysis.changePct)}</b> (${signedEgp(analysis.changeVal)}), adjusted for additions only, income excluded, no sales or withdrawals handled.` : ""} Whole portfolio, value vs amount put in: <b>${pctStr(wholePortfolio.returnPct)}</b> (${signedEgp(wholePortfolio.totalProfit)}). These are not verified returns.</p>
 
   <h2 id="r-variable-investments">Variable investments (funds, gold, Beltone — excludes certificates)</h2>
   <table>
@@ -3880,7 +3886,7 @@ Save anyway?`);
 
   <h2 id="r-ranking">Performance ranking, strongest to weakest</h2>
   <p class="note">As of ${asOfLabel} — regenerate this report after any new day's entry to refresh the ranking.</p>
-  <table><tr><th>Rank</th><th>Holding</th><th>Purchase date</th><th class="num">Purchase value</th><th class="num">Current value</th><th class="num">Net gain / loss</th><th class="num">Gain since purchase</th></tr>${performanceRankingRowsHtml}</table>
+  <table><tr><th>Rank</th><th>Holding</th><th>Purchase date</th><th class="num">Purchase value</th><th class="num">Current value</th><th class="num">Net gain / loss</th><th class="num">Price change since purchase (excl. income)</th></tr>${performanceRankingRowsHtml}</table>
 
   <h2 id="r-history">History</h2>
   ${analysisHtml}
@@ -4233,7 +4239,7 @@ Save anyway?`);
               /* @__PURE__ */ jsx("span", { className: "text-emerald-700", children: `Live pricing — USD/EGP ${fmt(liveRates.rate, 2)}, gold ${fmt(liveRates.gold)} EGP/g. Not yet saved as today's entry.` })
             ] : /* @__PURE__ */ jsx("span", { className: "text-neutral-400", children: `Priced as of ${latest?.date || ""}.` }) }),
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-2 gap-x-6 gap-y-6", children: [
-              /* @__PURE__ */ jsx(Stat, { label: "Total assets", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: totalAssets, format: egp }), emphasis: true }),
+              /* @__PURE__ */ jsx(Stat, { label: "Total assets", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: totalAssets, format: egp }), sub: distLine ? `Includes ${egp(distLine.value)} of recorded distributions received (unverified, may double count). Without it: ${egp(totalAssets - distLine.value)}.` : void 0, emphasis: true }),
               /* @__PURE__ */ jsx(Stat, { label: "Total liabilities", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: totalLiabilities, format: egp }), emphasis: true }),
               /* @__PURE__ */ jsx(Stat, { label: "Net worth", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: netWorth, format: egp }), emphasis: true }),
               /* @__PURE__ */ jsx(Stat, { label: "Leverage", value: /* @__PURE__ */ jsx(AnimatedNumber, { value: debtRatioPct, format: (v) => `${v.toFixed(1)}%` }), sub: "liabilities / assets", emphasis: true })
@@ -4290,14 +4296,20 @@ Save anyway?`);
           ] }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-white p-5", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Performance over time" }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "A period return needs dated additions, income received, and period-start values for every holding. Where that data is missing the card says so instead of showing a number." }),
-            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4", children: [
-              { label: "Year to date", note: "Needs period-start values and dated additions. Additions are not profit." },
-              { label: "1 year", note: "Needs 12 months of observations, dated flows and income coverage." },
-              { label: "Since first purchase", note: "Needs dated flows and income for every holding, including certificates, properties and USD purchase-date rates." }
-            ].map(({ label, note }) => /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4 text-center", children: [
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "These are value changes from the recorded prices, not verified returns: income received, FX at purchase dates and sales or withdrawals are not recorded, and additions are subtracted only where a purchase price is on file." }),
+            /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4", children: (() => {
+              const days = analysis?.days || 0;
+              const since = firstComputed?.date || "";
+              const adj = analysis ? { v: analysis.changePct, sub: `${signedEgp(analysis.changeVal)} on funds and gold, ${since} to today` } : null;
+              return [
+                { label: "Year to date", v: adj?.v, sub: adj?.sub, note: `Records start ${since}, so this covers ${days} days. Funds and gold only, adjusted for additions, excludes income.` },
+                { label: "1 year", v: adj?.v, sub: adj?.sub, note: `Only ${days} days are recorded, not 12 months, so this is the same ${days}-day figure.` },
+                { label: "Since inception", v: wholePortfolio.returnPct, sub: `${signedEgp(wholePortfolio.totalProfit)} value minus cost`, note: "Whole portfolio, today's value vs amount put in. Certificates at cost, income and FX at purchase not included. Not a true return." }
+              ];
+            })().map(({ label, v, sub, note }) => /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4 text-center", children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-2", children: label }),
-              /* @__PURE__ */ jsx("div", { className: "font-serif text-lg text-neutral-700", children: "Insufficient data" }),
+              v == null ? /* @__PURE__ */ jsx("div", { className: "font-serif text-lg text-neutral-700", children: "Insufficient data" }) : /* @__PURE__ */ jsx("div", { className: `font-mono text-2xl ${v >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(v) }),
+              sub && /* @__PURE__ */ jsx("div", { className: "text-xs font-mono text-neutral-600 mt-1", children: sub }),
               /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-2", children: note })
             ] }, label)) }),
             (() => {
@@ -4523,17 +4535,17 @@ Save anyway?`);
           ] })
         ] }),
         /* @__PURE__ */ jsx("section", { id: "section-13", className: "py-10 border-t border-neutral-200", children: [
-          /* @__PURE__ */ jsx(SectionHeading, { index: "13", title: "History and analysis", dek: isCurrentYearView ? `${yearComputedHistory.length} day${yearComputedHistory.length === 1 ? "" : "s"} on record for ${effectiveViewYear}, marked-to-market portion only (funds, Beltone, gold). Edit a row to fix a mistake, or delete it outright.` : `${yearComputedHistory.length} day${yearComputedHistory.length === 1 ? "" : "s"} on record for ${effectiveViewYear} — this year is closed, profit tracking reset at the start of ${effectiveViewYear + 1}.` }),
+          /* @__PURE__ */ jsx(SectionHeading, { index: "13", title: "History and analysis", dek: isCurrentYearView ? `${yearComputedHistory.length} day${yearComputedHistory.length === 1 ? "" : "s"} on record for ${effectiveViewYear}, funds, Beltone and gold only (excludes certificates, T-bills, properties, loans and the distributions line, so it is not total assets or net worth). Edit a row to fix a mistake, or delete it outright.` : `${yearComputedHistory.length} day${yearComputedHistory.length === 1 ? "" : "s"} on record for ${effectiveViewYear} — this year is closed, profit tracking reset at the start of ${effectiveViewYear + 1}.` }),
           /* @__PURE__ */ jsx("div", { className: "mb-4 flex items-center justify-between gap-3 flex-wrap", children: [
             /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Chart range" }),
             /* @__PURE__ */ jsx(ChartRangeSelector, { value: chartRange, onChange: setChartRange })
           ] }),
           /* @__PURE__ */ jsx("div", { className: "mb-8", children: /* @__PURE__ */ jsx(TrendChart, { points: chartHistory.map((d) => ({ date: d.date, value: d.markedToMarket })), labelFn: (d) => (/* @__PURE__ */ new Date(d + "T00:00:00")).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }), valueFn: egp }) }),
           chartHistory.length >= 2 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Net worth vs. gold vs. USD/EGP, since ${chartHistory[0].date}` }),
+            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Funds and gold value vs. gold vs. USD/EGP, since ${chartHistory[0].date}` }),
             /* @__PURE__ */ jsx(ComparisonChart, {
               series: [
-                { key: "networth", label: "Net worth (marked-to-market)", color: dark ? "#e5e5e5" : "#171717", points: chartHistory.map((d) => ({ date: d.date, value: d.markedToMarket })) },
+                { key: "networth", label: "Funds and gold value (not net worth)", color: dark ? "#e5e5e5" : "#171717", points: chartHistory.map((d) => ({ date: d.date, value: d.markedToMarket })) },
                 { key: "gold", label: "Gold, EGP/g", color: dark ? "#fbbf24" : "#B45309", points: chartHistory.map((d) => ({ date: d.date, value: d.gold })) },
                 { key: "usd", label: "USD/EGP", color: dark ? "#38bdf8" : "#0369A1", points: chartHistory.map((d) => ({ date: d.date, value: d.rate })) }
               ],
@@ -4541,7 +4553,7 @@ Save anyway?`);
             })
           ] }),
           yearFundSeries.length > 0 && /* @__PURE__ */ jsx("div", { className: "mb-8", children: [
-            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Return by fund, since ${isCurrentYearView ? "purchase (or this year's reset)" : `the start of ${effectiveViewYear}`}` }),
+            /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-3", children: `Price change by fund (excludes income), since ${isCurrentYearView ? "purchase (or this year's reset)" : `the start of ${effectiveViewYear}`}` }),
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4", children: yearFundSeries.map((f) => {
               const lastVal = f.points[f.points.length - 1]?.value ?? 0;
               return /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-3", children: [
@@ -4581,7 +4593,7 @@ Save anyway?`);
                 yearAnalysis.upDays,
                 " of ",
                 yearAnalysis.totalDays,
-                " day-over-day steps."
+                " day-over-day steps. ", ADDITIONS_ONLY_NOTE, " ", fallbackQuotes ? `${fallbackQuotes} holding-day prices are missing and valued at cost.` : "No missing fund prices on the recorded days."
               ] })
             ] }),
             /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4", children: [
