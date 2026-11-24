@@ -2527,6 +2527,34 @@
       const Icon = dir === "up" ? ArrowUpRight : ArrowDownRight;
       return /* @__PURE__ */ jsx("span", { className: `inline-flex items-center ${dir === "up" ? "text-emerald-700" : "text-red-600"}`, title: dir === "up" ? "Higher than the last saved entry" : "Lower than the last saved entry", children: /* @__PURE__ */ jsx(Icon, { size: 12, strokeWidth: 3 }) });
     };
+    const REVIEW_THRESHOLD_PCT = 3;
+    const reviewState = (key) => {
+      const curRaw = form[key];
+      if (curRaw === void 0 || curRaw === null || curRaw === "") return { kind: "missing" };
+      const cur = Number(curRaw);
+      if (!Number.isFinite(cur)) return { kind: "missing" };
+      const prev = compareBase ? Number(compareBase[key]) : NaN;
+      if (!Number.isFinite(prev) || !prev) return { kind: "ok", pct: null };
+      const pct = (cur / prev - 1) * 100;
+      if (Math.abs(pct) > REVIEW_THRESHOLD_PCT) return { kind: "big", pct };
+      if (cur === prev) return { kind: "same", pct: 0 };
+      return { kind: "ok", pct };
+    };
+    const ReviewBadge = ({ fieldKey }) => {
+      const st = reviewState(fieldKey);
+      const pctTxt = st.pct === null || st.pct === void 0 || st.kind === "same" || st.kind === "notyet" ? "" : `${st.pct > 0 ? "+" : ""}${st.pct.toFixed(2)}%`;
+      const cls = st.kind === "big" ? "text-red-600 font-semibold" : st.kind === "missing" ? "text-amber-700" : "text-neutral-500";
+      const note = st.kind === "big" ? `check: above ${REVIEW_THRESHOLD_PCT}%` : st.kind === "missing" ? "missing" : st.kind === "same" ? "same as previous entry" : "";
+      return /* @__PURE__ */ jsx("span", { "data-review": st.kind, className: `text-[11px] min-h-[14px] ${cls}`, children: [pctTxt, pctTxt && note ? " \u00b7 " : "", note].join("") });
+    };
+    const reviewCounts = navFields.reduce((acc, f) => {
+      const k = reviewState(f.key).kind;
+      if (k === "ok") acc.ok++;
+      else if (k === "missing") acc.missing++;
+      else if (k === "big") acc.big++;
+      else acc.same++;
+      return acc;
+    }, { ok: 0, same: 0, big: 0, missing: 0 });
     return /* @__PURE__ */ jsx("div", { className: "border border-neutral-300", children: [
       /* @__PURE__ */ jsx("div", { className: "bg-neutral-900 text-white px-4 py-2 flex items-center justify-between", children: [
         /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide", children: isEditing ? "Editing entry" : "Today's update" }),
@@ -2557,11 +2585,13 @@
             /* @__PURE__ */ jsx(DirectionArrow, { fieldKey: f.key }),
             /* @__PURE__ */ jsx(ChangedMark, { fieldKey: f.key })
           ] }),
-          /* @__PURE__ */ jsx("input", { type: "number", step: "0.0001", value: form[f.key] ?? "", onChange: set(f.key), disabled: !canEdit, className: "font-mono text-sm border border-neutral-300 bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60" })
+          /* @__PURE__ */ jsx("input", { type: "number", step: "0.0001", value: form[f.key] ?? "", onChange: set(f.key), disabled: !canEdit, className: `font-mono text-sm border ${reviewState(f.key).kind === "big" ? "border-red-500" : reviewState(f.key).kind === "missing" ? "border-amber-500 border-dashed" : "border-neutral-300"} bg-yellow-50 px-2 py-1.5 focus:outline-none focus:border-neutral-800 disabled:opacity-60` }),
+          /* @__PURE__ */ jsx(ReviewBadge, { fieldKey: f.key })
         ] }, f.key))
       ] }),
-      canEdit ? /* @__PURE__ */ jsx("div", { className: "px-4 pb-4 flex items-center gap-3", children: [
-        /* @__PURE__ */ jsx("button", { onClick: () => onSave(form, Array.from(touchedFields)), disabled: saving, className: "inline-flex items-center gap-2 bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 disabled:opacity-50", children: [
+      navFields.length > 0 && /* @__PURE__ */ jsx("div", { "data-review-summary": "1", className: "px-4 pb-3 text-xs text-neutral-500", children: `Review notes (not errors): ${reviewCounts.ok} within ${REVIEW_THRESHOLD_PCT}% \u00b7 ${reviewCounts.same} same as previous entry \u00b7 ${reviewCounts.big} above ${REVIEW_THRESHOLD_PCT}% \u00b7 ${reviewCounts.missing} empty. Notes never block saving; gold and USD/EGP are pre-filled from live rates.` }),
+      canEdit ? /* @__PURE__ */ jsx("div", { className: "px-4 pb-4 flex flex-wrap items-center gap-x-3 gap-y-2", children: [
+        /* @__PURE__ */ jsx("button", { onClick: () => onSave(form, Array.from(touchedFields)), disabled: saving, className: "inline-flex items-center gap-2 whitespace-nowrap bg-neutral-900 text-white text-xs uppercase tracking-wide px-4 py-2 disabled:opacity-50", children: [
           saving ? /* @__PURE__ */ jsx(Loader2, { size: 14, className: "animate-spin" }) : isEditing ? /* @__PURE__ */ jsx(Check, { size: 14 }) : /* @__PURE__ */ jsx(Plus, { size: 14 }),
           saving ? "Saving" : isEditing ? "Save changes" : "Save today's entry"
         ] }),
