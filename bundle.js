@@ -3812,7 +3812,7 @@ Save anyway?`);
   </table>
 
   <h2 id="r-performance">Performance over time</h2>
-  <p class="note">${analysis ? `Funds and gold since ${firstComputed.date} (${analysis.days} days recorded, so year to date and 1 year are the same figure): <b>${pctStr(analysis.changePct)}</b> (${signedEgp(analysis.changeVal)}), adjusted for additions only, income excluded, no sales or withdrawals handled.` : ""} Whole portfolio, value vs amount put in: <b>${pctStr(wholePortfolio.returnPct)}</b> (${signedEgp(wholePortfolio.totalProfit)}). These are not verified returns.</p>
+  <p class="note">${analysis ? `Funds and gold since records began on ${firstComputed.date} (${analysis.days} recorded observations over ${Math.round((new Date(latestComputed.date + "T00:00:00") - new Date(firstComputed.date + "T00:00:00")) / 864e5)} calendar days; no year-to-date or 12-month figure exists yet): <b>${pctStr(analysis.changePct)}</b> (${signedEgp(analysis.changeVal)}), adjusted for additions only, income excluded, no sales or withdrawals handled.` : ""} Whole portfolio, value vs amount put in: <b>${pctStr(wholePortfolio.returnPct)}</b> (${signedEgp(wholePortfolio.totalProfit)}). These are not verified returns.</p>
 
   <h2 id="r-variable-investments">Variable investments (funds, gold, Beltone — excludes certificates)</h2>
   <table>
@@ -4299,12 +4299,13 @@ Save anyway?`);
             /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "These are value changes from the recorded prices, not verified returns: income received, FX at purchase dates and sales or withdrawals are not recorded, and additions are subtracted only where a purchase price is on file." }),
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4", children: (() => {
               const days = analysis?.days || 0;
+              const span = firstComputed && latestComputed ? Math.round((new Date(latestComputed.date + "T00:00:00") - new Date(firstComputed.date + "T00:00:00")) / 864e5) : 0;
               const since = firstComputed?.date || "";
               const adj = analysis ? { v: analysis.changePct, sub: `${signedEgp(analysis.changeVal)} on funds and gold, ${since} to today` } : null;
               return [
-                { label: "Year to date", v: adj?.v, sub: adj?.sub, note: `Records start ${since}, so this covers ${days} days. Funds and gold only, adjusted for additions, excludes income.` },
-                { label: "1 year", v: adj?.v, sub: adj?.sub, note: `Only ${days} days are recorded, not 12 months, so this is the same ${days}-day figure.` },
-                { label: "Since inception", v: wholePortfolio.returnPct, sub: `${signedEgp(wholePortfolio.totalProfit)} value minus cost`, note: "Whole portfolio, today's value vs amount put in. Certificates at cost, income and FX at purchase not included. Not a true return." }
+                { label: "Change since records began", v: adj?.v, sub: adj?.sub, note: `${days} recorded observations over ${span} calendar days. Funds and gold only, adjusted for additions, excludes income. Not a year-to-date return.` },
+                { label: "Last 12 months: not available", v: adj?.v, sub: adj?.sub, note: `Only ${span} calendar days are recorded, not 12 months. The number shown is the same recorded-period change, not a 1-year return.` },
+                { label: "Whole portfolio: value vs cost", v: wholePortfolio.returnPct, sub: `${signedEgp(wholePortfolio.totalProfit)} value minus cost`, note: "Whole portfolio, today's value vs amount put in. Certificates at cost, income and FX at purchase not included. Not a true return." }
               ];
             })().map(({ label, v, sub, note }) => /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4 text-center", children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-2", children: label }),
