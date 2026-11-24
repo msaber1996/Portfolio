@@ -1787,6 +1787,36 @@
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+  function openInstallmentTarget(date, units) {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    window.dispatchEvent(new CustomEvent("pf-open-installment", { detail: { date, units } }));
+    const find = () => {
+      for (const u of units) {
+        const c = document.getElementById(`property-${domId(u)}`);
+        const r = c && c.querySelector(`tr[data-inst-date="${date}"]`);
+        if (r) return r;
+      }
+      const g = document.getElementById("office-units-schedule");
+      return g && g.querySelector(`tr[data-inst-date="${date}"]`);
+    };
+    const go = (flash) => {
+      const el = find();
+      if (!el) return false;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (flash) {
+        el.style.transition = "background-color 0.6s";
+        el.style.backgroundColor = "#fde68a";
+        setTimeout(() => { el.style.backgroundColor = ""; }, 2500);
+      }
+      return true;
+    };
+    setTimeout(() => {
+      if (!go(true)) {
+        const c = units.map((u) => document.getElementById(`property-${domId(u)}`)).find(Boolean) || document.getElementById("office-units-schedule") || document.getElementById("properties-section");
+        if (c) c.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 250);
+  }
   function PropertyScheduleGroup({ id, title, unitNames, units, installments, installmentPayments, onToggleInstallment, maintenance, maintenancePayments, onToggleMaintenance, canEdit }) {
     const groupUnits = useMemo(() => units.filter((u) => unitNames.includes(u.unit)), [units, unitNames]);
     const groupInstallments = useMemo(() => filterScheduleForUnits(installments, unitNames), [installments, unitNames]);
@@ -1799,6 +1829,15 @@
   }
   function OfficeInstallmentScheduleTable({ installments, units, payments, onTogglePayment, canEdit = true, label = "installment schedule" }) {
     const [expanded, setExpanded] = useState(false);
+    useEffect(() => {
+      if (label !== "installment schedule") return;
+      const onOpen = (e) => {
+        const d = e.detail || {};
+        if (installments.some((row) => row.date === d.date && Object.keys(row.byUnit || {}).some((u) => (d.units || []).includes(u)))) setExpanded(true);
+      };
+      window.addEventListener("pf-open-installment", onOpen);
+      return () => window.removeEventListener("pf-open-installment", onOpen);
+    }, [installments, label]);
     const unitLabels = useMemo(() => {
       const known = units.map((u) => u.unit).filter((u) => installments.some((row) => row.byUnit && u in row.byUnit));
       const extra = [];
@@ -1842,7 +1881,7 @@
       /* @__PURE__ */ jsx("tbody", { children: installments.map((row) => {
         const dk = sanitizeFbKey(row.date);
         const past = row.date < todayStr;
-        return /* @__PURE__ */ jsx("tr", { className: "border-b border-neutral-100", children: [
+        return /* @__PURE__ */ jsx("tr", { "data-inst-date": label === "installment schedule" ? row.date : void 0, className: "border-b border-neutral-100", children: [
           /* @__PURE__ */ jsx("td", { "data-label": "Date", className: `py-1.5 pr-3 ${past ? "text-neutral-500" : "text-neutral-900"}`, children: fmtDate(row.date) }),
           ...unitLabels.map((u) => {
             const amount = row.byUnit?.[u];
@@ -3283,8 +3322,16 @@ Save anyway?`);
       const units = Object.keys(nextOfficeInstallmentRow?.byUnit || {});
       if (!units.length || units.every((u) => officeGroupUnitNames.includes(u))) return "Office installment";
       if (units.length === 1) return `${units[0]} installment`;
-      return "Property installment";
+      const names = [];
+      let hasOffice = false;
+      units.forEach((u) => { if (officeGroupUnitNames.includes(u)) hasOffice = true; else names.push(u); });
+      if (hasOffice) names.push("office units");
+      return `${names.join(" + ")} installment`;
     }, [nextOfficeInstallmentRow, officeGroupUnitNames]);
+    const openOfficeDue = useCallback(() => {
+      if (nextOfficeInstallmentRow) openInstallmentTarget(nextOfficeInstallmentRow.date, Object.keys(nextOfficeInstallmentRow.byUnit || {}));
+      else scrollToId("properties-section");
+    }, [nextOfficeInstallmentRow]);
     const officeNextDueTargetId = useMemo(() => {
       const units = Object.keys(nextOfficeInstallmentRow?.byUnit || {});
       if (!units.length || units.every((u) => officeGroupUnitNames.includes(u))) return "office-units-schedule";
@@ -3309,7 +3356,7 @@ Save anyway?`);
       }
       if (officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate) {
         const amt = egp(officeDueAlert.amount);
-        list.push({ id: `office-${officeDueAlert.date}`, targetId: officeNextDueTargetId, severity: officeDueAlert.daysUntilDue < 0 ? "danger" : "warning", text: officeDueAlert.daysUntilDue < 0 ? `${officeNextDueLabel} ${amt} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)}d ago` : officeDueAlert.daysUntilDue === 0 ? `${officeNextDueLabel} ${amt} is due today` : `${officeNextDueLabel} ${amt} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue}d` });
+        list.push({ id: `office-${officeDueAlert.date}`, targetId: officeNextDueTargetId, onOpen: openOfficeDue, severity: officeDueAlert.daysUntilDue < 0 ? "danger" : "warning", text: officeDueAlert.daysUntilDue < 0 ? `${officeNextDueLabel} ${amt} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)}d ago` : officeDueAlert.daysUntilDue === 0 ? `${officeNextDueLabel} ${amt} is due today` : `${officeNextDueLabel} ${amt} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue}d` });
       }
       certificates.forEach((c, i) => {
         const d = daysUntil(c.maturityDate);
@@ -3322,7 +3369,7 @@ Save anyway?`);
         list.push({ id: `loan-${i}-${l.maturityDate}`, targetId: "loan-facilities-section", severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${l.label} matured ${fmtDate(l.maturityDate)}, ${Math.abs(d)}d ago` : `${l.label} matures ${fmtDate(l.maturityDate)}, in ${d}d` });
       });
       return list;
-    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, officeNextDueLabel, officeNextDueTargetId, loanFacilities, certificates]);
+    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, officeNextDueLabel, officeNextDueTargetId, openOfficeDue, loanFacilities, certificates]);
     useEffect(() => {
       if (typeof navigator === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
         setPushStatus("unsupported");
@@ -4096,7 +4143,7 @@ Save anyway?`);
         /* @__PURE__ */ jsx("button", { onClick: () => setDismissedAlertDate(dailyAlert.date), className: "text-xs text-amber-700 underline shrink-0 whitespace-nowrap", children: "Dismiss" })
       ] }) }),
       !showAdmin && officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate && /* @__PURE__ */ jsx("div", { className: `border-b-2 ${officeDueAlert.daysUntilDue < 0 ? "bg-red-50 border-red-400" : "bg-amber-50 border-amber-400"}`, children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
-        /* @__PURE__ */ jsx("div", { role: "button", tabIndex: 0, onClick: () => scrollToId(officeNextDueTargetId), className: `text-sm leading-relaxed cursor-pointer hover:underline ${officeDueAlert.daysUntilDue < 0 ? "text-red-900" : "text-amber-900"}`, children: [
+        /* @__PURE__ */ jsx("div", { role: "button", tabIndex: 0, onClick: openOfficeDue, className: `text-sm leading-relaxed cursor-pointer hover:underline ${officeDueAlert.daysUntilDue < 0 ? "text-red-900" : "text-amber-900"}`, children: [
           /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: `${officeNextDueLabel} — ` }),
           officeDueAlert.daysUntilDue < 0 ? `${egp(officeDueAlert.amount)} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)} day${Math.abs(officeDueAlert.daysUntilDue) === 1 ? "" : "s"} ago.` : officeDueAlert.daysUntilDue === 0 ? `${egp(officeDueAlert.amount)} is due today.` : `${egp(officeDueAlert.amount)} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue} day${officeDueAlert.daysUntilDue === 1 ? "" : "s"}.`
         ] }),
@@ -4155,7 +4202,7 @@ Save anyway?`);
               bellOpen && /* @__PURE__ */ jsx("div", { className: "fixed inset-0 z-10", onClick: () => setBellOpen(false) }),
               bellOpen && /* @__PURE__ */ jsx("div", { className: "fixed top-4 right-4 w-80 max-w-[calc(100vw-2rem)] bg-white border border-neutral-300 shadow-lg z-20", children: [
                 /* @__PURE__ */ jsx("div", { className: "px-4 py-2.5 border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-500", children: "Notifications" }),
-                activeAlerts.length === 0 ? /* @__PURE__ */ jsx("div", { className: "px-4 py-4 text-xs text-neutral-400", children: "No active alerts." }) : /* @__PURE__ */ jsx("div", { className: "max-h-72 overflow-y-auto", children: activeAlerts.map((a) => /* @__PURE__ */ jsx("button", { onClick: () => { setBellOpen(false); scrollToId(a.targetId); }, className: `w-full text-left px-4 py-2.5 text-xs leading-relaxed border-b border-neutral-100 hover:bg-neutral-50 transition-colors ${a.severity === "danger" ? "text-red-800" : "text-amber-800"}`, children: a.text }, a.id)) }),
+                activeAlerts.length === 0 ? /* @__PURE__ */ jsx("div", { className: "px-4 py-4 text-xs text-neutral-400", children: "No active alerts." }) : /* @__PURE__ */ jsx("div", { className: "max-h-72 overflow-y-auto", children: activeAlerts.map((a) => /* @__PURE__ */ jsx("button", { onClick: () => { setBellOpen(false); if (a.onOpen) a.onOpen(); else scrollToId(a.targetId); }, className: `w-full text-left px-4 py-2.5 text-xs leading-relaxed border-b border-neutral-100 hover:bg-neutral-50 transition-colors ${a.severity === "danger" ? "text-red-800" : "text-amber-800"}`, children: a.text }, a.id)) }),
                 /* @__PURE__ */ jsx("div", { className: "px-4 py-2.5 border-t border-neutral-200", children: pushStatus === "unsupported" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Push notifications aren't supported here." }) : pushStatus === "subscribed" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-emerald-700", children: "Push notifications enabled \u2014 you'll get these even if the site is closed." }) : notifPermission === "denied" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Notifications blocked \u2014 enable them in your browser's site settings." }) : pushStatus === "subscribing" ? /* @__PURE__ */ jsx("span", { className: "text-xs text-neutral-400", children: "Enabling\u2026" }) : /* @__PURE__ */ jsx("button", { onClick: subscribeToPush, className: "text-xs underline text-neutral-700", children: "Enable push notifications" }) })
               ] })
             ] }),
