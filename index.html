@@ -199,6 +199,8 @@
   @keyframes pulse-bg { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
   .skeleton-block { animation: pulse-bg 1.6s ease-in-out infinite; background: #e5e5e5; border-radius: 4px; }
   html.dark .skeleton-block { background: #232323; }
+  .installment-alert-dialog { width: min(34rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); margin: auto; overflow-y: auto; border-radius: 0.5rem; box-shadow: 0 20px 60px #0005; }
+  .installment-alert-dialog::backdrop { background: #0009; }
 </style>
 </head>
 <body>
@@ -215,7 +217,7 @@
   </div>
 </div>
 <!-- bump ?v= on every bundle.js change, or Safari keeps serving the cached old copy -->
-<script src="bundle.js?v=158"></script>
+<script src="bundle-159.js?v=159"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
