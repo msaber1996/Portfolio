@@ -3326,7 +3326,7 @@ Save anyway?`);
       let hasOffice = false;
       units.forEach((u) => { if (officeGroupUnitNames.includes(u)) hasOffice = true; else names.push(u); });
       if (hasOffice) names.push("office units");
-      return `${names.join(" + ")} installment`;
+      return `${names.length} property installments (${names.join(" + ")})`;
     }, [nextOfficeInstallmentRow, officeGroupUnitNames]);
     const openOfficeDue = useCallback(() => {
       if (nextOfficeInstallmentRow) openInstallmentTarget(nextOfficeInstallmentRow.date, Object.keys(nextOfficeInstallmentRow.byUnit || {}));
@@ -3338,6 +3338,7 @@ Save anyway?`);
       if (units.length === 1) return `property-${domId(units[0])}`;
       return "properties-section";
     }, [nextOfficeInstallmentRow, officeGroupUnitNames]);
+    const officeDueMulti = /property installments \(/.test(officeNextDueLabel);
     const officeGroupSchedule = useMemo(() => filterScheduleForUnits(officeInstallments, officeGroupUnitNames), [officeInstallments, officeGroupUnitNames]);
     const officeGroupNextDueRow = nextOfficeInstallment(officeGroupSchedule, officeInstallmentPayments);
     const officeGroupNextDueDate = officeGroupNextDueRow ? officeGroupNextDueRow.date : null;
@@ -3355,7 +3356,7 @@ Save anyway?`);
         list.push({ id: `daily-${dailyAlert.date}`, targetId: "overview", severity: "warning", text: `Notable move today — ${dailyAlert.triggers.join(" · ")}` });
       }
       if (officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate) {
-        const amt = egp(officeDueAlert.amount);
+        const amt = egp(officeDueAlert.amount) + (officeDueMulti ? " total" : "");
         list.push({ id: `office-${officeDueAlert.date}`, targetId: officeNextDueTargetId, onOpen: openOfficeDue, severity: officeDueAlert.daysUntilDue < 0 ? "danger" : "warning", text: officeDueAlert.daysUntilDue < 0 ? `${officeNextDueLabel} ${amt} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)}d ago` : officeDueAlert.daysUntilDue === 0 ? `${officeNextDueLabel} ${amt} is due today` : `${officeNextDueLabel} ${amt} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue}d` });
       }
       certificates.forEach((c, i) => {
@@ -3369,7 +3370,7 @@ Save anyway?`);
         list.push({ id: `loan-${i}-${l.maturityDate}`, targetId: "loan-facilities-section", severity: d < 0 ? "danger" : "warning", text: d < 0 ? `${l.label} matured ${fmtDate(l.maturityDate)}, ${Math.abs(d)}d ago` : `${l.label} matures ${fmtDate(l.maturityDate)}, in ${d}d` });
       });
       return list;
-    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, officeNextDueLabel, officeNextDueTargetId, openOfficeDue, loanFacilities, certificates]);
+    }, [dailyAlert, dismissedAlertDate, officeDueAlert, dismissedOfficeDueDate, officeDueMulti, officeNextDueLabel, officeNextDueTargetId, openOfficeDue, loanFacilities, certificates]);
     useEffect(() => {
       if (typeof navigator === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
         setPushStatus("unsupported");
@@ -4145,7 +4146,7 @@ Save anyway?`);
       !showAdmin && officeDueAlert && officeDueAlert.date !== dismissedOfficeDueDate && /* @__PURE__ */ jsx("div", { className: `border-b-2 ${officeDueAlert.daysUntilDue < 0 ? "bg-red-50 border-red-400" : "bg-amber-50 border-amber-400"}`, children: /* @__PURE__ */ jsx("div", { className: "max-w-5xl mx-auto px-6 py-3 flex items-start justify-between gap-4", children: [
         /* @__PURE__ */ jsx("div", { role: "button", tabIndex: 0, onClick: openOfficeDue, className: `text-sm leading-relaxed cursor-pointer hover:underline ${officeDueAlert.daysUntilDue < 0 ? "text-red-900" : "text-amber-900"}`, children: [
           /* @__PURE__ */ jsx("span", { className: "font-serif italic", children: `${officeNextDueLabel} — ` }),
-          officeDueAlert.daysUntilDue < 0 ? `${egp(officeDueAlert.amount)} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)} day${Math.abs(officeDueAlert.daysUntilDue) === 1 ? "" : "s"} ago.` : officeDueAlert.daysUntilDue === 0 ? `${egp(officeDueAlert.amount)} is due today.` : `${egp(officeDueAlert.amount)} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue} day${officeDueAlert.daysUntilDue === 1 ? "" : "s"}.`
+          officeDueAlert.daysUntilDue < 0 ? `${egp(officeDueAlert.amount)}${officeDueMulti ? " total" : ""} was due ${fmtDate(officeDueAlert.date)}, ${Math.abs(officeDueAlert.daysUntilDue)} day${Math.abs(officeDueAlert.daysUntilDue) === 1 ? "" : "s"} ago.` : officeDueAlert.daysUntilDue === 0 ? `${egp(officeDueAlert.amount)}${officeDueMulti ? " total" : ""} is due today.` : `${egp(officeDueAlert.amount)}${officeDueMulti ? " total" : ""} due ${fmtDate(officeDueAlert.date)}, in ${officeDueAlert.daysUntilDue} day${officeDueAlert.daysUntilDue === 1 ? "" : "s"}.`
         ] }),
         /* @__PURE__ */ jsx("button", { onClick: () => setDismissedOfficeDueDate(officeDueAlert.date), className: `text-xs underline shrink-0 whitespace-nowrap ${officeDueAlert.daysUntilDue < 0 ? "text-red-700" : "text-amber-700"}`, children: "Dismiss" })
       ] }) }),
