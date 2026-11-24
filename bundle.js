@@ -939,7 +939,11 @@
     const target = new Date(dateStr + "T00:00:00");
     return Math.round((target - today) / 864e5);
   };
-  function computeDay(entry, holdings, navAdjust) {
+  var costAddedBetween = (prev, curr) => {
+    const had = new Set((prev?.rows || []).map((r) => r.id));
+    return (curr?.rows || []).filter((r) => !had.has(r.id) && r.purchaseNav != null).reduce((sum, r) => sum + (r.investmentEgp || 0), 0);
+  };
+  function computeDay(entry, holdings, navAdjust, asOfDate) {
     const rate = Number(entry.rate) || 0;
     const goldPrice = Number(entry.gold) || 0;
     let egpFundsCurrent = 0, egpFundsInvestment = 0;
@@ -947,7 +951,9 @@
     let goldCurrent = 0, goldInvestment = 0;
     let fixedEgp = 0;
     const rows = [];
+    const dayStr = asOfDate || entry.date;
     holdings.forEach((h) => {
+      if (dayStr && h.purchaseDate && h.purchaseDate > dayStr) return;
       if (h.type === "fund") {
         const navRaw = entry[h.navGroup];
         const nav = navRaw !== void 0 && navRaw !== "" ? Number(navRaw) : h.purchaseNav;
@@ -3016,7 +3022,7 @@ Save anyway?`);
     const displayComputed = useMemo(() => {
       if (!isLivePreview) return latestComputed;
       const liveEntry = { ...latestComputed, rate: liveRates.rate ?? latestComputed.rate, gold: liveRates.gold ?? latestComputed.gold };
-      return computeDay(liveEntry, holdings, navAdjustByDate[latestComputed.date]);
+      return computeDay(liveEntry, holdings, navAdjustByDate[latestComputed.date], todayStr);
     }, [isLivePreview, latestComputed, liveRates, holdings, navAdjustByDate]);
     const asOfLabel = isLivePreview ? `${todayStr} (live)` : latestComputed?.date || "";
     const ASSETS = displayComputed?.rows || [];
@@ -3130,7 +3136,7 @@ Save anyway?`);
     }, [yearAssets, yearLatestComputed]);
     const yearAnalysis = useMemo(() => {
       if (!yearFirstComputed || !yearLatestComputed || yearComputedHistory.length < 2) return null;
-      const changeVal = yearLatestComputed.markedToMarket - yearFirstComputed.markedToMarket;
+      const changeVal = yearLatestComputed.markedToMarket - yearFirstComputed.markedToMarket - costAddedBetween(yearFirstComputed, yearLatestComputed);
       const changePct = yearFirstComputed.markedToMarket ? changeVal / yearFirstComputed.markedToMarket * 100 : 0;
       const firstByLabel = new Map(yearFirstComputed.rows.filter((r) => r.purchaseNav != null).map((r) => [r.label, r.gainPct]));
       const movers = yearLatestComputed.rows.filter((r) => firstByLabel.has(r.label)).map((r) => ({ label: r.label, delta: r.gainPct - firstByLabel.get(r.label), last: r.gainPct }));
@@ -3142,7 +3148,7 @@ Save anyway?`);
       const mostDeclined = byMomentum[byMomentum.length - 1];
       const rateChangePct = yearFirstComputed.rate ? (yearLatestComputed.rate - yearFirstComputed.rate) / yearFirstComputed.rate * 100 : 0;
       const goldChangePct = yearFirstComputed.gold ? (yearLatestComputed.gold - yearFirstComputed.gold) / yearFirstComputed.gold * 100 : 0;
-      const upDays = yearComputedHistory.slice(1).filter((d, i) => d.markedToMarket >= yearComputedHistory[i].markedToMarket).length;
+      const upDays = yearComputedHistory.slice(1).filter((d, i) => d.markedToMarket - costAddedBetween(yearComputedHistory[i], d) >= yearComputedHistory[i].markedToMarket).length;
       return { days: yearComputedHistory.length, changeVal, changePct, rateChangePct, goldChangePct, upDays, totalDays: yearComputedHistory.length - 1, strongest, weakest, mostImproved, mostDeclined };
     }, [yearComputedHistory, yearFirstComputed, yearLatestComputed]);
     const chartHistory = useMemo(() => {
@@ -3424,7 +3430,7 @@ Save anyway?`);
     const egpNet = cashFlow.egp.income - cashFlow.egp.outflow - cashFlow.egp.propertyMonthly;
     const analysis = useMemo(() => {
       if (!firstComputed || !latestComputed || computedHistory.length < 2) return null;
-      const changeVal = latestComputed.markedToMarket - firstComputed.markedToMarket;
+      const changeVal = latestComputed.markedToMarket - firstComputed.markedToMarket - costAddedBetween(firstComputed, latestComputed);
       const changePct = firstComputed.markedToMarket ? changeVal / firstComputed.markedToMarket * 100 : 0;
       const firstByLabel = new Map(firstComputed.rows.filter((r) => r.purchaseNav != null).map((r) => [r.label, r.gainPct]));
       const movers = latestComputed.rows.filter((r) => firstByLabel.has(r.label)).map((r) => ({ label: r.label, delta: r.gainPct - firstByLabel.get(r.label), last: r.gainPct }));
@@ -3436,7 +3442,7 @@ Save anyway?`);
       const mostDeclined = byMomentum[byMomentum.length - 1];
       const rateChangePct = firstComputed.rate ? (latestComputed.rate - firstComputed.rate) / firstComputed.rate * 100 : 0;
       const goldChangePct = firstComputed.gold ? (latestComputed.gold - firstComputed.gold) / firstComputed.gold * 100 : 0;
-      const upDays = computedHistory.slice(1).filter((d, i) => d.markedToMarket >= computedHistory[i].markedToMarket).length;
+      const upDays = computedHistory.slice(1).filter((d, i) => d.markedToMarket - costAddedBetween(computedHistory[i], d) >= computedHistory[i].markedToMarket).length;
       return {
         days: computedHistory.length,
         changeVal,
@@ -3799,13 +3805,7 @@ Save anyway?`);
   </table>
 
   <h2 id="r-performance">Performance over time</h2>
-  <p class="note">Whole portfolio, including certificates and properties — always today's live numbers, independent of the year shown elsewhere in this report.</p>
-  <table>
-    <tr><th>Period</th><th class="num">Return</th></tr>
-    <tr><td>Year to date</td><td class="num mono">${pctStr(periodReturns.ytd.returnPct)}</td></tr>
-    <tr><td>1 year</td><td class="num mono">${pctStr(periodReturns.oneYear.returnPct)}</td></tr>
-    <tr><td>Since inception</td><td class="num mono">${pctStr(periodReturns.sinceInception.returnPct)}</td></tr>
-  </table>
+  <p class="note">Insufficient data: a period return needs dated additions, income received and period-start values for every holding.</p>
 
   <h2 id="r-variable-investments">Variable investments (funds, gold, Beltone — excludes certificates)</h2>
   <table>
@@ -4289,18 +4289,29 @@ Save anyway?`);
           ] }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-white p-5", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Performance over time" }),
-            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "Whole portfolio, including certificates and properties — how it's moved year to date, over the trailing year, and since tracking began." }),
+            /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mb-4 max-w-xl", children: "A period return needs dated additions, income received, and period-start values for every holding. Where that data is missing the card says so instead of showing a number." }),
             /* @__PURE__ */ jsx("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4", children: [
-              { label: "Year to date", stat: periodReturns.ytd },
-              { label: "1 year", stat: periodReturns.oneYear },
-              { label: "Since inception", stat: periodReturns.sinceInception }
-            ].map(({ label, stat }) => /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4 text-center", children: [
+              { label: "Year to date", note: "Needs period-start values and dated additions. Additions are not profit." },
+              { label: "1 year", note: "Needs 12 months of observations, dated flows and income coverage." },
+              { label: "Since first purchase", note: "Needs dated flows and income for every holding, including certificates, properties and USD purchase-date rates." }
+            ].map(({ label, note }) => /* @__PURE__ */ jsx("div", { className: "border border-neutral-200 p-4 text-center", children: [
               /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-2", children: label }),
-              /* @__PURE__ */ jsx("div", { className: `font-mono text-2xl inline-flex items-center gap-1.5 ${stat.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: [
-                /* @__PURE__ */ jsx(AnimatedNumber, { value: stat.returnPct, format: pctStr }),
-                stat.returnPct >= 0 ? /* @__PURE__ */ jsx(ArrowUpRight, { size: 20, strokeWidth: 2 }) : /* @__PURE__ */ jsx(ArrowDownRight, { size: 20, strokeWidth: 2 })
-              ] })
-            ] }, label)) })
+              /* @__PURE__ */ jsx("div", { className: "font-serif text-lg text-neutral-700", children: "Insufficient data" }),
+              /* @__PURE__ */ jsx("div", { className: "text-xs text-neutral-500 mt-2", children: note })
+            ] }, label)) }),
+            (() => {
+              const priced = ASSETS.filter((a) => a.purchaseNav != null && a.currency === "EGP");
+              const cost = priced.reduce((sum, a) => sum + (a.investmentEgp || 0), 0);
+              const val = priced.reduce((sum, a) => sum + (a.value || 0), 0);
+              const pct = cost ? (val - cost) / cost * 100 : 0;
+              const totalCost = ASSETS.reduce((sum, a) => sum + (a.investmentEgp ?? 0), 0);
+              const share = totalCost ? cost / totalCost * 100 : 0;
+              return /* @__PURE__ */ jsx("div", { className: "mt-4 border border-neutral-200 p-4", children: [
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500 mb-1", children: "Change vs cost: EGP funds and gold" }),
+                /* @__PURE__ */ jsx("div", { className: `font-mono text-xl ${pct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: pctStr(pct) }),
+                /* @__PURE__ */ jsx("p", { className: "text-xs text-neutral-500 mt-2 max-w-xl", children: `Compares today's value with what was paid, for ${priced.length} of ${ASSETS.length} holdings (${share.toFixed(0)}% of the amount invested). Excludes USD funds, certificates, treasury bills, properties and any income received. Not a period return and not a whole-portfolio return.` })
+              ] });
+            })()
           ] }),
           /* @__PURE__ */ jsx("div", { className: "mb-8 border border-neutral-300 bg-neutral-50 p-5", children: [
             /* @__PURE__ */ jsx("div", { className: "text-sm font-serif text-neutral-900 mb-1", children: "Your variable investments, in plain terms" }),
@@ -4315,11 +4326,11 @@ Save anyway?`);
                 /* @__PURE__ */ jsx("div", { className: "font-mono text-xl mt-1 text-neutral-900", children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearVariableInvestments.durationDays, format: (v) => `${Math.round(v)} day${Math.round(v) === 1 ? "" : "s"}` }) })
               ] }),
               /* @__PURE__ */ jsx("div", { children: [
-                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Return so far" }),
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Change vs cost" }),
                 /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${yearVariableInvestments.returnPct >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearVariableInvestments.returnPct, format: pctStr }) })
               ] }),
               /* @__PURE__ */ jsx("div", { children: [
-                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Profit so far" }),
+                /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-neutral-500", children: "Gain vs cost" }),
                 /* @__PURE__ */ jsx("div", { className: `font-mono text-xl mt-1 ${yearVariableInvestments.totalProfit >= 0 ? "text-emerald-700" : "text-red-700"}`, children: /* @__PURE__ */ jsx(AnimatedNumber, { value: yearVariableInvestments.totalProfit, format: signedEgp }) })
               ] })
             ] }),
