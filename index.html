@@ -229,6 +229,11 @@
   html[dir="rtl"] .pl-7 { padding-left: 0; padding-right: 1.75rem; }
   html[dir="rtl"] .pr-3 { padding-right: 0; padding-left: 0.75rem; }
   html[dir="rtl"] details summary { text-align: right; }
+  @media (max-width: 639px) {
+    html[dir="rtl"] .rtable td { text-align: left; }
+    html[dir="rtl"] .rtable td[data-label] { padding-left: 0; padding-right: 45%; }
+    html[dir="rtl"] .rtable td[data-label]::before { left: auto; right: 0; padding-right: 0; padding-left: 8px; text-align: right; }
+  }
   @media (min-width: 768px) {
     html[dir="rtl"] .md\:text-left { text-align: right; }
     html[dir="rtl"] .md\:text-right { text-align: left; }
