@@ -233,7 +233,7 @@
   @media (max-width: 639px) {
     html[dir="rtl"] .rtable td { text-align: left; }
     html[dir="rtl"] .rtable td[data-label] { padding-left: 0; padding-right: 45%; }
-    html[dir="rtl"] .rtable td[data-label]::before { left: auto; right: 0; padding-right: 0; padding-left: 8px; text-align: right; }
+    html[dir="rtl"] .rtable td[data-label]::before { letter-spacing: 0; text-transform: none; line-height: 1.35; font-size: 12px; left: auto; right: 0; padding-right: 0; padding-left: 8px; text-align: right; }
   }
   @media (min-width: 768px) {
     html[dir="rtl"] .md\:text-left { text-align: right; }
@@ -255,7 +255,7 @@
   </div>
 </div>
 <!-- bump ?v= on every bundle.js change, or Safari keeps serving the cached old copy -->
-<script src="bundle-179.js?v=179"></script>
+<script src="bundle-180.js?v=180"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
