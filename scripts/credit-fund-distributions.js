@@ -20,6 +20,12 @@
 //   FIREBASE_ID_TOKEN     a signed-in rates-bot ID token
 "use strict";
 
+// DISABLED Nov 25, 2026 at the owner request: Fund 4 payouts are no longer
+// credited as a cash holding. They count only in the fund total return, using
+// the actual payout list in distAdjustments (entries with actual: true).
+console.log("Fund distribution crediting is disabled; nothing to do.");
+process.exit(0);
+
 const DB = process.env.FIREBASE_DB;
 const ID_TOKEN = process.env.FIREBASE_ID_TOKEN;
 
